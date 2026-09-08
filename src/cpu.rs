@@ -13,6 +13,11 @@ pub struct Cpu {
     pc: u16,
 }
 
+const SHIFT_ZERO: u8 = 7;
+const SHIFT_SUB: u8 = 6;
+const SHIFT_HCARRY: u8 = 5;
+const SHIFT_CARRY: u8 = 4;
+
 impl Cpu {
     pub fn new() -> Self {
         Self {
@@ -64,59 +69,242 @@ impl Cpu {
         self.h = (value >> 8) as u8;
         self.l = (value & 0x00FF) as u8;
     }
+
+    pub fn get_zero(&self) -> bool {
+        ((self.f >> SHIFT_ZERO) & 0b1) != 0
+    }
+
+    pub fn get_subtract(&self) -> bool {
+        ((self.f >> SHIFT_SUB) & 0b1) != 0
+    }
+
+    pub fn get_half_carry(&self) -> bool {
+        ((self.f >> SHIFT_HCARRY) & 0b1) != 0
+    }
+
+    pub fn get_carry(&self) -> bool {
+        ((self.f >> SHIFT_CARRY) & 0b1) != 0
+    }
+
+    pub fn set_zero(&mut self, is_enable: bool) {
+        let mask: u8 = 1 << SHIFT_ZERO;
+        if is_enable {
+            self.f |= mask
+        } else {
+            self.f &= !mask
+        }
+    }
+
+    pub fn set_subtract(&mut self, is_enable: bool) {
+        let mask: u8 = 1 << SHIFT_SUB;
+        if is_enable {
+            self.f |= mask
+        } else {
+            self.f &= !mask
+        }
+    }
+
+    pub fn set_half_carry(&mut self, is_enable: bool) {
+        let mask: u8 = 1 << SHIFT_HCARRY;
+        if is_enable {
+            self.f |= mask
+        } else {
+            self.f &= !mask
+        }
+    }
+
+    pub fn set_carry(&mut self, is_enable: bool) {
+        let mask: u8 = 1 << SHIFT_CARRY;
+        if is_enable {
+            self.f |= mask
+        } else {
+            self.f &= !mask
+        }
+    }
+    pub fn get_pc(&self) -> u16 {
+        self.pc
+    }
+
+    pub fn set_pc(&mut self, value: u16) {
+        self.pc = value;
+    }
+
+    pub fn get_sp(&self) -> u16 {
+        self.sp
+    }
+
+    pub fn set_sp(&mut self, value: u16) {
+        self.sp = value;
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use rand::RngExt;
+    mod registers {
+        use super::super::*;
+        use rand::RngExt;
 
-    use super::*;
+        #[test]
+        fn set_and_get_af() {
+            let mut cpu = Cpu::new();
 
-    #[test]
-    fn set_and_get_af() {
-        let mut cpu = Cpu::new();
+            let mut rng = rand::rng();
+            let value: u16 = rng.random();
 
-        let mut rng = rand::rng();
-        let value: u16 = rng.random();
+            cpu.set_af(value);
 
-        cpu.set_af(value);
+            assert_eq!(cpu.get_af(), value);
+        }
 
-        assert_eq!(cpu.get_af(), value);
+        #[test]
+        fn set_and_get_bc() {
+            let mut cpu = Cpu::new();
+
+            let mut rng = rand::rng();
+            let value: u16 = rng.random();
+
+            cpu.set_bc(value);
+
+            assert_eq!(cpu.get_bc(), value);
+        }
+
+        #[test]
+        fn set_and_get_de() {
+            let mut cpu = Cpu::new();
+
+            let mut rng = rand::rng();
+            let value: u16 = rng.random();
+
+            cpu.set_de(value);
+
+            assert_eq!(cpu.get_de(), value);
+        }
+
+        #[test]
+        fn set_and_get_hl() {
+            let mut cpu = Cpu::new();
+
+            let mut rng = rand::rng();
+            let value: u16 = rng.random();
+
+            cpu.set_hl(value);
+
+            assert_eq!(cpu.get_hl(), value);
+        }
+
+        #[test]
+        fn set_and_get_pc() {
+            let mut rng = rand::rng();
+            let value: u16 = rng.random();
+
+            let mut cpu = Cpu::new();
+            cpu.set_pc(value);
+
+            assert_eq!(cpu.get_pc(), value);
+        }
+
+        #[test]
+        fn set_and_get_sp() {
+            let mut rng = rand::rng();
+            let value: u16 = rng.random();
+
+            let mut cpu = Cpu::new();
+            cpu.set_sp(value);
+
+            assert_eq!(cpu.get_sp(), value);
+        }
     }
+    mod flags {
+        use super::super::*;
 
-    #[test]
-    fn set_and_get_bc() {
-        let mut cpu = Cpu::new();
+        #[test]
+        fn set_zero() {
+            let mut cpu = Cpu::new();
 
-        let mut rng = rand::rng();
-        let value: u16 = rng.random();
+            cpu.set_zero(true);
+            assert!(cpu.get_zero());
 
-        cpu.set_bc(value);
+            cpu.set_zero(false);
+            assert!(!cpu.get_zero());
+        }
 
-        assert_eq!(cpu.get_bc(), value);
-    }
+        #[test]
+        fn set_subtract() {
+            let mut cpu = Cpu::new();
 
-    #[test]
-    fn set_and_get_de() {
-        let mut cpu = Cpu::new();
+            cpu.set_subtract(true);
+            assert!(cpu.get_subtract());
 
-        let mut rng = rand::rng();
-        let value: u16 = rng.random();
+            cpu.set_subtract(false);
+            assert!(!cpu.get_subtract());
+        }
 
-        cpu.set_de(value);
+        #[test]
+        fn set_half_carry() {
+            let mut cpu = Cpu::new();
 
-        assert_eq!(cpu.get_de(), value);
-    }
+            cpu.set_half_carry(true);
+            assert!(cpu.get_half_carry());
 
-    #[test]
-    fn set_and_get_hl() {
-        let mut cpu = Cpu::new();
+            cpu.set_half_carry(false);
+            assert!(!cpu.get_half_carry());
+        }
 
-        let mut rng = rand::rng();
-        let value: u16 = rng.random();
+        #[test]
+        fn set_carry() {
+            let mut cpu = Cpu::new();
 
-        cpu.set_hl(value);
+            cpu.set_carry(true);
+            assert!(cpu.get_carry());
 
-        assert_eq!(cpu.get_hl(), value);
+            cpu.set_carry(false);
+            assert!(!cpu.get_carry());
+        }
+
+        #[test]
+        fn setting_flags_does_not_modify_other_flags() {
+            let mut cpu = Cpu::new();
+
+            cpu.set_zero(true);
+            assert!(cpu.get_zero());
+            assert!(!cpu.get_subtract());
+            assert!(!cpu.get_half_carry());
+            assert!(!cpu.get_carry());
+
+            cpu.set_subtract(true);
+            assert!(cpu.get_zero());
+            assert!(cpu.get_subtract());
+            assert!(!cpu.get_half_carry());
+            assert!(!cpu.get_carry());
+
+            cpu.set_half_carry(true);
+            assert!(cpu.get_zero());
+            assert!(cpu.get_subtract());
+            assert!(cpu.get_half_carry());
+            assert!(!cpu.get_carry());
+
+            cpu.set_carry(true);
+            assert!(cpu.get_zero());
+            assert!(cpu.get_subtract());
+            assert!(cpu.get_half_carry());
+            assert!(cpu.get_carry());
+        }
+
+        #[test]
+        fn clearing_flags_does_not_modify_other_flags() {
+            let mut cpu = Cpu::new();
+
+            cpu.set_zero(true);
+            cpu.set_subtract(true);
+            cpu.set_half_carry(true);
+            cpu.set_carry(true);
+
+            cpu.set_subtract(false);
+
+            assert!(cpu.get_zero());
+            assert!(!cpu.get_subtract());
+            assert!(cpu.get_half_carry());
+            assert!(cpu.get_carry());
+        }
     }
 }
