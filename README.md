@@ -19,3 +19,8 @@ The goal of this project is to build a simple and accurate emulator for the orig
 * [ ] Input
 * [ ] Frontend
 
+--------
+
+<div align="center">
+  <img width="500" height="342" alt="gameboy" src="https://github.com/user-attachments/assets/df020866-0056-465e-9664-b5b50a88f5e4" />
+</div>
