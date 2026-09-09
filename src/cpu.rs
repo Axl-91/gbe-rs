@@ -1,8 +1,8 @@
-use crate::registers::Registers;
+use crate::{bus::MemoryBus, registers::Registers};
 
 #[allow(dead_code)]
 
 pub struct Cpu {
     registers: Registers,
-    // bus: MemoryBus,
+    bus: MemoryBus,
 }

@@ -138,8 +138,10 @@ impl Registers {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+
     mod registers {
-        use super::super::*;
+        use super::*;
         use rand::RngExt;
 
         #[test]
@@ -216,7 +218,7 @@ mod tests {
         }
     }
     mod flags {
-        use super::super::*;
+        use super::*;
 
         #[test]
         fn set_zero() {
