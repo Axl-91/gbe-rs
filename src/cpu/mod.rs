@@ -1,4 +1,7 @@
-use crate::{bus::MemoryBus, registers::Registers};
+pub mod registers;
+
+use crate::memory::bus::MemoryBus;
+use registers::Registers;
 
 #[allow(dead_code)]
 pub struct Cpu {

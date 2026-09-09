@@ -1,7 +1,9 @@
+pub mod mbc1;
+
 use std::fs;
 use std::io;
 
-use crate::mbc1::Mbc1;
+use crate::cartridge::mbc1::Mbc1;
 
 pub struct Cartridge {
     rom: Vec<u8>,
