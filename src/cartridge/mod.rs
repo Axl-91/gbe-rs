@@ -2,14 +2,16 @@ pub mod mbc1;
 
 use std::fs;
 use std::io;
+use std::path::Path;
 
+use crate::memory::map::RAM_BANK_SIZE;
 use crate::memory::map::{
     CARTRIDGE_RAM_END, CARTRIDGE_RAM_START, CARTRIDGE_ROM_END, CARTRIDGE_ROM_START,
 };
 use mbc1::Mbc1;
 
-const RAM_SIZE: u16 = 0x2000;
 const DISABLED_RAM_VALUE: u8 = 0xFF;
+const RAM_SIZE_CODE_ADDRESS: usize = 0x0149;
 
 pub struct Cartridge {
     rom: Vec<u8>,
@@ -18,18 +20,36 @@ pub struct Cartridge {
 }
 
 impl Cartridge {
-    pub fn new(rom: Vec<u8>) -> Self {
+    pub fn new(rom: Vec<u8>, ram_size: usize) -> Self {
         Self {
             rom,
-            ram: vec![0; RAM_SIZE as usize],
+            ram: vec![0; ram_size],
             mbc: Mbc1::new(),
         }
     }
 
-    pub fn from_file(path: &str) -> io::Result<Self> {
+    pub fn from_file<P: AsRef<Path>>(path: P) -> io::Result<Self> {
         let rom = fs::read(path)?;
 
-        Ok(Self::new(rom))
+        if rom.len() <= RAM_SIZE_CODE_ADDRESS {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "ROM is too small to contain the cartridge header",
+            ));
+        }
+
+        // Header parsing
+        let ram_size = match rom[RAM_SIZE_CODE_ADDRESS] {
+            0x00 => 0,
+            0x01 => RAM_BANK_SIZE / 4,
+            0x02 => RAM_BANK_SIZE,
+            0x03 => RAM_BANK_SIZE * 4,
+            0x04 => RAM_BANK_SIZE * 16,
+            0x05 => RAM_BANK_SIZE * 8,
+            _ => 0,
+        };
+
+        Ok(Self::new(rom, ram_size))
     }
 
     pub fn read(&self, address: u16) -> u8 {
@@ -40,8 +60,11 @@ impl Cartridge {
             }
             CARTRIDGE_RAM_START..=CARTRIDGE_RAM_END => {
                 if self.mbc.is_ram_enabled() {
-                    let offset = address - CARTRIDGE_RAM_START;
-                    self.ram[offset as usize]
+                    let bank_selected = self.mbc.get_ram_bank() as usize;
+                    let offset = (address - CARTRIDGE_RAM_START) as usize;
+                    let ram_address = (bank_selected * RAM_BANK_SIZE) + offset;
+
+                    self.ram[ram_address]
                 } else {
                     DISABLED_RAM_VALUE
                 }
@@ -57,8 +80,11 @@ impl Cartridge {
             }
             CARTRIDGE_RAM_START..=CARTRIDGE_RAM_END => {
                 if self.mbc.is_ram_enabled() {
-                    let offset = address - CARTRIDGE_RAM_START;
-                    self.ram[offset as usize] = value;
+                    let bank_selected = self.mbc.get_ram_bank() as usize;
+                    let offset = (address - CARTRIDGE_RAM_START) as usize;
+                    let ram_address = (bank_selected * RAM_BANK_SIZE) + offset;
+
+                    self.ram[ram_address] = value;
                 }
             }
             _ => unreachable!("Invalid cartridge address: {address:#06X}"),
@@ -68,24 +94,32 @@ impl Cartridge {
 
 #[cfg(test)]
 mod tests {
+    use super::mbc1::{
+        BANK_HIGH_END, BANK_HIGH_START, BANKING_MODE_END, BANKING_MODE_START, RAM_ENABLE_END,
+        RAM_ENABLE_START, RAM_ENABLE_VALUE,
+    };
+    use crate::memory::map::ROM_BANK_SIZE;
+
     use super::*;
     use rand::RngExt;
 
-    const RAM_ENABLE_VALUE: u8 = 0x0A;
     const RAM_DISABLE_VALUE: u8 = 0x00;
 
-    const RAM_ENABLE_START: u16 = 0x0000;
-    const RAM_ENABLE_END: u16 = 0x1FFF;
-
-    fn create_test_cartridge(rom: Option<Vec<u8>>) -> Cartridge {
+    fn create_test_cartridge(rom: Option<Vec<u8>>, ram_size: usize) -> Cartridge {
         match rom {
-            Some(rom) => Cartridge::new(rom),
-            None => {
-                let rom_size = (CARTRIDGE_ROM_END - CARTRIDGE_ROM_START + 1) as usize;
-
-                Cartridge::new(vec![0; rom_size])
-            }
+            Some(rom) => Cartridge::new(rom, ram_size),
+            None => Cartridge::new(vec![0; ROM_BANK_SIZE * 4], ram_size),
         }
+    }
+
+    fn create_temp_rom(rom: &[u8]) -> std::path::PathBuf {
+        let mut rng = rand::rng();
+        let filename = format!("gbe_test_{:016x}.gb", rng.random::<u64>());
+        let path = std::env::temp_dir().join(filename);
+
+        fs::write(&path, rom).unwrap();
+
+        path
     }
 
     mod rom {
@@ -103,12 +137,11 @@ mod tests {
 
             rom[address as usize] = value;
 
-            let cartridge = create_test_cartridge(Some(rom));
+            let cartridge = create_test_cartridge(Some(rom), RAM_BANK_SIZE);
 
             assert_eq!(cartridge.read(address), value);
         }
     }
-
     mod ram {
         use super::*;
 
@@ -119,7 +152,7 @@ mod tests {
             let address: u16 = rng.random_range(CARTRIDGE_RAM_START..=CARTRIDGE_RAM_END);
             let value: u8 = rng.random();
 
-            let mut cartridge = create_test_cartridge(None);
+            let mut cartridge = create_test_cartridge(None, RAM_BANK_SIZE);
             let enable_ram_address = rng.random_range(RAM_ENABLE_START..=RAM_ENABLE_END);
 
             cartridge.write(enable_ram_address, RAM_ENABLE_VALUE);
@@ -135,7 +168,7 @@ mod tests {
             let address: u16 = rng.random_range(CARTRIDGE_RAM_START..=CARTRIDGE_RAM_END);
             let value: u8 = rng.random();
 
-            let mut cartridge = create_test_cartridge(None);
+            let mut cartridge = create_test_cartridge(None, RAM_BANK_SIZE);
 
             cartridge.write(address, value);
 
@@ -153,7 +186,7 @@ mod tests {
 
             let address: u16 = rng.random_range(CARTRIDGE_RAM_START..=CARTRIDGE_RAM_END);
 
-            let cartridge = create_test_cartridge(None);
+            let cartridge = create_test_cartridge(None, RAM_BANK_SIZE);
 
             assert_eq!(cartridge.read(address), DISABLED_RAM_VALUE);
         }
@@ -165,20 +198,133 @@ mod tests {
             let address: u16 = rng.random_range(CARTRIDGE_RAM_START..=CARTRIDGE_RAM_END);
             let value: u8 = rng.random();
 
-            let mut cartridge = create_test_cartridge(None);
+            let mut cartridge = create_test_cartridge(None, RAM_BANK_SIZE);
 
-            cartridge.write(RAM_ENABLE_START, RAM_ENABLE_VALUE);
+            let enable_ram_address = rng.random_range(RAM_ENABLE_START..=RAM_ENABLE_END);
+
+            cartridge.write(enable_ram_address, RAM_ENABLE_VALUE);
             cartridge.write(address, value);
 
             assert_eq!(cartridge.read(address), value);
 
-            cartridge.write(RAM_ENABLE_START, RAM_DISABLE_VALUE);
+            cartridge.write(enable_ram_address, RAM_DISABLE_VALUE);
 
             assert_eq!(cartridge.read(address), DISABLED_RAM_VALUE);
 
-            cartridge.write(RAM_ENABLE_START, RAM_ENABLE_VALUE);
+            cartridge.write(enable_ram_address, RAM_ENABLE_VALUE);
 
             assert_eq!(cartridge.read(address), value);
+        }
+
+        #[test]
+        fn ram_banks_have_independent_content() {
+            let mut rng = rand::rng();
+
+            let address: u16 = rng.random_range(CARTRIDGE_RAM_START..=CARTRIDGE_RAM_END);
+            let value_bank_0: u8 = rng.random();
+            let value_bank_1: u8 = rng.random();
+
+            let ram_size = RAM_BANK_SIZE * 4;
+            let mut cartridge = create_test_cartridge(None, ram_size);
+
+            let enable_ram_address = rng.random_range(RAM_ENABLE_START..=RAM_ENABLE_END);
+            let banking_mode_address = rng.random_range(BANKING_MODE_START..=BANKING_MODE_END);
+            let bank_high_address = rng.random_range(BANK_HIGH_START..=BANK_HIGH_END);
+
+            cartridge.write(enable_ram_address, RAM_ENABLE_VALUE);
+
+            // Select RAM banking mode.
+            cartridge.write(banking_mode_address, 0x01);
+
+            // Select bank 0.
+            cartridge.write(bank_high_address, 0);
+            cartridge.write(address, value_bank_0);
+
+            // Select bank 1.
+            cartridge.write(bank_high_address, 1);
+            cartridge.write(address, value_bank_1);
+
+            // Bank 0 must keep its own value.
+            cartridge.write(bank_high_address, 0);
+            assert_eq!(cartridge.read(address), value_bank_0);
+
+            // Bank 1 must keep its own value.
+            cartridge.write(bank_high_address, 1);
+            assert_eq!(cartridge.read(address), value_bank_1);
+        }
+
+        #[test]
+        fn ram_uses_bank_zero_in_rom_banking_mode() {
+            let mut rng = rand::rng();
+
+            let address: u16 = rng.random_range(CARTRIDGE_RAM_START..=CARTRIDGE_RAM_END);
+            let value: u8 = rng.random();
+            let bank: u8 = rng.random_range(1..=0x03);
+
+            let ram_size = RAM_BANK_SIZE * 4;
+            let mut cartridge = create_test_cartridge(None, ram_size);
+
+            let enable_ram_address = rng.random_range(RAM_ENABLE_START..=RAM_ENABLE_END);
+            let bank_high_address = rng.random_range(BANK_HIGH_START..=BANK_HIGH_END);
+
+            cartridge.write(enable_ram_address, RAM_ENABLE_VALUE);
+
+            // ROM banking mode is the initial mode.
+            cartridge.write(bank_high_address, bank);
+            cartridge.write(address, value);
+
+            // RAM must still use bank 0.
+            cartridge.write(bank_high_address, 0);
+
+            assert_eq!(cartridge.read(address), value);
+        }
+    }
+
+    mod from_file {
+        use super::*;
+
+        #[test]
+        fn loads_rom_from_file() {
+            let mut rng = rand::rng();
+
+            let address: u16 = rng.random_range(CARTRIDGE_ROM_START..=CARTRIDGE_ROM_END);
+            let value: u8 = rng.random();
+
+            let mut rom = vec![0; ROM_BANK_SIZE * 2];
+            rom[address as usize] = value;
+
+            let path = create_temp_rom(&rom);
+
+            let cartridge = Cartridge::from_file(&path).unwrap();
+
+            assert_eq!(cartridge.read(address), value);
+
+            fs::remove_file(path).unwrap();
+        }
+
+        #[test]
+        fn creates_ram_with_size_from_header() {
+            let ram_size_codes = [
+                (0x00, 0),
+                (0x01, RAM_BANK_SIZE / 4),
+                (0x02, RAM_BANK_SIZE),
+                (0x03, RAM_BANK_SIZE * 4),
+                (0x04, RAM_BANK_SIZE * 16),
+                (0x05, RAM_BANK_SIZE * 8),
+            ];
+
+            for (code, expected_size) in ram_size_codes {
+                let mut rom = vec![0; ROM_BANK_SIZE * 2];
+                rom[RAM_SIZE_CODE_ADDRESS] = code;
+
+                let path = create_temp_rom(&rom);
+
+                let cartridge = Cartridge::from_file(&path).unwrap();
+
+                assert_eq!(cartridge.ram.len(), expected_size);
+
+                fs::remove_file(path).unwrap();
+            }
         }
     }
 }

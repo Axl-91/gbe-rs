@@ -1,4 +1,4 @@
-use crate::memory::map::{CARTRIDGE_RAM_END, CARTRIDGE_RAM_START};
+use crate::memory::map::{CARTRIDGE_RAM_END, CARTRIDGE_RAM_START, ROM_BANK_SIZE};
 
 // Addresses ranges for read
 const ROM_BANK_0_START: u16 = 0x0000;
@@ -8,19 +8,19 @@ const ROM_BANK_N_START: u16 = 0x4000;
 const ROM_BANK_N_END: u16 = 0x7FFF;
 
 // Addresses ranges for write
-const RAM_ENABLE_START: u16 = 0x0000;
-const RAM_ENABLE_END: u16 = 0x1FFF;
+pub(crate) const RAM_ENABLE_START: u16 = 0x0000;
+pub(crate) const RAM_ENABLE_END: u16 = 0x1FFF;
 
 const ROM_BANK_LOW_START: u16 = 0x2000;
 const ROM_BANK_LOW_END: u16 = 0x3FFF;
 
-const BANK_HIGH_START: u16 = 0x4000;
-const BANK_HIGH_END: u16 = 0x5FFF;
+pub(crate) const BANK_HIGH_START: u16 = 0x4000;
+pub(crate) const BANK_HIGH_END: u16 = 0x5FFF;
 
-const BANKING_MODE_START: u16 = 0x6000;
-const BANKING_MODE_END: u16 = 0x7FFF;
+pub(crate) const BANKING_MODE_START: u16 = 0x6000;
+pub(crate) const BANKING_MODE_END: u16 = 0x7FFF;
 
-const ROM_BANK_SIZE: usize = 0x4000;
+pub(crate) const RAM_ENABLE_VALUE: u8 = 0x0A;
 
 enum BankingMode {
     Rom,
@@ -55,6 +55,13 @@ impl Mbc1 {
         self.ram_enabled
     }
 
+    pub fn get_ram_bank(&self) -> u8 {
+        match self.banking_mode {
+            BankingMode::Rom => 0,
+            BankingMode::Ram => self.bank_high,
+        }
+    }
+
     pub fn read(&self, address: u16) -> usize {
         match address {
             ROM_BANK_0_START..=ROM_BANK_0_END => address as usize,
@@ -70,7 +77,7 @@ impl Mbc1 {
         match address {
             RAM_ENABLE_START..=RAM_ENABLE_END => {
                 // We check for the lower 4 bits
-                self.ram_enabled = (value & 0x0F) == 0x0A;
+                self.ram_enabled = (value & 0x0F) == RAM_ENABLE_VALUE;
             }
 
             ROM_BANK_LOW_START..=ROM_BANK_LOW_END => {
@@ -484,6 +491,63 @@ mod tests {
             mbc.write(BANKING_MODE_START, ram_value);
 
             assert!(matches!(mbc.banking_mode, BankingMode::Ram));
+        }
+    }
+
+    mod ram_bank {
+        use super::*;
+
+        #[test]
+        fn ram_bank_is_zero_initially() {
+            let mbc = Mbc1::new();
+
+            assert_eq!(mbc.get_ram_bank(), 0);
+        }
+
+        #[test]
+        fn ram_bank_is_zero_in_rom_banking_mode() {
+            let mut rng = rand::rng();
+
+            let bank: u8 = rng.random_range(1..=0x03);
+
+            let mut mbc = Mbc1::new();
+
+            mbc.write(BANK_HIGH_START, bank);
+
+            assert!(matches!(mbc.banking_mode, BankingMode::Rom));
+            assert_eq!(mbc.get_ram_bank(), 0);
+        }
+
+        #[test]
+        fn ram_bank_uses_high_bits_in_ram_banking_mode() {
+            let mut rng = rand::rng();
+
+            let bank: u8 = rng.random_range(0..=0x03);
+
+            let mut mbc = Mbc1::new();
+
+            mbc.write(BANK_HIGH_START, bank);
+            mbc.write(BANKING_MODE_START, 1);
+
+            assert!(matches!(mbc.banking_mode, BankingMode::Ram));
+            assert_eq!(mbc.get_ram_bank(), bank);
+        }
+
+        #[test]
+        fn ram_bank_only_uses_lower_two_bits() {
+            let mut rng = rand::rng();
+
+            let upper_bits: u8 = rng.random_range(0..=0x3F);
+            let bank = rng.random_range(0..=0x03);
+
+            let value = (upper_bits << 2) | bank;
+
+            let mut mbc = Mbc1::new();
+
+            mbc.write(BANK_HIGH_START, value);
+            mbc.write(BANKING_MODE_START, 1);
+
+            assert_eq!(mbc.get_ram_bank(), bank);
         }
     }
 }

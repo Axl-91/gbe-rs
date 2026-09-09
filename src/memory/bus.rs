@@ -57,7 +57,7 @@ mod tests {
     use rand::RngExt;
 
     fn test_cartridge() -> Cartridge {
-        Cartridge::new(vec![0; 0x8000])
+        Cartridge::new(vec![0; ROM_BANK_SIZE * 4], RAM_BANK_SIZE)
     }
 
     mod cartridge {
@@ -66,7 +66,7 @@ mod tests {
         #[test]
         fn read_cartridge() {
             let mut rng = rand::rng();
-            let mut rom = vec![0; 0x8000];
+            let mut rom = vec![0; ROM_BANK_SIZE * 4];
 
             let addresses: Vec<u16> = vec![
                 CARTRIDGE_ROM_START,
@@ -90,7 +90,7 @@ mod tests {
             rom[addresses[3] as usize] = values[3];
             rom[addresses[4] as usize] = values[4];
 
-            let cartridge = Cartridge::new(rom);
+            let cartridge = Cartridge::new(rom, RAM_BANK_SIZE);
             let bus = MemoryBus::new(cartridge);
 
             assert_eq!(bus.read(addresses[0]), values[0]);
