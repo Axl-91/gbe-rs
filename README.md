@@ -10,7 +10,7 @@ The goal of this project is to build a simple and accurate emulator for the orig
 * [x] Memory bus
 * [x] VRAM / WRAM
 * [x] Cartridge ROM
-* [ ] MBC1
+* [x] MBC1
 * [ ] CPU fetch / decode / execute
 * [ ] Instruction set
 * [ ] Timer
