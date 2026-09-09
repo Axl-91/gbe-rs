@@ -6,18 +6,32 @@ The goal of this project is to build a simple and accurate emulator for the orig
 
 ## Current progress
 
-* [x] CPU registers and flags
-* [x] Memory bus
-* [x] VRAM / WRAM
-* [x] Cartridge ROM
-* [x] MBC1
-* [ ] CPU fetch / decode / execute
-* [ ] Instruction set
-* [ ] Timer
-* [ ] Interrupts
-* [ ] PPU
-* [ ] Input
-* [ ] Frontend
+### CPU
+- [x] CPU registers and flags
+- [ ] Fetch / decode / execute cycle
+- [ ] Instruction set
+
+### Memory
+- [x] Memory bus
+- [x] VRAM
+- [x] WRAM
+- [ ] HRAM
+- [ ] I/O registers
+- [ ] Interrupt registers
+
+### Cartridge
+- [x] Cartridge ROM
+- [x] MBC1
+- [ ] Cartridge RAM
+
+### Hardware
+- [ ] Timer
+- [ ] Interrupts
+- [ ] PPU
+- [ ] Input
+
+### Frontend
+- [ ] Frontend
 
 --------
 
