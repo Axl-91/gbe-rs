@@ -6,8 +6,8 @@ use crate::cartridge::Cartridge;
 const VRAM_START: u16 = 0x8000;
 const VRAM_END: u16 = 0x9FFF;
 
-// const CARTRIDGE_RAM_START: u16 = 0xA000;
-// const CARTRIDGE_RAM_END: u16 = 0xBFFF;
+const CARTRIDGE_RAM_START: u16 = 0xA000;
+const CARTRIDGE_RAM_END: u16 = 0xBFFF;
 
 const WRAM_START: u16 = 0xC000;
 const WRAM_END: u16 = 0xDFFF;
@@ -29,10 +29,13 @@ impl MemoryBus {
     pub fn read(&self, address: u16) -> u8 {
         match address {
             CARTRIDGE_ROM_START..=CARTRIDGE_ROM_END => self.cartridge.read(address),
+
             VRAM_START..=VRAM_END => {
                 let offset = (address - VRAM_START) as usize;
                 self.vram[offset]
             }
+
+            CARTRIDGE_RAM_START..=CARTRIDGE_RAM_END => self.cartridge.read(address),
 
             WRAM_START..=WRAM_END => {
                 let offset = (address - WRAM_START) as usize;
@@ -42,8 +45,10 @@ impl MemoryBus {
             _ => 0,
         }
     }
+
     pub fn write(&mut self, address: u16, value: u8) {
         match address {
+            // CARTRIDGE_ROM_START..=CARTRIDGE_ROM_END => self.cartridge.write(address),
             VRAM_START..=VRAM_END => {
                 self.vram[(address - VRAM_START) as usize] = value;
             }

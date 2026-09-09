@@ -1,23 +1,37 @@
 use std::fs;
 use std::io;
 
+use crate::mbc1::Mbc1;
+
 pub struct Cartridge {
     rom: Vec<u8>,
+    mbc: Mbc1,
 }
 
 impl Cartridge {
     pub fn new(rom: Vec<u8>) -> Self {
-        Self { rom }
+        Self {
+            rom,
+            mbc: Mbc1::new(),
+        }
     }
 
     pub fn from_file(path: &str) -> io::Result<Self> {
         let rom = fs::read(path)?;
 
-        Ok(Self { rom })
+        Ok(Self {
+            rom,
+            mbc: Mbc1::new(),
+        })
     }
 
     pub fn read(&self, address: u16) -> u8 {
-        self.rom[address as usize]
+        let real_address = self.mbc.read(address);
+        self.rom[real_address]
+    }
+
+    pub fn write(&mut self, address: u16, value: u8) {
+        self.mbc.write(address, value);
     }
 }
 
