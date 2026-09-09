@@ -1,6 +1,6 @@
 pub mod registers;
 
-use crate::memory::bus::MemoryBus;
+use crate::memory::MemoryBus;
 use registers::Registers;
 
 #[allow(dead_code)]

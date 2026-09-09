@@ -1,3 +1,5 @@
+use crate::memory::map::{CARTRIDGE_RAM_END, CARTRIDGE_RAM_START};
+
 // Addresses ranges for read
 const ROM_BANK_0_START: u16 = 0x0000;
 const ROM_BANK_0_END: u16 = 0x3FFF;
@@ -17,9 +19,6 @@ const BANK_HIGH_END: u16 = 0x5FFF;
 
 const BANKING_MODE_START: u16 = 0x6000;
 const BANKING_MODE_END: u16 = 0x7FFF;
-
-const CARTRIDGE_RAM_START: u16 = 0xA000;
-const CARTRIDGE_RAM_END: u16 = 0xBFFF;
 
 const ROM_BANK_SIZE: usize = 0x4000;
 
@@ -50,6 +49,10 @@ impl Mbc1 {
             BankingMode::Rom => self.rom_bank_low | (self.bank_high << 5),
             BankingMode::Ram => self.rom_bank_low,
         }
+    }
+
+    pub fn is_ram_enabled(&self) -> bool {
+        self.ram_enabled
     }
 
     pub fn read(&self, address: u16) -> usize {

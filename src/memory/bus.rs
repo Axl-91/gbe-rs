@@ -1,16 +1,5 @@
-const CARTRIDGE_ROM_START: u16 = 0x0000;
-const CARTRIDGE_ROM_END: u16 = 0x7FFF;
-
+use super::map::*;
 use crate::cartridge::Cartridge;
-
-const VRAM_START: u16 = 0x8000;
-const VRAM_END: u16 = 0x9FFF;
-
-const CARTRIDGE_RAM_START: u16 = 0xA000;
-const CARTRIDGE_RAM_END: u16 = 0xBFFF;
-
-const WRAM_START: u16 = 0xC000;
-const WRAM_END: u16 = 0xDFFF;
 
 pub struct MemoryBus {
     cartridge: Cartridge,
