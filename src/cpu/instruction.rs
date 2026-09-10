@@ -32,6 +32,24 @@ pub enum Instruction {
 
     // LD (hl), n
     Load8ToHlImmediate,
+
+    // LD A, (BC)
+    Load8FromBc,
+
+    // LD A, (DE)
+    Load8FromDe,
+
+    // LD (BC), A
+    Load8ToBc,
+
+    // LD (DE), A
+    Load8ToDe,
+
+    // LD A, (a16)
+    Load8FromAddress,
+
+    // LD (a16), A
+    Load8ToAddress,
 }
 
 pub fn decode(opcode: u8) -> Instruction {
@@ -134,6 +152,14 @@ pub fn decode(opcode: u8) -> Instruction {
         0x77 => Instruction::Load8ToHl(Register8::A),
 
         0x36 => Instruction::Load8ToHlImmediate,
+
+        0x0A => Instruction::Load8FromBc,
+        0x1A => Instruction::Load8FromDe,
+        0x02 => Instruction::Load8ToBc,
+        0x12 => Instruction::Load8ToDe,
+
+        0xFA => Instruction::Load8FromAddress,
+        0xEA => Instruction::Load8ToAddress,
 
         _ => panic!("Unknown opcode: {opcode:#04X}"),
     }

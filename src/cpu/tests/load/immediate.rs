@@ -17,7 +17,7 @@ fn load8_loads_value_into_all_registers() {
     for (opcode, register) in registers {
         let value: u8 = rng.random();
 
-        let mut cpu = create_cpu(opcode, value);
+        let mut cpu = create_cpu(opcode, Some(value), None);
 
         cpu.step();
 
@@ -32,7 +32,7 @@ fn load8_advances_pc_by_two() {
     let opcode = 0x06;
     let value: u8 = rng.random();
 
-    let mut cpu = create_cpu(opcode, value);
+    let mut cpu = create_cpu(opcode, Some(value), None);
 
     cpu.step();
 
@@ -45,7 +45,7 @@ fn load8_preserves_flags() {
 
     let value: u8 = rng.random();
 
-    let mut cpu = create_cpu(0x06, value);
+    let mut cpu = create_cpu(0x06, Some(value), None);
 
     cpu.registers.set_zero(true);
     cpu.registers.set_subtract(true);

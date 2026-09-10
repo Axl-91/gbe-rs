@@ -6,11 +6,18 @@ use crate::cartridge::Cartridge;
 use crate::memory::MemoryBus;
 use crate::memory::map::ROM_BANK_SIZE;
 
-fn create_cpu(opcode: u8, value: u8) -> Cpu {
+fn create_cpu(opcode: u8, low_value: Option<u8>, high_value: Option<u8>) -> Cpu {
     let mut rom = vec![0; ROM_BANK_SIZE * 2];
 
     rom[GAME_ENTRY_POINT as usize] = opcode;
-    rom[GAME_ENTRY_POINT as usize + 1] = value;
+
+    if let Some(value) = low_value {
+        rom[GAME_ENTRY_POINT as usize + 1] = value;
+    }
+
+    if let Some(value) = high_value {
+        rom[GAME_ENTRY_POINT as usize + 2] = value;
+    }
 
     let cartridge = Cartridge::new(rom, 0);
     let bus = MemoryBus::new(cartridge);
@@ -18,6 +25,7 @@ fn create_cpu(opcode: u8, value: u8) -> Cpu {
     Cpu::new(bus)
 }
 
+mod address;
 mod hl;
 mod immediate;
 mod register;

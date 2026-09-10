@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 mod instruction;
 mod registers;
 
@@ -116,6 +114,48 @@ impl Cpu {
             Instruction::Load8ToHlImmediate => {
                 let address = self.registers.get_hl();
                 let value = self.fetch();
+
+                self.bus.write(address, value);
+            }
+            Instruction::Load8FromBc => {
+                let address = self.registers.get_bc();
+                let value = self.bus.read(address);
+
+                self.registers.set_a(value);
+            }
+            Instruction::Load8FromDe => {
+                let address = self.registers.get_de();
+                let value = self.bus.read(address);
+
+                self.registers.set_a(value);
+            }
+            Instruction::Load8ToBc => {
+                let address = self.registers.get_bc();
+                let value = self.registers.get_a();
+
+                self.bus.write(address, value);
+            }
+            Instruction::Load8ToDe => {
+                let address = self.registers.get_de();
+                let value = self.registers.get_a();
+
+                self.bus.write(address, value);
+            }
+            Instruction::Load8FromAddress => {
+                let lower_bits = self.fetch();
+                let higher_bits = self.fetch();
+
+                let address = ((higher_bits as u16) << 8) | lower_bits as u16;
+                let value = self.bus.read(address);
+
+                self.registers.set_a(value);
+            }
+            Instruction::Load8ToAddress => {
+                let lower_bits = self.fetch();
+                let higher_bits = self.fetch();
+
+                let address = ((higher_bits as u16) << 8) | lower_bits as u16;
+                let value = self.registers.get_a();
 
                 self.bus.write(address, value);
             }

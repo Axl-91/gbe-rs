@@ -59,7 +59,7 @@ fn load8_register_copies_value() {
     for (opcode, destination, source) in instructions {
         let value: u8 = rng.random();
 
-        let mut cpu = create_cpu(opcode, 0);
+        let mut cpu = create_cpu(opcode, None, None);
 
         cpu.set_register8(&source, value);
 
@@ -74,7 +74,7 @@ fn load8_register_advances_pc_by_one() {
     let mut rng = rand::rng();
     let value: u8 = rng.random();
 
-    let mut cpu = create_cpu(0x41, 0);
+    let mut cpu = create_cpu(0x41, None, None);
 
     cpu.set_register8(&Register8::C, value);
 
@@ -88,7 +88,7 @@ fn load8_register_preserves_flags() {
     let mut rng = rand::rng();
     let value: u8 = rng.random();
 
-    let mut cpu = create_cpu(0x41, 0);
+    let mut cpu = create_cpu(0x41, None, None);
 
     cpu.set_register8(&Register8::C, value);
 
