@@ -8,7 +8,7 @@ The goal of this project is to build a simple and accurate emulator for the orig
 
 ### CPU
 - [x] CPU registers and flags
-- [ ] Fetch / decode / execute cycle
+- [x] Fetch / decode / execute cycle
 - [ ] Instruction set
 
 ### Memory
