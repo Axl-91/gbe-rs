@@ -83,19 +83,41 @@ impl Cpu {
             Instruction::Nop => {}
             Instruction::Inc(register) => {
                 let register_value = self.get_register8(&register);
-                let new_value = self.increment_8bit(register_value);
+                let value = self.increment_8bit(register_value);
 
-                self.set_register8(&register, new_value);
+                self.set_register8(&register, value);
             }
             Instruction::Dec(register) => {
                 let register_value = self.get_register8(&register);
-                let new_value = self.decrement_8bit(register_value);
+                let value = self.decrement_8bit(register_value);
 
-                self.set_register8(&register, new_value);
+                self.set_register8(&register, value);
             }
-            Instruction::Load8(register) => {
+            Instruction::Load8Immediate(register) => {
                 let value = self.fetch();
                 self.set_register8(&register, value);
+            }
+            Instruction::Load8Register(register_destination, register_source) => {
+                let value = self.get_register8(&register_source);
+                self.set_register8(&register_destination, value);
+            }
+            Instruction::Load8FromHl(register) => {
+                let address = self.registers.get_hl();
+                let value = self.bus.read(address);
+
+                self.set_register8(&register, value);
+            }
+            Instruction::Load8ToHl(register) => {
+                let address = self.registers.get_hl();
+                let value = self.get_register8(&register);
+
+                self.bus.write(address, value);
+            }
+            Instruction::Load8ToHlImmediate => {
+                let address = self.registers.get_hl();
+                let value = self.fetch();
+
+                self.bus.write(address, value);
             }
         }
     }
