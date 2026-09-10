@@ -38,9 +38,12 @@ impl MemoryBus {
     pub fn write(&mut self, address: u16, value: u8) {
         match address {
             CARTRIDGE_ROM_START..=CARTRIDGE_ROM_END => self.cartridge.write(address, value),
+
             VRAM_START..=VRAM_END => {
                 self.vram[(address - VRAM_START) as usize] = value;
             }
+
+            CARTRIDGE_RAM_START..=CARTRIDGE_RAM_END => self.cartridge.write(address, value),
 
             WRAM_START..=WRAM_END => {
                 self.wram[(address - WRAM_START) as usize] = value;
