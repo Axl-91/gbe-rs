@@ -10,6 +10,19 @@ The goal of this project is to build a simple and accurate emulator for the orig
 - [x] CPU registers and flags
 - [x] Fetch / decode / execute cycle
 - [ ] Instruction set
+  - [x] NOP
+  - [x] INC 8-bit
+  - [x] DEC 8-bit
+  - [x] LD 8-bit
+  - [ ] LD 16-bit
+  - [ ] 8-bit arithmetic / logic
+  - [ ] 16-bit arithmetic
+  - [ ] Rotations / shifts
+  - [ ] Bit operations
+  - [ ] Control flow
+  - [ ] Stack operations
+  - [ ] CPU control instructions
+- [ ] Instruction timing
 
 ### Memory
 - [x] Memory bus
@@ -32,7 +45,6 @@ The goal of this project is to build a simple and accurate emulator for the orig
 
 ### Frontend
 - [ ] Frontend
-
 --------
 
 <div align="center">
