@@ -28,4 +28,5 @@ fn create_cpu(opcode: u8, low_value: Option<u8>, high_value: Option<u8>) -> Cpu 
 mod address;
 mod hl;
 mod immediate;
+mod inmediate16;
 mod register;

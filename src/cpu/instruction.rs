@@ -9,6 +9,13 @@ pub enum Register8 {
     L,
 }
 
+pub enum Register16 {
+    BC,
+    DE,
+    HL,
+    SP,
+}
+
 pub enum Instruction {
     Nop,
 
@@ -50,6 +57,9 @@ pub enum Instruction {
 
     // LD (a16), A
     Load8ToAddress,
+
+    // LD rr, nn
+    Load16Immediate(Register16),
 }
 
 pub fn decode(opcode: u8) -> Instruction {
@@ -160,6 +170,11 @@ pub fn decode(opcode: u8) -> Instruction {
 
         0xFA => Instruction::Load8FromAddress,
         0xEA => Instruction::Load8ToAddress,
+
+        0x01 => Instruction::Load16Immediate(Register16::BC),
+        0x11 => Instruction::Load16Immediate(Register16::DE),
+        0x21 => Instruction::Load16Immediate(Register16::HL),
+        0x31 => Instruction::Load16Immediate(Register16::SP),
 
         _ => panic!("Unknown opcode: {opcode:#04X}"),
     }

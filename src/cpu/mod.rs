@@ -76,6 +76,24 @@ impl Cpu {
         }
     }
 
+    // fn get_register16(&self, register: &Register16) -> u16 {
+    //     match register {
+    //         Register16::BC => self.registers.get_bc(),
+    //         Register16::DE => self.registers.get_de(),
+    //         Register16::HL => self.registers.get_hl(),
+    //         Register16::SP => self.registers.get_sp(),
+    //     }
+    // }
+
+    fn set_register16(&mut self, register: &Register16, value: u16) {
+        match register {
+            Register16::BC => self.registers.set_bc(value),
+            Register16::DE => self.registers.set_de(value),
+            Register16::HL => self.registers.set_hl(value),
+            Register16::SP => self.registers.set_sp(value),
+        }
+    }
+
     fn execute(&mut self, instruction: Instruction) {
         match instruction {
             Instruction::Nop => {}
@@ -158,6 +176,14 @@ impl Cpu {
                 let value = self.registers.get_a();
 
                 self.bus.write(address, value);
+            }
+            Instruction::Load16Immediate(register) => {
+                let lower_bits = self.fetch();
+                let higher_bits = self.fetch();
+
+                let value = ((higher_bits as u16) << 8) | lower_bits as u16;
+
+                self.set_register16(&register, value);
             }
         }
     }
