@@ -28,11 +28,14 @@ fn create_cpu(opcode: u8, low_value: Option<u8>, high_value: Option<u8>) -> Cpu 
 fn get_rand_wram_address() -> u16 {
     let mut rng = rand::rng();
 
-    rng.random_range(WRAM_START..=WRAM_END)
+    // We don't return WRAM_END as we also want to use this
+    // address and the following one in some tests.
+    rng.random_range(WRAM_START..WRAM_END)
 }
 
 mod address;
 mod hl;
 mod immediate;
+mod immediate16;
 mod inmediate16;
 mod register;

@@ -76,14 +76,14 @@ impl Cpu {
         }
     }
 
-    // fn get_register16(&self, register: &Register16) -> u16 {
-    //     match register {
-    //         Register16::BC => self.registers.get_bc(),
-    //         Register16::DE => self.registers.get_de(),
-    //         Register16::HL => self.registers.get_hl(),
-    //         Register16::SP => self.registers.get_sp(),
-    //     }
-    // }
+    fn get_register16(&self, register: &Register16) -> u16 {
+        match register {
+            Register16::BC => self.registers.get_bc(),
+            Register16::DE => self.registers.get_de(),
+            Register16::HL => self.registers.get_hl(),
+            Register16::SP => self.registers.get_sp(),
+        }
+    }
 
     fn set_register16(&mut self, register: &Register16, value: u16) {
         match register {
@@ -184,6 +184,23 @@ impl Cpu {
                 let value = ((higher_bits as u16) << 8) | lower_bits as u16;
 
                 self.set_register16(&register, value);
+            }
+            Instruction::Load16ToAddress(register) => {
+                let lower_address = self.fetch();
+                let higher_address = self.fetch();
+
+                let address = ((higher_address as u16) << 8) | lower_address as u16;
+                let value = self.get_register16(&register);
+
+                let lower_value = value as u8;
+                let higher_value = (value >> 8) as u8;
+
+                self.bus.write(address, lower_value);
+                self.bus.write(address + 1, higher_value);
+            }
+            Instruction::LoadSpFromHl => {
+                let value = self.registers.get_hl();
+                self.registers.set_sp(value);
             }
         }
     }
