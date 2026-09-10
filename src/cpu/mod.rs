@@ -43,6 +43,17 @@ impl Cpu {
         new_register
     }
 
+    fn decrement_8bit(&mut self, register: u8) -> u8 {
+        let new_register = register.wrapping_sub(1);
+
+        self.registers.set_half_carry(register & 0x0F == 0x00);
+
+        self.registers.set_zero(new_register == 0x00);
+        self.registers.set_subtract(true);
+
+        new_register
+    }
+
     fn get_register8(&self, register: &Register8) -> u8 {
         match register {
             Register8::A => self.registers.get_a(),
@@ -75,6 +86,16 @@ impl Cpu {
                 let new_value = self.increment_8bit(register_value);
 
                 self.set_register8(&register, new_value);
+            }
+            Instruction::Dec(register) => {
+                let register_value = self.get_register8(&register);
+                let new_value = self.decrement_8bit(register_value);
+
+                self.set_register8(&register, new_value);
+            }
+            Instruction::Load8(register) => {
+                let value = self.fetch();
+                self.set_register8(&register, value);
             }
         }
     }
