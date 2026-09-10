@@ -18,9 +18,10 @@ fn load8_from_hl_copies_value_to_all_registers() {
         let value: u8 = rng.random();
 
         let mut cpu = create_cpu(opcode, None, None);
+        let address = get_rand_wram_address();
 
-        cpu.registers.set_hl(0xC000);
-        cpu.bus.write(0xC000, value);
+        cpu.registers.set_hl(address);
+        cpu.bus.write(address, value);
 
         cpu.step();
 
@@ -34,9 +35,10 @@ fn load8_from_hl_advances_pc_by_one() {
     let value: u8 = rng.random();
 
     let mut cpu = create_cpu(0x46, None, None);
+    let address = get_rand_wram_address();
 
-    cpu.registers.set_hl(0xC000);
-    cpu.bus.write(0xC000, value);
+    cpu.registers.set_hl(address);
+    cpu.bus.write(address, value);
 
     cpu.step();
 
@@ -49,9 +51,10 @@ fn load8_from_hl_preserves_flags() {
     let value: u8 = rng.random();
 
     let mut cpu = create_cpu(0x46, None, None);
+    let address = get_rand_wram_address();
 
-    cpu.registers.set_hl(0xC000);
-    cpu.bus.write(0xC000, value);
+    cpu.registers.set_hl(address);
+    cpu.bus.write(address, value);
 
     cpu.registers.set_zero(true);
     cpu.registers.set_subtract(true);
@@ -84,8 +87,9 @@ fn load8_to_hl_copies_value_from_all_registers() {
         let value: u8 = rng.random();
 
         let mut cpu = create_cpu(opcode, None, None);
+        let address = get_rand_wram_address();
 
-        cpu.registers.set_hl(0xC000);
+        cpu.registers.set_hl(address);
 
         match source {
             // H and L are part of HL, so their values
@@ -104,7 +108,7 @@ fn load8_to_hl_copies_value_from_all_registers() {
             _ => value,
         };
 
-        assert_eq!(cpu.bus.read(0xC000), expected);
+        assert_eq!(cpu.bus.read(address), expected);
     }
 }
 
@@ -114,9 +118,10 @@ fn load8_to_hl_advances_pc_by_one() {
     let value: u8 = rng.random();
 
     let mut cpu = create_cpu(0x70, None, None);
+    let address = get_rand_wram_address();
 
     cpu.set_register8(&Register8::B, value);
-    cpu.registers.set_hl(0xC000);
+    cpu.registers.set_hl(address);
 
     cpu.step();
 
@@ -131,7 +136,8 @@ fn load8_to_hl_preserves_flags() {
     let mut cpu = create_cpu(0x70, None, None);
 
     cpu.set_register8(&Register8::B, value);
-    cpu.registers.set_hl(0xC000);
+    let address = get_rand_wram_address();
+    cpu.registers.set_hl(address);
 
     cpu.registers.set_zero(true);
     cpu.registers.set_subtract(true);
@@ -151,7 +157,7 @@ fn load8_to_hl_immediate_writes_value_to_memory() {
     let mut rng = rand::rng();
 
     let value: u8 = rng.random();
-    let address = 0xC000;
+    let address = get_rand_wram_address();
 
     let mut cpu = create_cpu(0x36, Some(value), None);
 
@@ -169,8 +175,9 @@ fn load8_to_hl_immediate_advances_pc_by_two() {
     let value: u8 = rng.random();
 
     let mut cpu = create_cpu(0x36, Some(value), None);
+    let address = get_rand_wram_address();
 
-    cpu.registers.set_hl(0xC000);
+    cpu.registers.set_hl(address);
 
     cpu.step();
 
@@ -184,8 +191,9 @@ fn load8_to_hl_immediate_preserves_flags() {
     let value: u8 = rng.random();
 
     let mut cpu = create_cpu(0x36, Some(value), None);
+    let address = get_rand_wram_address();
 
-    cpu.registers.set_hl(0xC000);
+    cpu.registers.set_hl(address);
 
     cpu.registers.set_zero(true);
     cpu.registers.set_subtract(true);

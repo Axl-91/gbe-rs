@@ -4,7 +4,7 @@ use super::super::*;
 
 use crate::cartridge::Cartridge;
 use crate::memory::MemoryBus;
-use crate::memory::map::ROM_BANK_SIZE;
+use crate::memory::map::{ROM_BANK_SIZE, WRAM_END, WRAM_START};
 
 fn create_cpu(opcode: u8, low_value: Option<u8>, high_value: Option<u8>) -> Cpu {
     let mut rom = vec![0; ROM_BANK_SIZE * 2];
@@ -23,6 +23,12 @@ fn create_cpu(opcode: u8, low_value: Option<u8>, high_value: Option<u8>) -> Cpu 
     let bus = MemoryBus::new(cartridge);
 
     Cpu::new(bus)
+}
+
+fn get_rand_wram_address() -> u16 {
+    let mut rng = rand::rng();
+
+    rng.random_range(WRAM_START..=WRAM_END)
 }
 
 mod address;
