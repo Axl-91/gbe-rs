@@ -69,6 +69,12 @@ pub enum Instruction {
 
     // LD HL, SP + e8
     LoadHlFromSpPlusImmediate,
+
+    // INC rr
+    Inc16(Register16),
+
+    // DEC rr
+    Dec16(Register16),
 }
 
 pub fn decode(opcode: u8) -> Instruction {
@@ -188,6 +194,16 @@ pub fn decode(opcode: u8) -> Instruction {
         0x08 => Instruction::Load16ToAddress(Register16::SP),
         0xF8 => Instruction::LoadHlFromSpPlusImmediate,
         0xF9 => Instruction::LoadSpFromHl,
+
+        0x03 => Instruction::Inc16(Register16::BC),
+        0x13 => Instruction::Inc16(Register16::DE),
+        0x23 => Instruction::Inc16(Register16::HL),
+        0x33 => Instruction::Inc16(Register16::SP),
+
+        0x0B => Instruction::Dec16(Register16::BC),
+        0x1B => Instruction::Dec16(Register16::DE),
+        0x2B => Instruction::Dec16(Register16::HL),
+        0x3B => Instruction::Dec16(Register16::SP),
 
         _ => panic!("Unknown opcode: {opcode:#04X}"),
     }

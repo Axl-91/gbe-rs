@@ -216,6 +216,14 @@ impl Cpu {
 
                 self.registers.set_hl(value);
             }
+            Instruction::Inc16(register) => {
+                let value = self.get_register16(&register);
+                self.set_register16(&register, value.wrapping_add(1));
+            }
+            Instruction::Dec16(register) => {
+                let value = self.get_register16(&register);
+                self.set_register16(&register, value.wrapping_sub(1));
+            }
         }
     }
 

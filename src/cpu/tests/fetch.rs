@@ -1,10 +1,4 @@
-use rand::RngExt;
-
-use crate::cartridge::Cartridge;
-use crate::memory::MemoryBus;
-use crate::memory::map::ROM_BANK_SIZE;
-
-use super::super::*;
+use super::*;
 
 #[test]
 fn fetch_reads_opcode_and_advances_pc() {
