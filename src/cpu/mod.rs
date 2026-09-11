@@ -202,6 +202,20 @@ impl Cpu {
                 let value = self.registers.get_hl();
                 self.registers.set_sp(value);
             }
+            Instruction::LoadHlFromSpPlusImmediate => {
+                let sp = self.registers.get_sp();
+                let offset = self.fetch() as i8;
+                let value = (sp as i16 + offset as i16) as u16;
+
+                self.registers.set_zero(false);
+                self.registers.set_subtract(false);
+                self.registers
+                    .set_half_carry((sp & 0x000F) + (((offset as u8) & 0x0F) as u16) > 0x000F);
+                self.registers
+                    .set_carry((sp & 0x00FF) + (offset as u8 as u16) > 0x00FF);
+
+                self.registers.set_hl(value);
+            }
         }
     }
 

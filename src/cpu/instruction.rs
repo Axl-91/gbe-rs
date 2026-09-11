@@ -66,6 +66,9 @@ pub enum Instruction {
 
     // LD SP, HL
     LoadSpFromHl,
+
+    // LD HL, SP + e8
+    LoadHlFromSpPlusImmediate,
 }
 
 pub fn decode(opcode: u8) -> Instruction {
@@ -183,6 +186,7 @@ pub fn decode(opcode: u8) -> Instruction {
         0x31 => Instruction::Load16Immediate(Register16::SP),
 
         0x08 => Instruction::Load16ToAddress(Register16::SP),
+        0xF8 => Instruction::LoadHlFromSpPlusImmediate,
         0xF9 => Instruction::LoadSpFromHl,
 
         _ => panic!("Unknown opcode: {opcode:#04X}"),
