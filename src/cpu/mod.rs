@@ -94,6 +94,32 @@ impl Cpu {
         }
     }
 
+    // fn set_carry_flags8(&mut self, register: u8, value: u8) {
+    //     self.registers
+    //         .set_half_carry((register & 0x0F) + (value & 0x0F) > 0x0F);
+    //     self.registers
+    //         .set_carry((register as u16) + (value as u16) > 0xFF);
+    // }
+
+    fn set_carry_flags16(&mut self, register: u16, value: u16) {
+        self.registers
+            .set_half_carry((register & 0x0FFF) + (value & 0x0FFF) > 0x0FFF);
+        self.registers
+            .set_carry((register as u32) + (value as u32) > 0xFFFF);
+    }
+
+    fn set_flags_sp_plus_immediate(&mut self, sp: u16, offset: i8) {
+        let offset = offset as u8;
+
+        self.registers.set_zero(false);
+        self.registers.set_subtract(false);
+        self.registers
+            .set_half_carry((sp & 0x000F) + (offset as u16 & 0x000F) > 0x000F);
+
+        self.registers
+            .set_carry((sp & 0x00FF) + offset as u16 > 0x00FF);
+    }
+
     fn execute(&mut self, instruction: Instruction) {
         match instruction {
             Instruction::Nop => {}
@@ -207,12 +233,7 @@ impl Cpu {
                 let offset = self.fetch() as i8;
                 let value = (sp as i16 + offset as i16) as u16;
 
-                self.registers.set_zero(false);
-                self.registers.set_subtract(false);
-                self.registers
-                    .set_half_carry((sp & 0x000F) + (((offset as u8) & 0x0F) as u16) > 0x000F);
-                self.registers
-                    .set_carry((sp & 0x00FF) + (offset as u8 as u16) > 0x00FF);
+                self.set_flags_sp_plus_immediate(sp, offset);
 
                 self.registers.set_hl(value);
             }
@@ -223,6 +244,17 @@ impl Cpu {
             Instruction::Dec16(register) => {
                 let value = self.get_register16(&register);
                 self.set_register16(&register, value.wrapping_sub(1));
+            }
+            Instruction::AddHl(register) => {
+                let hl = self.registers.get_hl();
+                let register_value = self.get_register16(&register);
+
+                let value = hl.wrapping_add(register_value);
+
+                self.registers.set_subtract(false);
+                self.set_carry_flags16(hl, register_value);
+
+                self.registers.set_hl(value);
             }
         }
     }

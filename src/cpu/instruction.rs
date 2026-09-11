@@ -75,6 +75,9 @@ pub enum Instruction {
 
     // DEC rr
     Dec16(Register16),
+
+    // ADD HL, rr
+    AddHl(Register16),
 }
 
 pub fn decode(opcode: u8) -> Instruction {
@@ -204,6 +207,11 @@ pub fn decode(opcode: u8) -> Instruction {
         0x1B => Instruction::Dec16(Register16::DE),
         0x2B => Instruction::Dec16(Register16::HL),
         0x3B => Instruction::Dec16(Register16::SP),
+
+        0x09 => Instruction::AddHl(Register16::BC),
+        0x19 => Instruction::AddHl(Register16::DE),
+        0x29 => Instruction::AddHl(Register16::HL),
+        0x39 => Instruction::AddHl(Register16::SP),
 
         _ => panic!("Unknown opcode: {opcode:#04X}"),
     }
