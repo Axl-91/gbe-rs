@@ -35,10 +35,12 @@ fn get_rand_wram_address() -> u16 {
 
 mod adc;
 mod add;
+mod and;
 mod dec;
 mod fetch;
 mod inc;
 mod load;
+mod or;
 mod sbc;
 mod stack;
 mod sub;
