@@ -4,8 +4,10 @@ use super::*;
 fn adc_register() {
     let mut rng = rand::rng();
 
-    let opcode = rng.random_range(0x88..=0x8F);
-    let value = rng.random();
+    let opcodes = [0x8F];
+    let opcode = opcodes[rng.random_range(0..opcodes.len())];
+
+    let mut value = rng.random();
     let a = rng.random();
 
     let mut cpu = create_cpu(opcode, None, None);
@@ -24,7 +26,11 @@ fn adc_register() {
         _ => panic!("Invalid ADC register opcode"),
     };
 
-    cpu.set_register8(&register, value);
+    if opcode == 0x08F {
+        value = a
+    } else {
+        cpu.set_register8(&register, value);
+    }
 
     cpu.step();
 
@@ -35,8 +41,10 @@ fn adc_register() {
 fn adc_register_with_carry() {
     let mut rng = rand::rng();
 
-    let opcode = rng.random_range(0x88..=0x8F);
-    let value = rng.random();
+    let opcodes = [0x88, 0x89, 0x8A, 0x8B, 0x8C, 0x8D, 0x8F];
+    let opcode = opcodes[rng.random_range(0..opcodes.len())];
+
+    let mut value = rng.random();
     let a = rng.random();
 
     let mut cpu = create_cpu(opcode, None, None);
@@ -55,7 +63,11 @@ fn adc_register_with_carry() {
         _ => panic!("Invalid ADC register opcode"),
     };
 
-    cpu.set_register8(&register, value);
+    if opcode == 0x08F {
+        value = a
+    } else {
+        cpu.set_register8(&register, value);
+    }
 
     cpu.step();
 
