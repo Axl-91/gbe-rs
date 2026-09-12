@@ -81,23 +81,27 @@ For a complete reference of the Game Boy CPU instruction set, see the [Game Boy 
 ```text
 gbe-rs/
 ├── src/
-│   ├── cpu/
-│   │   ├── instruction.rs
-│   │   ├── registers.rs
-│   │   └── mod.rs
-│   │
-│   ├── memory/
-│   │   ├── bus.rs
-│   │   ├── map.rs
-│   │   └── mod.rs
-│   │
-│   ├── cartridge/
-│   │   ├── mbc1.rs
-│   │   └── mod.rs
-│   │
-│   └── main.rs
-│
+│   ├── cartridge/
+│   │   ├── mbc1.rs
+│   │   └── mod.rs
+│   ├── cpu/
+│   │   ├── tests/
+│   │   ├── arithmetic.rs
+│   │   ├── control.rs
+│   │   ├── instruction.rs
+│   │   ├── load.rs
+│   │   ├── mod.rs
+│   │   ├── registers.rs
+│   │   └── stack.rs
+│   ├── memory/
+│   │   ├── bus.rs
+│   │   ├── map.rs
+│   │   └── mod.rs
+│   ├── lib.rs
+│   └── main.rs
+├── Cargo.lock
 ├── Cargo.toml
+├── LICENSE
 └── README.md
 ```
 
