@@ -16,6 +16,13 @@ pub enum Register16 {
     SP,
 }
 
+pub enum StackRegister {
+    AF,
+    BC,
+    DE,
+    HL,
+}
+
 pub enum Instruction {
     Nop,
 
@@ -78,6 +85,15 @@ pub enum Instruction {
 
     // ADD HL, rr
     AddHl(Register16),
+
+    // ADD SP, e8
+    AddSpImmediate,
+
+    // PUSH rr
+    Push(StackRegister),
+
+    // POP rr
+    Pop(StackRegister),
 }
 
 pub fn decode(opcode: u8) -> Instruction {
@@ -212,6 +228,18 @@ pub fn decode(opcode: u8) -> Instruction {
         0x19 => Instruction::AddHl(Register16::DE),
         0x29 => Instruction::AddHl(Register16::HL),
         0x39 => Instruction::AddHl(Register16::SP),
+
+        0xE8 => Instruction::AddSpImmediate,
+
+        0xC5 => Instruction::Push(StackRegister::BC),
+        0xD5 => Instruction::Push(StackRegister::DE),
+        0xE5 => Instruction::Push(StackRegister::HL),
+        0xF5 => Instruction::Push(StackRegister::AF),
+
+        0xC1 => Instruction::Pop(StackRegister::BC),
+        0xD1 => Instruction::Pop(StackRegister::DE),
+        0xE1 => Instruction::Pop(StackRegister::HL),
+        0xF1 => Instruction::Pop(StackRegister::AF),
 
         _ => panic!("Unknown opcode: {opcode:#04X}"),
     }

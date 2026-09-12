@@ -113,3 +113,109 @@ fn add_hl_register16_sets_carry() {
 
     assert!(cpu.registers.get_carry());
 }
+
+#[test]
+fn add_sp_immediate() {
+    let mut rng = rand::rng();
+    let mut cpu = create_cpu(0xE8, Some(rng.random()), None);
+
+    let sp = rng.random_range(0x0100..=0xFEFF);
+    let offset = cpu.bus.read(GAME_ENTRY_POINT + 1) as i8;
+
+    cpu.registers.set_sp(sp);
+
+    let expected = (sp as i16 + offset as i16) as u16;
+
+    cpu.step();
+
+    assert_eq!(cpu.registers.get_sp(), expected);
+}
+
+#[test]
+fn add_sp_immediate_with_negative_offset() {
+    let mut rng = rand::rng();
+    let offset = rng.random_range(i8::MIN..=-1);
+
+    let mut cpu = create_cpu(0xE8, Some(offset as u8), None);
+
+    let sp = rng.random_range(0x0100..=u16::MAX);
+
+    cpu.registers.set_sp(sp);
+
+    let expected = (sp as i16 + offset as i16) as u16;
+
+    cpu.step();
+
+    assert_eq!(cpu.registers.get_sp(), expected);
+}
+
+#[test]
+fn add_sp_immediate_advances_pc_by_two() {
+    let mut rng = rand::rng();
+    let mut cpu = create_cpu(0xE8, Some(rng.random()), None);
+
+    cpu.registers.set_sp(rng.random());
+
+    cpu.step();
+
+    assert_eq!(cpu.registers.get_pc(), GAME_ENTRY_POINT + 2);
+}
+
+#[test]
+fn add_sp_immediate_clears_zero_flag() {
+    let mut rng = rand::rng();
+    let mut cpu = create_cpu(0xE8, Some(rng.random()), None);
+
+    cpu.registers.set_sp(rng.random());
+    cpu.registers.set_zero(true);
+
+    cpu.step();
+
+    assert!(!cpu.registers.get_zero());
+}
+
+#[test]
+fn add_sp_immediate_clears_subtract_flag() {
+    let mut rng = rand::rng();
+    let mut cpu = create_cpu(0xE8, Some(rng.random()), None);
+
+    cpu.registers.set_sp(rng.random());
+    cpu.registers.set_subtract(true);
+
+    cpu.step();
+
+    assert!(!cpu.registers.get_subtract());
+}
+
+#[test]
+fn add_sp_immediate_sets_half_carry() {
+    let mut cpu = create_cpu(0xE8, Some(1), None);
+
+    cpu.registers.set_sp(0x000F);
+
+    cpu.step();
+
+    assert!(cpu.registers.get_half_carry());
+}
+
+#[test]
+fn add_sp_immediate_sets_carry() {
+    let mut cpu = create_cpu(0xE8, Some(1), None);
+
+    cpu.registers.set_sp(0x00FF);
+
+    cpu.step();
+
+    assert!(cpu.registers.get_carry());
+}
+
+#[test]
+fn add_sp_immediate_wraps_around() {
+    let mut cpu = create_cpu(0xE8, Some(1), None);
+
+    cpu.registers.set_sp(u16::MAX);
+
+    cpu.step();
+
+    assert_eq!(cpu.registers.get_sp(), 0);
+}
