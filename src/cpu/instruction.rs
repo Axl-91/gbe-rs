@@ -1,4 +1,4 @@
-#[derive(Debug)]
+#[derive(Clone, Copy)]
 pub enum Register8 {
     A,
     B,
@@ -112,6 +112,24 @@ pub enum Instruction {
 
     // ADC A, n
     AdcImmediate,
+
+    // SUB A, r
+    Sub(Register8),
+
+    // SUB A, (HL)
+    SubFromHl,
+
+    // SUB A, n
+    SubImmediate,
+
+    // SBC A, r
+    Sbc(Register8),
+
+    // SBC A, (HL)
+    SbcFromHl,
+
+    // SBC A, n
+    SbcImmediate,
 }
 
 pub fn decode(opcode: u8) -> Instruction {
@@ -281,6 +299,25 @@ pub fn decode(opcode: u8) -> Instruction {
         0x8E => Instruction::AdcFromHl,
         0xCE => Instruction::AdcImmediate,
 
+        0x90 => Instruction::Sub(Register8::B),
+        0x91 => Instruction::Sub(Register8::C),
+        0x92 => Instruction::Sub(Register8::D),
+        0x93 => Instruction::Sub(Register8::E),
+        0x94 => Instruction::Sub(Register8::H),
+        0x95 => Instruction::Sub(Register8::L),
+        0x96 => Instruction::SubFromHl,
+        0x97 => Instruction::Sub(Register8::A),
+        0xD6 => Instruction::SubImmediate,
+
+        0x98 => Instruction::Sbc(Register8::B),
+        0x99 => Instruction::Sbc(Register8::C),
+        0x9A => Instruction::Sbc(Register8::D),
+        0x9B => Instruction::Sbc(Register8::E),
+        0x9C => Instruction::Sbc(Register8::H),
+        0x9D => Instruction::Sbc(Register8::L),
+        0x9E => Instruction::SbcFromHl,
+        0x9F => Instruction::Sbc(Register8::A),
+        0xDE => Instruction::SbcImmediate,
         _ => panic!("Unknown opcode: {opcode:#04X}"),
     }
 }

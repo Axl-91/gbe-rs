@@ -113,14 +113,20 @@ impl Cpu {
         }
     }
 
-    fn set_carry_flags8(&mut self, register: u8, value: u8) {
+    fn set_add_carry_flags8(&mut self, register: u8, value: u8) {
         self.registers
             .set_half_carry((register & 0x0F) + (value & 0x0F) > 0x0F);
         self.registers
             .set_carry((register as u16) + (value as u16) > 0xFF);
     }
 
-    fn set_carry_flags16(&mut self, register: u16, value: u16) {
+    fn set_sub_borrow_flags8(&mut self, register: u8, value: u8) {
+        self.registers
+            .set_half_carry((register & 0x0F) < (value & 0x0F));
+        self.registers.set_carry(register < value);
+    }
+
+    fn set_add_carry_flags16(&mut self, register: u16, value: u16) {
         self.registers
             .set_half_carry((register & 0x0FFF) + (value & 0x0FFF) > 0x0FFF);
         self.registers
@@ -139,12 +145,20 @@ impl Cpu {
             .set_carry((sp & 0x00FF) + offset as u16 > 0x00FF);
     }
 
-    fn set_carry_flags_with_carry_in(&mut self, register: u8, value: u8, carry: u8) {
+    fn set_add_carry_flags_with_carry_in(&mut self, register: u8, value: u8, carry: u8) {
         let has_half_carry = (register & 0x0F) + (value & 0x0F) + carry > 0x0F;
         let has_carry = (register as u16) + (value as u16) + (carry as u16) > 0xFF;
 
         self.registers.set_half_carry(has_half_carry);
         self.registers.set_carry(has_carry);
+    }
+
+    fn set_sub_borrow_flags_with_borrow_in(&mut self, register: u8, value: u8, borrow: u8) {
+        let has_half_borrow = (register & 0x0F) < (value & 0x0F) + borrow;
+        let has_borrow = (register as u16) < (value as u16) + (borrow as u16);
+
+        self.registers.set_half_carry(has_half_borrow);
+        self.registers.set_carry(has_borrow);
     }
 
     fn execute(&mut self, instruction: Instruction) {
@@ -279,7 +293,7 @@ impl Cpu {
                 let value = hl.wrapping_add(register_value);
 
                 self.registers.set_subtract(false);
-                self.set_carry_flags16(hl, register_value);
+                self.set_add_carry_flags16(hl, register_value);
 
                 self.registers.set_hl(value);
             }
@@ -324,7 +338,7 @@ impl Cpu {
 
                 self.registers.set_zero(new_a == 0);
                 self.registers.set_subtract(false);
-                self.set_carry_flags8(a, value);
+                self.set_add_carry_flags8(a, value);
 
                 self.registers.set_a(new_a);
             }
@@ -338,7 +352,7 @@ impl Cpu {
 
                 self.registers.set_zero(new_a == 0);
                 self.registers.set_subtract(false);
-                self.set_carry_flags8(a, value);
+                self.set_add_carry_flags8(a, value);
 
                 self.registers.set_a(new_a);
             }
@@ -350,7 +364,7 @@ impl Cpu {
 
                 self.registers.set_zero(new_a == 0);
                 self.registers.set_subtract(false);
-                self.set_carry_flags8(a, value);
+                self.set_add_carry_flags8(a, value);
 
                 self.registers.set_a(new_a);
             }
@@ -363,7 +377,7 @@ impl Cpu {
 
                 self.registers.set_zero(new_a == 0);
                 self.registers.set_subtract(false);
-                self.set_carry_flags_with_carry_in(a, value, carry);
+                self.set_add_carry_flags_with_carry_in(a, value, carry);
 
                 self.registers.set_a(new_a);
             }
@@ -378,7 +392,7 @@ impl Cpu {
 
                 self.registers.set_zero(new_a == 0);
                 self.registers.set_subtract(false);
-                self.set_carry_flags_with_carry_in(a, value, carry);
+                self.set_add_carry_flags_with_carry_in(a, value, carry);
 
                 self.registers.set_a(new_a);
             }
@@ -391,7 +405,86 @@ impl Cpu {
 
                 self.registers.set_zero(new_a == 0);
                 self.registers.set_subtract(false);
-                self.set_carry_flags_with_carry_in(a, value, carry);
+                self.set_add_carry_flags_with_carry_in(a, value, carry);
+
+                self.registers.set_a(new_a);
+            }
+            Instruction::Sub(register) => {
+                let a = self.registers.get_a();
+                let value = self.get_register8(&register);
+
+                let new_a = a.wrapping_sub(value);
+
+                self.registers.set_zero(new_a == 0);
+                self.registers.set_subtract(true);
+                self.set_sub_borrow_flags8(a, value);
+
+                self.registers.set_a(new_a);
+            }
+            Instruction::SubFromHl => {
+                let hl = self.registers.get_hl();
+                let a = self.registers.get_a();
+
+                let value = self.bus.read(hl);
+
+                let new_a = a.wrapping_sub(value);
+
+                self.registers.set_zero(new_a == 0);
+                self.registers.set_subtract(true);
+                self.set_sub_borrow_flags8(a, value);
+
+                self.registers.set_a(new_a);
+            }
+            Instruction::SubImmediate => {
+                let a = self.registers.get_a();
+                let value = self.fetch();
+
+                let new_a = a.wrapping_sub(value);
+
+                self.registers.set_zero(new_a == 0);
+                self.registers.set_subtract(true);
+                self.set_sub_borrow_flags8(a, value);
+
+                self.registers.set_a(new_a);
+            }
+            Instruction::Sbc(register) => {
+                let a = self.registers.get_a();
+                let value = self.get_register8(&register);
+                let borrow = self.registers.get_carry() as u8;
+
+                let new_a = a.wrapping_sub(value).wrapping_sub(borrow);
+
+                self.registers.set_zero(new_a == 0);
+                self.registers.set_subtract(true);
+                self.set_sub_borrow_flags_with_borrow_in(a, value, borrow);
+
+                self.registers.set_a(new_a);
+            }
+            Instruction::SbcFromHl => {
+                let a = self.registers.get_a();
+                let hl = self.registers.get_hl();
+                let borrow = self.registers.get_carry() as u8;
+
+                let value = self.bus.read(hl);
+
+                let new_a = a.wrapping_sub(value).wrapping_sub(borrow);
+
+                self.registers.set_zero(new_a == 0);
+                self.registers.set_subtract(true);
+                self.set_sub_borrow_flags_with_borrow_in(a, value, borrow);
+
+                self.registers.set_a(new_a);
+            }
+            Instruction::SbcImmediate => {
+                let a = self.registers.get_a();
+                let value = self.fetch();
+                let borrow = self.registers.get_carry() as u8;
+
+                let new_a = a.wrapping_sub(value).wrapping_sub(borrow);
+
+                self.registers.set_zero(new_a == 0);
+                self.registers.set_subtract(true);
+                self.set_sub_borrow_flags_with_borrow_in(a, value, borrow);
 
                 self.registers.set_a(new_a);
             }

@@ -39,4 +39,6 @@ mod dec;
 mod fetch;
 mod inc;
 mod load;
+mod sbc;
 mod stack;
+mod sub;
