@@ -319,6 +319,61 @@ impl Cpu {
                 self.set_or_flags(value);
                 self.registers.set_a(value);
             }
+            ArithmeticInstruction::Xor(register) => {
+                let a = self.registers.get_a();
+                let value = self.get_register8(&register) ^ a;
+
+                self.set_or_flags(value);
+                self.registers.set_a(value);
+            }
+            ArithmeticInstruction::XorFromHl => {
+                let a = self.registers.get_a();
+                let hl = self.registers.get_hl();
+
+                let value = self.bus.read(hl) ^ a;
+
+                self.set_or_flags(value);
+                self.registers.set_a(value);
+            }
+            ArithmeticInstruction::XorImmediate => {
+                let a = self.registers.get_a();
+                let value = self.fetch() ^ a;
+
+                self.set_or_flags(value);
+                self.registers.set_a(value);
+            }
+            ArithmeticInstruction::Cp(register) => {
+                let a = self.registers.get_a();
+                let value = self.get_register8(&register);
+
+                let result = a.wrapping_sub(value);
+
+                self.registers.set_zero(result == 0);
+                self.registers.set_subtract(true);
+                self.set_sub_borrow_flags8(a, value);
+            }
+            ArithmeticInstruction::CpFromHl => {
+                let hl = self.registers.get_hl();
+                let a = self.registers.get_a();
+
+                let value = self.bus.read(hl);
+
+                let result = a.wrapping_sub(value);
+
+                self.registers.set_zero(result == 0);
+                self.registers.set_subtract(true);
+                self.set_sub_borrow_flags8(a, value);
+            }
+            ArithmeticInstruction::CpImmediate => {
+                let a = self.registers.get_a();
+                let value = self.fetch();
+
+                let result = a.wrapping_sub(value);
+
+                self.registers.set_zero(result == 0);
+                self.registers.set_subtract(true);
+                self.set_sub_borrow_flags8(a, value);
+            }
         }
     }
 }

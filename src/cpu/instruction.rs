@@ -86,6 +86,14 @@ pub enum ArithmeticInstruction {
     Or(Register8),
     OrFromHl,
     OrImmediate,
+
+    Xor(Register8),
+    XorFromHl,
+    XorImmediate,
+
+    Cp(Register8),
+    CpFromHl,
+    CpImmediate,
 }
 
 pub enum StackInstruction {
@@ -365,11 +373,41 @@ pub fn decode(opcode: u8) -> Instruction {
         0xB4 => Instruction::Arithmetic(ArithmeticInstruction::Or(Register8::H)),
         0xB5 => Instruction::Arithmetic(ArithmeticInstruction::Or(Register8::L)),
 
-        // OR A, r
+        // OR A, (HL)
         0xB6 => Instruction::Arithmetic(ArithmeticInstruction::OrFromHl),
 
-        // OR A, r
+        // OR A, n
         0xF6 => Instruction::Arithmetic(ArithmeticInstruction::OrImmediate),
+
+        // XOR A, r
+        0xAF => Instruction::Arithmetic(ArithmeticInstruction::Xor(Register8::A)),
+        0xA8 => Instruction::Arithmetic(ArithmeticInstruction::Xor(Register8::B)),
+        0xA9 => Instruction::Arithmetic(ArithmeticInstruction::Xor(Register8::C)),
+        0xAA => Instruction::Arithmetic(ArithmeticInstruction::Xor(Register8::D)),
+        0xAB => Instruction::Arithmetic(ArithmeticInstruction::Xor(Register8::E)),
+        0xAC => Instruction::Arithmetic(ArithmeticInstruction::Xor(Register8::H)),
+        0xAD => Instruction::Arithmetic(ArithmeticInstruction::Xor(Register8::L)),
+
+        // XOR A, (HL)
+        0xAE => Instruction::Arithmetic(ArithmeticInstruction::XorFromHl),
+
+        // XOR A, n
+        0xEE => Instruction::Arithmetic(ArithmeticInstruction::XorImmediate),
+
+        // CP A, r
+        0xBF => Instruction::Arithmetic(ArithmeticInstruction::Cp(Register8::A)),
+        0xB8 => Instruction::Arithmetic(ArithmeticInstruction::Cp(Register8::B)),
+        0xB9 => Instruction::Arithmetic(ArithmeticInstruction::Cp(Register8::C)),
+        0xBA => Instruction::Arithmetic(ArithmeticInstruction::Cp(Register8::D)),
+        0xBB => Instruction::Arithmetic(ArithmeticInstruction::Cp(Register8::E)),
+        0xBC => Instruction::Arithmetic(ArithmeticInstruction::Cp(Register8::H)),
+        0xBD => Instruction::Arithmetic(ArithmeticInstruction::Cp(Register8::L)),
+
+        // CP A, (HL)
+        0xBE => Instruction::Arithmetic(ArithmeticInstruction::CpFromHl),
+
+        // CP A, n
+        0xFE => Instruction::Arithmetic(ArithmeticInstruction::CpImmediate),
 
         _ => panic!("Unknown opcode: {opcode:#04X}"),
     }
