@@ -20,7 +20,7 @@ The goal of this project is to build a simple and accurate emulator for the orig
   - [ ] Rotations / shifts
   - [ ] Bit operations
   - [ ] Control flow
-  - [ ] Stack operations
+  - [x] Stack operations
   - [ ] CPU control instructions
 - [ ] Instruction timing
 
