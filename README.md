@@ -72,6 +72,10 @@ Memory Bus
 
 The emulator advances the hardware over time by executing CPU instructions and, eventually, consuming the corresponding number of cycles. This allows components such as the PPU and timer to remain synchronized with the CPU.
 
+## Instruction reference
+
+For a complete reference of the Game Boy CPU instruction set, see the [Game Boy CPU Instruction Set](https://gbdev.io/gb-opcodes/optables/).
+
 ## Project structure
 
 ```text
