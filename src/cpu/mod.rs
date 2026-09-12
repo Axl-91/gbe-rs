@@ -113,12 +113,12 @@ impl Cpu {
         }
     }
 
-    // fn set_carry_flags8(&mut self, register: u8, value: u8) {
-    //     self.registers
-    //         .set_half_carry((register & 0x0F) + (value & 0x0F) > 0x0F);
-    //     self.registers
-    //         .set_carry((register as u16) + (value as u16) > 0xFF);
-    // }
+    fn set_carry_flags8(&mut self, register: u8, value: u8) {
+        self.registers
+            .set_half_carry((register & 0x0F) + (value & 0x0F) > 0x0F);
+        self.registers
+            .set_carry((register as u16) + (value as u16) > 0xFF);
+    }
 
     fn set_carry_flags16(&mut self, register: u16, value: u16) {
         self.registers
@@ -137,6 +137,14 @@ impl Cpu {
 
         self.registers
             .set_carry((sp & 0x00FF) + offset as u16 > 0x00FF);
+    }
+
+    fn set_carry_flags_with_carry_in(&mut self, register: u8, value: u8, carry: u8) {
+        let has_half_carry = (register & 0x0F) + (value & 0x0F) + carry > 0x0F;
+        let has_carry = (register as u16) + (value as u16) + (carry as u16) > 0xFF;
+
+        self.registers.set_half_carry(has_half_carry);
+        self.registers.set_carry(has_carry);
     }
 
     fn execute(&mut self, instruction: Instruction) {
@@ -307,6 +315,85 @@ impl Cpu {
 
                 self.set_stack_register(&register, value);
                 self.registers.set_sp(new_sp);
+            }
+            Instruction::Add(register) => {
+                let a = self.registers.get_a();
+                let value = self.get_register8(&register);
+
+                let new_a = a.wrapping_add(value);
+
+                self.registers.set_zero(new_a == 0);
+                self.registers.set_subtract(false);
+                self.set_carry_flags8(a, value);
+
+                self.registers.set_a(new_a);
+            }
+            Instruction::AddFromHl => {
+                let hl = self.registers.get_hl();
+                let a = self.registers.get_a();
+
+                let value = self.bus.read(hl);
+
+                let new_a = a.wrapping_add(value);
+
+                self.registers.set_zero(new_a == 0);
+                self.registers.set_subtract(false);
+                self.set_carry_flags8(a, value);
+
+                self.registers.set_a(new_a);
+            }
+            Instruction::AddImmediate => {
+                let a = self.registers.get_a();
+                let value = self.fetch();
+
+                let new_a = a.wrapping_add(value);
+
+                self.registers.set_zero(new_a == 0);
+                self.registers.set_subtract(false);
+                self.set_carry_flags8(a, value);
+
+                self.registers.set_a(new_a);
+            }
+            Instruction::Adc(register) => {
+                let a = self.registers.get_a();
+                let value = self.get_register8(&register);
+                let carry = self.registers.get_carry() as u8;
+
+                let new_a = a.wrapping_add(value).wrapping_add(carry);
+
+                self.registers.set_zero(new_a == 0);
+                self.registers.set_subtract(false);
+                self.set_carry_flags_with_carry_in(a, value, carry);
+
+                self.registers.set_a(new_a);
+            }
+            Instruction::AdcFromHl => {
+                let a = self.registers.get_a();
+                let hl = self.registers.get_hl();
+                let carry = self.registers.get_carry() as u8;
+
+                let value = self.bus.read(hl);
+
+                let new_a = a.wrapping_add(value).wrapping_add(carry);
+
+                self.registers.set_zero(new_a == 0);
+                self.registers.set_subtract(false);
+                self.set_carry_flags_with_carry_in(a, value, carry);
+
+                self.registers.set_a(new_a);
+            }
+            Instruction::AdcImmediate => {
+                let a = self.registers.get_a();
+                let value = self.fetch();
+                let carry = self.registers.get_carry() as u8;
+
+                let new_a = a.wrapping_add(value).wrapping_add(carry);
+
+                self.registers.set_zero(new_a == 0);
+                self.registers.set_subtract(false);
+                self.set_carry_flags_with_carry_in(a, value, carry);
+
+                self.registers.set_a(new_a);
             }
         }
     }

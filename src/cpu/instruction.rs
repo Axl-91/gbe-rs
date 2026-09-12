@@ -94,6 +94,24 @@ pub enum Instruction {
 
     // POP rr
     Pop(StackRegister),
+
+    // ADD A, r
+    Add(Register8),
+
+    // ADD A, (HL)
+    AddFromHl,
+
+    // ADD A, n
+    AddImmediate,
+
+    // ADC A, rr
+    Adc(Register8),
+
+    // ADC A, (HL)
+    AdcFromHl,
+
+    // ADC A, n
+    AdcImmediate,
 }
 
 pub fn decode(opcode: u8) -> Instruction {
@@ -240,6 +258,28 @@ pub fn decode(opcode: u8) -> Instruction {
         0xD1 => Instruction::Pop(StackRegister::DE),
         0xE1 => Instruction::Pop(StackRegister::HL),
         0xF1 => Instruction::Pop(StackRegister::AF),
+
+        0x80 => Instruction::Add(Register8::B),
+        0x81 => Instruction::Add(Register8::C),
+        0x82 => Instruction::Add(Register8::D),
+        0x83 => Instruction::Add(Register8::E),
+        0x84 => Instruction::Add(Register8::H),
+        0x85 => Instruction::Add(Register8::L),
+        0x87 => Instruction::Add(Register8::A),
+
+        0x86 => Instruction::AddFromHl,
+        0xC6 => Instruction::AddImmediate,
+
+        0x88 => Instruction::Adc(Register8::B),
+        0x89 => Instruction::Adc(Register8::C),
+        0x8A => Instruction::Adc(Register8::D),
+        0x8B => Instruction::Adc(Register8::E),
+        0x8C => Instruction::Adc(Register8::H),
+        0x8D => Instruction::Adc(Register8::L),
+        0x8F => Instruction::Adc(Register8::A),
+
+        0x8E => Instruction::AdcFromHl,
+        0xCE => Instruction::AdcImmediate,
 
         _ => panic!("Unknown opcode: {opcode:#04X}"),
     }
