@@ -405,6 +405,26 @@ impl Cpu {
                 self.registers.set_half_carry(false);
                 self.registers.set_a(new_a);
             }
+            ArithmeticInstruction::Cpl => {
+                let a = self.registers.get_a();
+
+                self.registers.set_subtract(true);
+                self.registers.set_half_carry(true);
+
+                self.registers.set_a(!a);
+            }
+            ArithmeticInstruction::Scf => {
+                self.registers.set_subtract(false);
+                self.registers.set_half_carry(false);
+                self.registers.set_carry(true);
+            }
+            ArithmeticInstruction::Ccf => {
+                let carry = self.registers.get_carry();
+
+                self.registers.set_subtract(false);
+                self.registers.set_half_carry(false);
+                self.registers.set_carry(!carry);
+            }
         }
     }
 }

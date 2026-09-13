@@ -36,7 +36,9 @@ fn get_rand_wram_address() -> u16 {
 mod adc;
 mod add;
 mod and;
+mod ccf;
 mod cp;
+mod cpl;
 mod daa;
 mod dec;
 mod fetch;
@@ -44,6 +46,7 @@ mod inc;
 mod load;
 mod or;
 mod sbc;
+mod scf;
 mod stack;
 mod sub;
 mod xor;
