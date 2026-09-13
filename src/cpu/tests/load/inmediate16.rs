@@ -86,7 +86,7 @@ fn load_hl_from_sp_plus_immediate_loads_positive_offset() {
     cpu.step();
 
     // SP + offset -> HL
-    let expected = (sp as i16 + offset as i16) as u16;
+    let expected = sp.wrapping_add_signed(offset as i16);
 
     assert_eq!(cpu.registers.get_hl(), expected);
 }
@@ -107,7 +107,7 @@ fn load_hl_from_sp_plus_immediate_loads_negative_offset() {
     cpu.step();
 
     // SP + offset -> HL
-    let expected = (sp as i16 + offset as i16) as u16;
+    let expected = sp.wrapping_add_signed(offset as i16);
 
     assert_eq!(cpu.registers.get_hl(), expected);
 }

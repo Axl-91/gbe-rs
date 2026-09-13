@@ -99,7 +99,7 @@ impl Cpu {
             LoadInstruction::LoadHlFromSpPlusImmediate => {
                 let sp = self.registers.get_sp();
                 let offset = self.fetch() as i8;
-                let value = (sp as i16 + offset as i16) as u16;
+                let value = sp.wrapping_add_signed(offset as i16);
 
                 self.set_flags_sp_plus_immediate(sp, offset);
 

@@ -23,6 +23,13 @@ pub enum StackRegister {
     HL,
 }
 
+pub enum Condition {
+    NotZero,
+    Zero,
+    NotCarry,
+    Carry,
+}
+
 pub enum Instruction {
     Nop,
 
@@ -34,7 +41,6 @@ pub enum Instruction {
 
     Rotation(RotationInstruction),
 
-    #[allow(dead_code)]
     Control(ControlInstruction),
 }
 
@@ -116,15 +122,11 @@ pub enum RotationInstruction {
 }
 
 pub enum ControlInstruction {
-    // JR
-    // JP
-    // CALL
-    // RET
-    // RST
-    // HALT
-    // STOP
-    // DI
-    // EI
+    Jr(Option<Condition>),
+    Jp(Option<Condition>),
+    Call(Option<Condition>),
+    Ret(Option<Condition>),
+    Rst(u8),
 }
 
 pub fn decode(opcode: u8) -> Instruction {
@@ -440,6 +442,39 @@ pub fn decode(opcode: u8) -> Instruction {
         0x0F => Instruction::Rotation(RotationInstruction::Rrca),
         // RRA
         0x1F => Instruction::Rotation(RotationInstruction::Rra),
+
+        0x18 => Instruction::Control(ControlInstruction::Jr(None)),
+        0x20 => Instruction::Control(ControlInstruction::Jr(Some(Condition::NotZero))),
+        0x28 => Instruction::Control(ControlInstruction::Jr(Some(Condition::Zero))),
+        0x30 => Instruction::Control(ControlInstruction::Jr(Some(Condition::NotCarry))),
+        0x38 => Instruction::Control(ControlInstruction::Jr(Some(Condition::Carry))),
+
+        0xC3 => Instruction::Control(ControlInstruction::Jp(None)),
+        0xC2 => Instruction::Control(ControlInstruction::Jp(Some(Condition::NotZero))),
+        0xCA => Instruction::Control(ControlInstruction::Jp(Some(Condition::Zero))),
+        0xD2 => Instruction::Control(ControlInstruction::Jp(Some(Condition::NotCarry))),
+        0xDA => Instruction::Control(ControlInstruction::Jp(Some(Condition::Carry))),
+
+        0xCD => Instruction::Control(ControlInstruction::Call(None)),
+        0xC4 => Instruction::Control(ControlInstruction::Call(Some(Condition::NotZero))),
+        0xCC => Instruction::Control(ControlInstruction::Call(Some(Condition::Zero))),
+        0xD4 => Instruction::Control(ControlInstruction::Call(Some(Condition::NotCarry))),
+        0xDC => Instruction::Control(ControlInstruction::Call(Some(Condition::Carry))),
+
+        0xC9 => Instruction::Control(ControlInstruction::Ret(None)),
+        0xC0 => Instruction::Control(ControlInstruction::Ret(Some(Condition::NotZero))),
+        0xC8 => Instruction::Control(ControlInstruction::Ret(Some(Condition::Zero))),
+        0xD0 => Instruction::Control(ControlInstruction::Ret(Some(Condition::NotCarry))),
+        0xD8 => Instruction::Control(ControlInstruction::Ret(Some(Condition::Carry))),
+
+        0xC7 => Instruction::Control(ControlInstruction::Rst(0x00)),
+        0xCF => Instruction::Control(ControlInstruction::Rst(0x08)),
+        0xD7 => Instruction::Control(ControlInstruction::Rst(0x10)),
+        0xDF => Instruction::Control(ControlInstruction::Rst(0x18)),
+        0xE7 => Instruction::Control(ControlInstruction::Rst(0x20)),
+        0xEF => Instruction::Control(ControlInstruction::Rst(0x28)),
+        0xF7 => Instruction::Control(ControlInstruction::Rst(0x30)),
+        0xFF => Instruction::Control(ControlInstruction::Rst(0x38)),
 
         _ => panic!("Unknown opcode: {opcode:#04X}"),
     }

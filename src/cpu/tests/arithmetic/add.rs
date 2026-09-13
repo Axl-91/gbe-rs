@@ -124,7 +124,7 @@ fn add_sp_immediate() {
 
     cpu.registers.set_sp(sp);
 
-    let expected = (sp as i16 + offset as i16) as u16;
+    let expected = sp.wrapping_add_signed(offset as i16);
 
     cpu.step();
 

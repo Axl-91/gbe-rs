@@ -33,24 +33,9 @@ fn get_rand_wram_address() -> u16 {
     rng.random_range(WRAM_START + 2..WRAM_END)
 }
 
-mod adc;
-mod add;
-mod and;
-mod ccf;
-mod cp;
-mod cpl;
-mod daa;
-mod dec;
+mod arithmetic;
+mod control;
 mod fetch;
-mod inc;
 mod load;
-mod or;
-mod rla;
-mod rlca;
-mod rra;
-mod rrca;
-mod sbc;
-mod scf;
+mod rotation;
 mod stack;
-mod sub;
-mod xor;

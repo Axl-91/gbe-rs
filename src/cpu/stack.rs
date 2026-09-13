@@ -23,32 +23,39 @@ impl Cpu {
         }
     }
 
+    pub(crate) fn push_into_sp(&mut self, value: u16) {
+        let sp = self.registers.get_sp();
+        let new_sp = sp.wrapping_sub(2);
+
+        let lower_value = value as u8;
+        let higher_value = (value >> 8) as u8;
+
+        self.bus.write(sp.wrapping_sub(1), higher_value);
+        self.bus.write(new_sp, lower_value);
+
+        self.registers.set_sp(new_sp);
+    }
+
+    pub(crate) fn pop_from_sp(&mut self) -> u16 {
+        let sp = self.registers.get_sp();
+        let new_sp = sp.wrapping_add(2);
+
+        let lower_value = self.bus.read(sp);
+        let higher_value = self.bus.read(sp.wrapping_add(1));
+
+        self.registers.set_sp(new_sp);
+        u16::from_le_bytes([lower_value, higher_value])
+    }
+
     pub fn execute_stack(&mut self, instruction: StackInstruction) {
         match instruction {
             StackInstruction::Push(register) => {
-                let sp = self.registers.get_sp();
-                let new_sp = sp.wrapping_sub(2);
-
                 let value = self.get_stack_register(&register);
-                let lower_value = value as u8;
-                let higher_value = (value >> 8) as u8;
-
-                self.bus.write(sp.wrapping_sub(1), higher_value);
-                self.bus.write(new_sp, lower_value);
-
-                self.registers.set_sp(new_sp);
+                self.push_into_sp(value);
             }
             StackInstruction::Pop(register) => {
-                let sp = self.registers.get_sp();
-                let new_sp = sp.wrapping_add(2);
-
-                let lower_value = self.bus.read(sp);
-                let higher_value = self.bus.read(sp.wrapping_add(1));
-
-                let value = u16::from_le_bytes([lower_value, higher_value]);
-
+                let value = self.pop_from_sp();
                 self.set_stack_register(&register, value);
-                self.registers.set_sp(new_sp);
             }
         }
     }
