@@ -24,7 +24,7 @@ The goal of this project is to build a simple and accurate emulator for the orig
   - [x] 16-bit arithmetic
   - [x] Rotations / shifts
   - [ ] Bit operations
-  - [ ] Control flow
+  - [x] Control flow
   - [x] Stack operations
   - [ ] CPU control instructions
 - [ ] Instruction timing
