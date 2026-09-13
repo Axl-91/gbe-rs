@@ -1,3 +1,7 @@
+//! Game Boy CPU rotation instructions.
+//!
+//! Implements accumulator rotation operations and their affected flags.
+
 use crate::cpu::{Cpu, instruction::RotationInstruction};
 
 impl Cpu {
@@ -8,7 +12,8 @@ impl Cpu {
         self.registers.set_carry(carry);
     }
 
-    pub fn execute_rotation(&mut self, instruction: RotationInstruction) {
+    /// Executes a CPU rotation instruction.
+    pub(crate) fn execute_rotation(&mut self, instruction: RotationInstruction) {
         match instruction {
             RotationInstruction::Rlca => {
                 let a = self.registers.get_a();

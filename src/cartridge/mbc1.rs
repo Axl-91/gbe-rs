@@ -1,3 +1,7 @@
+//! MBC1 memory bank controller implementation.
+//!
+//! Handles ROM and RAM bank selection for Game Boy cartridges.
+
 use crate::memory::map::{CARTRIDGE_RAM_END, CARTRIDGE_RAM_START, ROM_BANK_SIZE};
 
 // Addresses ranges for read
@@ -7,7 +11,7 @@ const ROM_BANK_0_END: u16 = 0x3FFF;
 const ROM_BANK_N_START: u16 = 0x4000;
 const ROM_BANK_N_END: u16 = 0x7FFF;
 
-// Addresses ranges for write
+// MBC1 control ranges
 pub(crate) const RAM_ENABLE_START: u16 = 0x0000;
 pub(crate) const RAM_ENABLE_END: u16 = 0x1FFF;
 
@@ -22,11 +26,13 @@ pub(crate) const BANKING_MODE_END: u16 = 0x7FFF;
 
 pub(crate) const RAM_ENABLE_VALUE: u8 = 0x0A;
 
+/// MBC1 banking mode.
 enum BankingMode {
     Rom,
     Ram,
 }
 
+/// Represents an MBC1 memory bank controller.
 pub struct Mbc1 {
     rom_bank_low: u8,
     bank_high: u8,
@@ -35,6 +41,7 @@ pub struct Mbc1 {
 }
 
 impl Mbc1 {
+    /// Creates a new MBC1 with ROM banking mode and the default ROM bank selected.
     pub fn new() -> Self {
         Self {
             rom_bank_low: 1,
@@ -62,6 +69,7 @@ impl Mbc1 {
         }
     }
 
+    /// Translates a cartridge address into a physical ROM address.
     pub fn read(&self, address: u16) -> usize {
         match address {
             ROM_BANK_0_START..=ROM_BANK_0_END => address as usize,
@@ -73,6 +81,7 @@ impl Mbc1 {
         }
     }
 
+    /// Updates the MBC1 state according to a cartridge control write.
     pub fn write(&mut self, address: u16, value: u8) {
         match address {
             RAM_ENABLE_START..=RAM_ENABLE_END => {

@@ -1,3 +1,7 @@
+//! Game Boy CPU stack operations.
+//!
+//! Implements stack instructions and provides stack manipulation operations.
+
 use crate::cpu::{
     Cpu,
     instruction::{StackInstruction, StackRegister},
@@ -47,7 +51,8 @@ impl Cpu {
         u16::from_le_bytes([lower_value, higher_value])
     }
 
-    pub fn execute_stack(&mut self, instruction: StackInstruction) {
+    /// Executes a CPU stack instruction.
+    pub(crate) fn execute_stack(&mut self, instruction: StackInstruction) {
         match instruction {
             StackInstruction::Push(register) => {
                 let value = self.get_stack_register(&register);

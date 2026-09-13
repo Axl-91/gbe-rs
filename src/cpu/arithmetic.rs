@@ -1,3 +1,7 @@
+//! Game Boy CPU arithmetic and logical instructions.
+//!
+//! Implements arithmetic operations, flag manipulation, and logical operations.
+
 use crate::cpu::{Cpu, instruction::ArithmeticInstruction};
 
 impl Cpu {
@@ -95,7 +99,8 @@ impl Cpu {
         self.registers.set_carry(false);
     }
 
-    pub fn execute_arithmetic(&mut self, instruction: ArithmeticInstruction) {
+    /// Executes an arithmetic or logical CPU instruction.
+    pub(crate) fn execute_arithmetic(&mut self, instruction: ArithmeticInstruction) {
         match instruction {
             ArithmeticInstruction::Inc(register) => {
                 let register_value = self.get_register8(&register);

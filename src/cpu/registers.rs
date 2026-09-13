@@ -1,3 +1,7 @@
+//! Game Boy CPU registers and flags.
+//!
+//! Provides access to the CPU registers and their individual flags.
+
 // TODO: Once we use all registers we can delete this
 #![allow(dead_code)]
 

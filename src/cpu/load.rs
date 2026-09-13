@@ -1,7 +1,12 @@
+//! Game Boy CPU load instructions.
+//!
+//! Implements instructions for transferring data between registers and memory.
+
 use crate::cpu::{Cpu, instruction::LoadInstruction};
 
 impl Cpu {
-    pub fn execute_load(&mut self, instruction: LoadInstruction) {
+    /// Executes a CPU load instruction.
+    pub(crate) fn execute_load(&mut self, instruction: LoadInstruction) {
         match instruction {
             LoadInstruction::Load8Immediate(register) => {
                 let value = self.fetch();

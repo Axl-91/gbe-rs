@@ -1,6 +1,12 @@
+//! Game Boy memory bus implementation.
+//!
+//! Routes CPU read and write operations to the appropriate memory component,
+//! such as the cartridge, VRAM, and WRAM.
+
 use super::map::*;
 use crate::cartridge::Cartridge;
 
+/// Provides access to the Game Boy memory address space.
 pub struct MemoryBus {
     cartridge: Cartridge,
     vram: [u8; 0x2000],
@@ -8,6 +14,7 @@ pub struct MemoryBus {
 }
 
 impl MemoryBus {
+    /// Creates a new memory bus with the given cartridge and initialized memory.
     pub fn new(cartridge: Cartridge) -> Self {
         Self {
             cartridge,
@@ -15,6 +22,8 @@ impl MemoryBus {
             wram: [0; 0x2000],
         }
     }
+
+    /// Reads a byte from the given address in the Game Boy memory space.
     pub fn read(&self, address: u16) -> u8 {
         match address {
             CARTRIDGE_ROM_START..=CARTRIDGE_ROM_END => self.cartridge.read(address),
@@ -35,6 +44,7 @@ impl MemoryBus {
         }
     }
 
+    /// Writes a byte to the given address in the Game Boy memory space.
     pub fn write(&mut self, address: u16, value: u8) {
         match address {
             CARTRIDGE_ROM_START..=CARTRIDGE_ROM_END => self.cartridge.write(address, value),

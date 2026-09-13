@@ -1,3 +1,7 @@
+//! Game Boy CPU control flow instructions.
+//!
+//! Implements jumps, relative jumps, calls, returns, and restart instructions.
+
 use crate::cpu::{
     Cpu,
     instruction::{Condition, ControlInstruction},
@@ -13,7 +17,9 @@ impl Cpu {
             Some(Condition::Carry) => self.registers.get_carry(),
         }
     }
-    pub fn execute_control(&mut self, instruction: ControlInstruction) {
+
+    /// Executes a CPU control flow instruction.
+    pub(crate) fn execute_control(&mut self, instruction: ControlInstruction) {
         match instruction {
             ControlInstruction::Jr(condition) => {
                 let offset = self.fetch() as i8 as i16;

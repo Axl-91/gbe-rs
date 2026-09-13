@@ -1,3 +1,7 @@
+//! Game Boy CPU instruction definitions.
+//!
+//! Defines the instruction types used to represent decoded CPU operations.
+
 #[derive(Clone, Copy)]
 pub enum Register8 {
     A,

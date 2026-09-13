@@ -1,3 +1,7 @@
+//! Game Boy cartridge implementation.
+//!
+//! Handles cartridge ROM and RAM access through the memory bank controller (MBC).
+
 pub mod mbc1;
 
 use std::fs;
@@ -13,6 +17,7 @@ use mbc1::Mbc1;
 const DISABLED_RAM_VALUE: u8 = 0xFF;
 const RAM_SIZE_CODE_ADDRESS: usize = 0x0149;
 
+/// Represents a Game Boy cartridge with ROM, RAM, and a memory bank controller.
 pub struct Cartridge {
     rom: Vec<u8>,
     ram: Vec<u8>,
@@ -20,6 +25,7 @@ pub struct Cartridge {
 }
 
 impl Cartridge {
+    /// Creates a new cartridge with the given ROM and RAM size.
     pub fn new(rom: Vec<u8>, ram_size: usize) -> Self {
         Self {
             rom,
@@ -28,6 +34,8 @@ impl Cartridge {
         }
     }
 
+    /// Loads a cartridge ROM from the given file path
+    /// and initializes its RAM from the cartridge header.
     pub fn from_file<P: AsRef<Path>>(path: P) -> io::Result<Self> {
         let rom = fs::read(path)?;
 
@@ -52,6 +60,7 @@ impl Cartridge {
         Ok(Self::new(rom, ram_size))
     }
 
+    /// Reads a byte from the cartridge ROM or RAM address space.
     pub fn read(&self, address: u16) -> u8 {
         match address {
             CARTRIDGE_ROM_START..=CARTRIDGE_ROM_END => {
@@ -73,6 +82,7 @@ impl Cartridge {
         }
     }
 
+    /// Writes a byte to the cartridge address space or its memory bank controller.
     pub fn write(&mut self, address: u16, value: u8) {
         match address {
             CARTRIDGE_ROM_START..=CARTRIDGE_ROM_END => {

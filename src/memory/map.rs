@@ -1,3 +1,7 @@
+//! Game Boy memory map.
+//!
+//! Defines address ranges and sizes for the different memory regions.
+
 pub const CARTRIDGE_ROM_START: u16 = 0x0000;
 pub const CARTRIDGE_ROM_END: u16 = 0x7FFF;
 

@@ -1,3 +1,7 @@
+//! Game Boy CPU implementation.
+//!
+//! Handles instruction fetching, decoding, execution, and CPU registers.
+
 mod arithmetic;
 mod control;
 mod instruction;
@@ -12,14 +16,18 @@ mod tests;
 use crate::{cpu::instruction::*, memory::MemoryBus};
 use registers::Registers;
 
+/// Address where the Game Boy starts executing the game after the boot sequence.
 const GAME_ENTRY_POINT: u16 = 0x0100;
 
+/// Represents the Game Boy CPU and its connection to the memory bus.
 pub struct Cpu {
     registers: Registers,
     bus: MemoryBus,
 }
 
 impl Cpu {
+    /// Creates a new CPU with initialized registers and the program counter
+    /// set to the game's entry point.
     pub fn new(bus: MemoryBus) -> Self {
         let mut registers = Registers::new();
         registers.set_pc(GAME_ENTRY_POINT);
@@ -27,6 +35,7 @@ impl Cpu {
         Self { registers, bus }
     }
 
+    /// Fetches the next opcode from memory and advances the program counter.
     fn fetch(&mut self) -> u8 {
         let pc = self.registers.get_pc();
         let opcode = self.bus.read(pc);
@@ -77,6 +86,7 @@ impl Cpu {
         }
     }
 
+    /// Sets the flags affected by an SP plus immediate offset operation.
     fn set_flags_sp_plus_immediate(&mut self, sp: u16, offset: i8) {
         let offset = offset as u8;
 
@@ -89,6 +99,7 @@ impl Cpu {
             .set_carry((sp & 0x00FF) + offset as u16 > 0x00FF);
     }
 
+    /// Executes the instruction.
     fn execute(&mut self, instruction: Instruction) {
         match instruction {
             Instruction::Nop => {}
@@ -115,6 +126,7 @@ impl Cpu {
         }
     }
 
+    /// Fetches the opcode, decodes it and executes the instruction
     pub fn step(&mut self) {
         let opcode = self.fetch();
         let instruction = decode(opcode);
