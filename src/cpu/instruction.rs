@@ -32,6 +32,8 @@ pub enum Instruction {
 
     Stack(StackInstruction),
 
+    Rotation(RotationInstruction),
+
     #[allow(dead_code)]
     Control(ControlInstruction),
 }
@@ -104,6 +106,13 @@ pub enum ArithmeticInstruction {
 pub enum StackInstruction {
     Push(StackRegister),
     Pop(StackRegister),
+}
+
+pub enum RotationInstruction {
+    Rlca,
+    Rla,
+    Rrca,
+    Rra,
 }
 
 pub enum ControlInstruction {
@@ -422,6 +431,15 @@ pub fn decode(opcode: u8) -> Instruction {
         0x37 => Instruction::Arithmetic(ArithmeticInstruction::Scf),
         // CCF
         0x3F => Instruction::Arithmetic(ArithmeticInstruction::Ccf),
+
+        // RLCA
+        0x07 => Instruction::Rotation(RotationInstruction::Rlca),
+        // RLA
+        0x17 => Instruction::Rotation(RotationInstruction::Rla),
+        // RRCA
+        0x0F => Instruction::Rotation(RotationInstruction::Rrca),
+        // RRA
+        0x1F => Instruction::Rotation(RotationInstruction::Rra),
 
         _ => panic!("Unknown opcode: {opcode:#04X}"),
     }

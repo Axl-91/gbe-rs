@@ -3,6 +3,7 @@ mod control;
 mod instruction;
 mod load;
 mod registers;
+mod rotation;
 mod stack;
 
 #[cfg(test)]
@@ -102,6 +103,10 @@ impl Cpu {
 
             Instruction::Stack(instruction) => {
                 self.execute_stack(instruction);
+            }
+
+            Instruction::Rotation(instruction) => {
+                self.execute_rotation(instruction);
             }
 
             Instruction::Control(instruction) => {
