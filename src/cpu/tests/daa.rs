@@ -28,7 +28,7 @@ fn daa_addition_no_correction() {
 fn daa_addition_low_correction() {
     let mut rng = rand::rng();
 
-    let high = rng.random_range(0..=9);
+    let high = rng.random_range(0..=8);
     let low = rng.random_range(0xA..=0xF);
     let a = (high << 4) | low;
 
