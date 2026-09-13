@@ -37,6 +37,7 @@ mod adc;
 mod add;
 mod and;
 mod cp;
+mod daa;
 mod dec;
 mod fetch;
 mod inc;

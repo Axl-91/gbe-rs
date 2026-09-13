@@ -66,6 +66,28 @@ impl Cpu {
         self.registers.set_carry(false);
     }
 
+    fn apply_daa(&mut self, a: u8) -> u8 {
+        let mut result = a;
+
+        if self.registers.get_subtract() {
+            if self.registers.get_half_carry() {
+                result = result.wrapping_sub(0x06);
+            }
+            if self.registers.get_carry() {
+                result = result.wrapping_sub(0x60);
+            }
+        } else {
+            if self.registers.get_half_carry() || ((a & 0x0F) > 0x09) {
+                result = result.wrapping_add(0x06);
+            }
+            if self.registers.get_carry() || (a > 0x99) {
+                result = result.wrapping_add(0x60);
+                self.registers.set_carry(true);
+            }
+        }
+        result
+    }
+
     fn set_or_flags(&mut self, value: u8) {
         self.registers.set_zero(value == 0);
         self.registers.set_subtract(false);
@@ -373,6 +395,15 @@ impl Cpu {
                 self.registers.set_zero(result == 0);
                 self.registers.set_subtract(true);
                 self.set_sub_borrow_flags8(a, value);
+            }
+            ArithmeticInstruction::Daa => {
+                let a = self.registers.get_a();
+
+                let new_a = self.apply_daa(a);
+
+                self.registers.set_zero(new_a == 0);
+                self.registers.set_half_carry(false);
+                self.registers.set_a(new_a);
             }
         }
     }

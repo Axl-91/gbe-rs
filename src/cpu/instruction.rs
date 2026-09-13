@@ -94,6 +94,8 @@ pub enum ArithmeticInstruction {
     Cp(Register8),
     CpFromHl,
     CpImmediate,
+
+    Daa,
 }
 
 pub enum StackInstruction {
@@ -408,6 +410,9 @@ pub fn decode(opcode: u8) -> Instruction {
 
         // CP A, n
         0xFE => Instruction::Arithmetic(ArithmeticInstruction::CpImmediate),
+
+        // DAA
+        0x27 => Instruction::Arithmetic(ArithmeticInstruction::Daa),
 
         _ => panic!("Unknown opcode: {opcode:#04X}"),
     }
