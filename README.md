@@ -1,4 +1,4 @@
-<img width="704" height="384" alt="gbe" src="https://github.com/user-attachments/assets/7cfafd16-6426-458f-89ad-0580b9944465" />
+<img width="704" height="384" alt="gbe" src="https://github.com/Axl-91/gbe-rs/blob/main/assets/gbe.png" />
 
 #
 
