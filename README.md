@@ -1,4 +1,7 @@
-<img width="704" height="384" alt="gbe" src="https://github.com/Axl-91/gbe-rs/blob/main/assets/gbe.png" />
+<div align="center">
+  <img align="center" width="704" height="384" alt="gbe" src="https://github.com/Axl-91/gbe-rs/blob/main/assets/gbe.png" />
+</div>
+
 
 #
 
