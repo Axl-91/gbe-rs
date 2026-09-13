@@ -146,6 +146,38 @@ impl Cpu {
 
                 self.registers.set_a(value);
             }
+            LoadInstruction::Load8ToAddressHlIncrement => {
+                let a = self.registers.get_a();
+                let hl = self.registers.get_hl();
+
+                self.bus.write(hl, a);
+
+                self.registers.set_hl(hl.wrapping_add(1));
+            }
+            LoadInstruction::Load8ToAddressHlDecrement => {
+                let a = self.registers.get_a();
+                let hl = self.registers.get_hl();
+
+                self.bus.write(hl, a);
+
+                self.registers.set_hl(hl.wrapping_sub(1));
+            }
+            LoadInstruction::Load8FromAddressHlIncrement => {
+                let hl = self.registers.get_hl();
+
+                let value = self.bus.read(hl);
+
+                self.registers.set_a(value);
+                self.registers.set_hl(hl.wrapping_add(1));
+            }
+            LoadInstruction::Load8FromAddressHlDecrement => {
+                let hl = self.registers.get_hl();
+
+                let value = self.bus.read(hl);
+
+                self.registers.set_a(value);
+                self.registers.set_hl(hl.wrapping_sub(1));
+            }
         }
     }
 }

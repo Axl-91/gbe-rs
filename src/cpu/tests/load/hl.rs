@@ -207,3 +207,75 @@ fn load8_to_hl_immediate_preserves_flags() {
     assert!(cpu.registers.get_half_carry());
     assert!(cpu.registers.get_carry());
 }
+
+#[test]
+fn load8_to_address_hl_increment() {
+    let mut rng = rand::rng();
+
+    let a = rng.random();
+    let hl = get_rand_wram_address();
+
+    let mut cpu = create_cpu(0x22, None, None);
+
+    cpu.registers.set_a(a);
+    cpu.registers.set_hl(hl);
+
+    cpu.step();
+
+    assert_eq!(cpu.bus.read(hl), a);
+    assert_eq!(cpu.registers.get_hl(), hl.wrapping_add(1));
+}
+
+#[test]
+fn load8_to_address_hl_decrement() {
+    let mut rng = rand::rng();
+
+    let a = rng.random();
+    let hl = get_rand_wram_address();
+
+    let mut cpu = create_cpu(0x32, None, None);
+
+    cpu.registers.set_a(a);
+    cpu.registers.set_hl(hl);
+
+    cpu.step();
+
+    assert_eq!(cpu.bus.read(hl), a);
+    assert_eq!(cpu.registers.get_hl(), hl.wrapping_sub(1));
+}
+
+#[test]
+fn load8_from_address_hl_increment() {
+    let mut rng = rand::rng();
+
+    let value = rng.random();
+    let hl = get_rand_wram_address();
+
+    let mut cpu = create_cpu(0x2A, None, None);
+
+    cpu.registers.set_hl(hl);
+    cpu.bus.write(hl, value);
+
+    cpu.step();
+
+    assert_eq!(cpu.registers.get_a(), value);
+    assert_eq!(cpu.registers.get_hl(), hl.wrapping_add(1));
+}
+
+#[test]
+fn load8_from_address_hl_decrement() {
+    let mut rng = rand::rng();
+
+    let value = rng.random();
+    let hl = get_rand_wram_address();
+
+    let mut cpu = create_cpu(0x3A, None, None);
+
+    cpu.registers.set_hl(hl);
+    cpu.bus.write(hl, value);
+
+    cpu.step();
+
+    assert_eq!(cpu.registers.get_a(), value);
+    assert_eq!(cpu.registers.get_hl(), hl.wrapping_sub(1));
+}

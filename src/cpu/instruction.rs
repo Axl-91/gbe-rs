@@ -60,14 +60,21 @@ pub enum LoadInstruction {
     Load8ToDe,
     Load8FromAddress,
     Load8ToAddress,
+
     Load16Immediate(Register16),
     Load16ToAddress(Register16),
     LoadSpFromHl,
     LoadHlFromSpPlusImmediate,
+
     Load8ToHighAddress,
     Load8FromHighAddress,
     Load8ToHighRegister,
     Load8FromHighRegister,
+
+    Load8ToAddressHlIncrement,
+    Load8ToAddressHlDecrement,
+    Load8FromAddressHlIncrement,
+    Load8FromAddressHlDecrement,
 }
 
 pub enum ArithmeticInstruction {
@@ -493,6 +500,11 @@ pub fn decode(opcode: u8) -> Instruction {
         0xF0 => Instruction::Load(LoadInstruction::Load8FromHighAddress),
         0xE2 => Instruction::Load(LoadInstruction::Load8ToHighRegister),
         0xF2 => Instruction::Load(LoadInstruction::Load8FromHighRegister),
+
+        0x22 => Instruction::Load(LoadInstruction::Load8ToAddressHlIncrement),
+        0x32 => Instruction::Load(LoadInstruction::Load8ToAddressHlDecrement),
+        0x2A => Instruction::Load(LoadInstruction::Load8FromAddressHlIncrement),
+        0x3A => Instruction::Load(LoadInstruction::Load8FromAddressHlDecrement),
 
         _ => panic!("Unknown opcode: {opcode:#04X}"),
     }
