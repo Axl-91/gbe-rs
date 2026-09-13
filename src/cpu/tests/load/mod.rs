@@ -1,6 +1,7 @@
 use super::*;
 
 mod address;
+mod high;
 mod hl;
 mod immediate;
 mod immediate16;

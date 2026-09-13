@@ -110,6 +110,42 @@ impl Cpu {
 
                 self.registers.set_hl(value);
             }
+            LoadInstruction::Load8ToHighAddress => {
+                let offset = self.fetch();
+                let high_address: u16 = 0xFF00;
+                let address = high_address.wrapping_add(offset as u16);
+
+                let a = self.registers.get_a();
+
+                self.bus.write(address, a);
+            }
+            LoadInstruction::Load8FromHighAddress => {
+                let offset = self.fetch();
+                let high_address: u16 = 0xFF00;
+                let address = high_address.wrapping_add(offset as u16);
+
+                let value = self.bus.read(address);
+
+                self.registers.set_a(value);
+            }
+            LoadInstruction::Load8ToHighRegister => {
+                let offset = self.registers.get_c();
+                let high_address: u16 = 0xFF00;
+                let address = high_address.wrapping_add(offset as u16);
+
+                let a = self.registers.get_a();
+
+                self.bus.write(address, a);
+            }
+            LoadInstruction::Load8FromHighRegister => {
+                let offset = self.registers.get_c();
+                let high_address: u16 = 0xFF00;
+                let address = high_address.wrapping_add(offset as u16);
+
+                let value = self.bus.read(address);
+
+                self.registers.set_a(value);
+            }
         }
     }
 }

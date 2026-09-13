@@ -64,6 +64,10 @@ pub enum LoadInstruction {
     Load16ToAddress(Register16),
     LoadSpFromHl,
     LoadHlFromSpPlusImmediate,
+    Load8ToHighAddress,
+    Load8FromHighAddress,
+    Load8ToHighRegister,
+    Load8FromHighRegister,
 }
 
 pub enum ArithmeticInstruction {
@@ -447,30 +451,35 @@ pub fn decode(opcode: u8) -> Instruction {
         // RRA
         0x1F => Instruction::Rotation(RotationInstruction::Rra),
 
+        // JR -/Z/NZ/C/NC
         0x18 => Instruction::Control(ControlInstruction::Jr(None)),
         0x20 => Instruction::Control(ControlInstruction::Jr(Some(Condition::NotZero))),
         0x28 => Instruction::Control(ControlInstruction::Jr(Some(Condition::Zero))),
         0x30 => Instruction::Control(ControlInstruction::Jr(Some(Condition::NotCarry))),
         0x38 => Instruction::Control(ControlInstruction::Jr(Some(Condition::Carry))),
 
+        // JP -/Z/NZ/C/NC
         0xC3 => Instruction::Control(ControlInstruction::Jp(None)),
         0xC2 => Instruction::Control(ControlInstruction::Jp(Some(Condition::NotZero))),
         0xCA => Instruction::Control(ControlInstruction::Jp(Some(Condition::Zero))),
         0xD2 => Instruction::Control(ControlInstruction::Jp(Some(Condition::NotCarry))),
         0xDA => Instruction::Control(ControlInstruction::Jp(Some(Condition::Carry))),
 
+        // CALL -/Z/NZ/C/NC
         0xCD => Instruction::Control(ControlInstruction::Call(None)),
         0xC4 => Instruction::Control(ControlInstruction::Call(Some(Condition::NotZero))),
         0xCC => Instruction::Control(ControlInstruction::Call(Some(Condition::Zero))),
         0xD4 => Instruction::Control(ControlInstruction::Call(Some(Condition::NotCarry))),
         0xDC => Instruction::Control(ControlInstruction::Call(Some(Condition::Carry))),
 
+        // RET -/Z/NZ/C/NC
         0xC9 => Instruction::Control(ControlInstruction::Ret(None)),
         0xC0 => Instruction::Control(ControlInstruction::Ret(Some(Condition::NotZero))),
         0xC8 => Instruction::Control(ControlInstruction::Ret(Some(Condition::Zero))),
         0xD0 => Instruction::Control(ControlInstruction::Ret(Some(Condition::NotCarry))),
         0xD8 => Instruction::Control(ControlInstruction::Ret(Some(Condition::Carry))),
 
+        // RST u8
         0xC7 => Instruction::Control(ControlInstruction::Rst(0x00)),
         0xCF => Instruction::Control(ControlInstruction::Rst(0x08)),
         0xD7 => Instruction::Control(ControlInstruction::Rst(0x10)),
@@ -479,6 +488,11 @@ pub fn decode(opcode: u8) -> Instruction {
         0xEF => Instruction::Control(ControlInstruction::Rst(0x28)),
         0xF7 => Instruction::Control(ControlInstruction::Rst(0x30)),
         0xFF => Instruction::Control(ControlInstruction::Rst(0x38)),
+
+        0xE0 => Instruction::Load(LoadInstruction::Load8ToHighAddress),
+        0xF0 => Instruction::Load(LoadInstruction::Load8FromHighAddress),
+        0xE2 => Instruction::Load(LoadInstruction::Load8ToHighRegister),
+        0xF2 => Instruction::Load(LoadInstruction::Load8FromHighRegister),
 
         _ => panic!("Unknown opcode: {opcode:#04X}"),
     }
