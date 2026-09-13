@@ -15,9 +15,9 @@ The goal of this project is to build a simple and accurate emulator for the orig
   - [x] DEC 8-bit
   - [x] LD 8-bit
   - [x] LD 16-bit
-  - [ ] 8-bit arithmetic / logic
-  - [ ] 16-bit arithmetic
-  - [ ] Rotations / shifts
+  - [x] 8-bit arithmetic / logic
+  - [x] 16-bit arithmetic
+  - [x] Rotations / shifts
   - [ ] Bit operations
   - [ ] Control flow
   - [x] Stack operations
