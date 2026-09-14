@@ -2,7 +2,7 @@
 //!
 //! Defines the instruction types used to represent decoded CPU operations.
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Register8 {
     A,
     B,
@@ -13,6 +13,7 @@ pub enum Register8 {
     L,
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub enum Register16 {
     BC,
     DE,
@@ -20,6 +21,7 @@ pub enum Register16 {
     SP,
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub enum StackRegister {
     AF,
     BC,
@@ -27,6 +29,7 @@ pub enum StackRegister {
     HL,
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub enum Condition {
     NotZero,
     Zero,
@@ -34,6 +37,7 @@ pub enum Condition {
     Carry,
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub enum Instruction {
     Nop,
 
@@ -48,6 +52,7 @@ pub enum Instruction {
     Control(ControlInstruction),
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub enum LoadInstruction {
     Load8Immediate(Register8),
     Load8Register(Register8, Register8),
@@ -77,6 +82,7 @@ pub enum LoadInstruction {
     Load8FromAddressHlDecrement,
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub enum ArithmeticInstruction {
     Inc(Register8),
     Dec(Register8),
@@ -122,13 +128,18 @@ pub enum ArithmeticInstruction {
     Cpl,
     Scf,
     Ccf,
+
+    IncFromHl,
+    DecFromHl,
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub enum StackInstruction {
     Push(StackRegister),
     Pop(StackRegister),
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub enum RotationInstruction {
     Rlca,
     Rla,
@@ -136,12 +147,19 @@ pub enum RotationInstruction {
     Rra,
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub enum ControlInstruction {
     Jr(Option<Condition>),
     Jp(Option<Condition>),
     Call(Option<Condition>),
     Ret(Option<Condition>),
     Rst(u8),
+    JpHl,
+    Stop,
+    Halt,
+    DisableInterrupts,
+    EnableInterrupts,
+    Reti,
 }
 
 pub fn decode(opcode: u8) -> Instruction {
@@ -496,15 +514,35 @@ pub fn decode(opcode: u8) -> Instruction {
         0xF7 => Instruction::Control(ControlInstruction::Rst(0x30)),
         0xFF => Instruction::Control(ControlInstruction::Rst(0x38)),
 
+        // JP HL
+        0xE9 => Instruction::Control(ControlInstruction::JpHl),
+
+        // STOP
+        0x10 => Instruction::Control(ControlInstruction::Stop),
+        // HALT
+        0x76 => Instruction::Control(ControlInstruction::Halt),
+        // DI
+        0xF3 => Instruction::Control(ControlInstruction::DisableInterrupts),
+        // EI
+        0xFB => Instruction::Control(ControlInstruction::EnableInterrupts),
+        // RETI
+        0xD9 => Instruction::Control(ControlInstruction::Reti),
+
+        // LDH (a8), A
         0xE0 => Instruction::Load(LoadInstruction::Load8ToHighAddress),
         0xF0 => Instruction::Load(LoadInstruction::Load8FromHighAddress),
+        // LDH (C), A
         0xE2 => Instruction::Load(LoadInstruction::Load8ToHighRegister),
         0xF2 => Instruction::Load(LoadInstruction::Load8FromHighRegister),
 
+        // LD (HL+/-), A
         0x22 => Instruction::Load(LoadInstruction::Load8ToAddressHlIncrement),
         0x32 => Instruction::Load(LoadInstruction::Load8ToAddressHlDecrement),
         0x2A => Instruction::Load(LoadInstruction::Load8FromAddressHlIncrement),
         0x3A => Instruction::Load(LoadInstruction::Load8FromAddressHlDecrement),
+
+        0x34 => Instruction::Arithmetic(ArithmeticInstruction::IncFromHl),
+        0x35 => Instruction::Arithmetic(ArithmeticInstruction::DecFromHl),
 
         _ => panic!("Unknown opcode: {opcode:#04X}"),
     }

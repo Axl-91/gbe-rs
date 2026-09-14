@@ -224,3 +224,89 @@ fn increment_16bit_preserves_flags() {
         assert!(cpu.registers.get_carry());
     }
 }
+
+#[test]
+fn inc_from_hl_increments_memory() {
+    let mut rng = rand::rng();
+    let address = get_rand_wram_address();
+    let initial_value = rng.random_range(u8::MIN..=u8::MAX);
+    let expected_value = initial_value.wrapping_add(1);
+
+    let mut cpu = create_cpu(0x34, None, None);
+
+    cpu.registers.set_hl(address);
+    cpu.bus.write(address, initial_value);
+
+    cpu.step();
+
+    assert_eq!(cpu.bus.read(address), expected_value);
+}
+
+#[test]
+fn inc_from_hl_sets_zero_flag() {
+    let address = get_rand_wram_address();
+
+    let mut cpu = create_cpu(0x34, None, None);
+
+    cpu.registers.set_hl(address);
+    cpu.registers.set_zero(false);
+    cpu.bus.write(address, u8::MAX);
+
+    cpu.step();
+
+    assert!(cpu.registers.get_zero());
+}
+
+#[test]
+fn inc_from_hl_clears_subtract_flag() {
+    let mut rng = rand::rng();
+    let address = get_rand_wram_address();
+    let initial_value = rng.random_range(u8::MIN..u8::MAX);
+
+    let mut cpu = create_cpu(0x34, None, None);
+
+    cpu.registers.set_hl(address);
+    cpu.registers.set_subtract(true);
+    cpu.bus.write(address, initial_value);
+
+    cpu.step();
+
+    assert!(!cpu.registers.get_subtract());
+}
+
+#[test]
+fn inc_from_hl_sets_half_carry_flag() {
+    let mut rng = rand::rng();
+    let address = get_rand_wram_address();
+
+    let high_nibble = rng.random_range(0..=0x0F);
+    let initial_value = (high_nibble << 4) | 0x0F;
+
+    let mut cpu = create_cpu(0x34, None, None);
+
+    cpu.registers.set_hl(address);
+    cpu.registers.set_half_carry(false);
+    cpu.bus.write(address, initial_value);
+
+    cpu.step();
+
+    assert!(cpu.registers.get_half_carry());
+}
+
+#[test]
+fn inc_from_hl_preserves_carry_flag() {
+    let mut rng = rand::rng();
+    let address = get_rand_wram_address();
+    let initial_value = rng.random_range(u8::MIN..=u8::MAX);
+    let initial_carry = rng.random_bool(0.5);
+
+    let mut cpu = create_cpu(0x34, None, None);
+
+    cpu.registers.set_hl(address);
+    cpu.registers.set_carry(initial_carry);
+    cpu.bus.write(address, initial_value);
+
+    cpu.step();
+
+    assert_eq!(cpu.registers.get_carry(), initial_carry);
+}

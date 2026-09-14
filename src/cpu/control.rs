@@ -61,6 +61,25 @@ impl Cpu {
                 self.push_into_sp(pc);
                 self.registers.set_pc(code as u16);
             }
+            ControlInstruction::JpHl => {
+                let hl = self.registers.get_hl();
+                self.registers.set_pc(hl);
+            }
+            ControlInstruction::Stop => {
+                todo!("Once interruptions are implemented we add the logic")
+            }
+            ControlInstruction::Halt => {
+                todo!("Once interruptions are implemented we add the logic")
+            }
+            ControlInstruction::DisableInterrupts => {
+                todo!("Once interruptions are implemented we add the logic")
+            }
+            ControlInstruction::EnableInterrupts => {
+                todo!("Once interruptions are implemented we add the logic")
+            }
+            ControlInstruction::Reti => {
+                todo!("Once interruptions are implemented we add the logic")
+            }
         }
     }
 }

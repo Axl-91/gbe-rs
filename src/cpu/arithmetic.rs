@@ -430,6 +430,26 @@ impl Cpu {
                 self.registers.set_half_carry(false);
                 self.registers.set_carry(!carry);
             }
+            ArithmeticInstruction::IncFromHl => {
+                let hl = self.registers.get_hl();
+                let value = self.bus.read(hl).wrapping_add(1);
+
+                self.registers.set_zero(value == 0);
+                self.registers.set_subtract(false);
+                self.registers.set_half_carry(value & 0x0F == 0x00);
+
+                self.bus.write(hl, value);
+            }
+            ArithmeticInstruction::DecFromHl => {
+                let hl = self.registers.get_hl();
+                let value = self.bus.read(hl).wrapping_sub(1);
+
+                self.registers.set_zero(value == 0);
+                self.registers.set_subtract(true);
+                self.registers.set_half_carry(value & 0x0F == 0x0F);
+
+                self.bus.write(hl, value);
+            }
         }
     }
 }
