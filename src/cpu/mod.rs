@@ -99,6 +99,23 @@ impl Cpu {
             .set_carry((sp & 0x00FF) + offset as u16 > 0x00FF);
     }
 
+    fn execute_cb(&mut self, instruction: CbInstruction) {
+        match instruction {
+            CbInstruction::Bit(_value, _target) => {
+                todo!()
+            }
+            CbInstruction::Res(_value, _target) => {
+                todo!()
+            }
+            CbInstruction::Set(_value, _target) => {
+                todo!()
+            }
+            CbInstruction::Rotation(_rotation) => {
+                todo!()
+            }
+        }
+    }
+
     /// Executes the instruction.
     fn execute(&mut self, instruction: Instruction) {
         match instruction {
@@ -122,6 +139,13 @@ impl Cpu {
 
             Instruction::Control(instruction) => {
                 self.execute_control(instruction);
+            }
+            Instruction::Cb => {
+                let opcode = self.fetch();
+
+                let instruction = decode_cb(opcode);
+
+                self.execute_cb(instruction);
             }
         }
     }

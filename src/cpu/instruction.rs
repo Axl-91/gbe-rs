@@ -50,6 +50,8 @@ pub enum Instruction {
     Rotation(RotationInstruction),
 
     Control(ControlInstruction),
+
+    Cb,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -544,6 +546,358 @@ pub fn decode(opcode: u8) -> Instruction {
         0x34 => Instruction::Arithmetic(ArithmeticInstruction::IncFromHl),
         0x35 => Instruction::Arithmetic(ArithmeticInstruction::DecFromHl),
 
+        0xCB => Instruction::Cb,
+
         _ => panic!("Unknown opcode: {opcode:#04X}"),
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum CbRotation {
+    Rlc(CbTarget),
+    Rrc(CbTarget),
+    Rl(CbTarget),
+    Rr(CbTarget),
+    Sla(CbTarget),
+    Sra(CbTarget),
+    Swap(CbTarget),
+    Srl(CbTarget),
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum CbTarget {
+    Register(Register8),
+    FromHl,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum CbInstruction {
+    Bit(u8, CbTarget),
+    Res(u8, CbTarget),
+    Set(u8, CbTarget),
+    Rotation(CbRotation),
+}
+
+pub fn decode_cb(opcode: u8) -> CbInstruction {
+    match opcode {
+        // RLC
+        0x00 => CbInstruction::Rotation(CbRotation::Rlc(CbTarget::Register(Register8::B))),
+        0x01 => CbInstruction::Rotation(CbRotation::Rlc(CbTarget::Register(Register8::C))),
+        0x02 => CbInstruction::Rotation(CbRotation::Rlc(CbTarget::Register(Register8::D))),
+        0x03 => CbInstruction::Rotation(CbRotation::Rlc(CbTarget::Register(Register8::E))),
+        0x04 => CbInstruction::Rotation(CbRotation::Rlc(CbTarget::Register(Register8::H))),
+        0x05 => CbInstruction::Rotation(CbRotation::Rlc(CbTarget::Register(Register8::L))),
+        0x06 => CbInstruction::Rotation(CbRotation::Rlc(CbTarget::FromHl)),
+        0x07 => CbInstruction::Rotation(CbRotation::Rlc(CbTarget::Register(Register8::A))),
+
+        // RRC
+        0x08 => CbInstruction::Rotation(CbRotation::Rrc(CbTarget::Register(Register8::B))),
+        0x09 => CbInstruction::Rotation(CbRotation::Rrc(CbTarget::Register(Register8::C))),
+        0x0A => CbInstruction::Rotation(CbRotation::Rrc(CbTarget::Register(Register8::D))),
+        0x0B => CbInstruction::Rotation(CbRotation::Rrc(CbTarget::Register(Register8::E))),
+        0x0C => CbInstruction::Rotation(CbRotation::Rrc(CbTarget::Register(Register8::H))),
+        0x0D => CbInstruction::Rotation(CbRotation::Rrc(CbTarget::Register(Register8::L))),
+        0x0E => CbInstruction::Rotation(CbRotation::Rrc(CbTarget::FromHl)),
+        0x0F => CbInstruction::Rotation(CbRotation::Rrc(CbTarget::Register(Register8::A))),
+
+        // RL
+        0x10 => CbInstruction::Rotation(CbRotation::Rl(CbTarget::Register(Register8::B))),
+        0x11 => CbInstruction::Rotation(CbRotation::Rl(CbTarget::Register(Register8::C))),
+        0x12 => CbInstruction::Rotation(CbRotation::Rl(CbTarget::Register(Register8::D))),
+        0x13 => CbInstruction::Rotation(CbRotation::Rl(CbTarget::Register(Register8::E))),
+        0x14 => CbInstruction::Rotation(CbRotation::Rl(CbTarget::Register(Register8::H))),
+        0x15 => CbInstruction::Rotation(CbRotation::Rl(CbTarget::Register(Register8::L))),
+        0x16 => CbInstruction::Rotation(CbRotation::Rl(CbTarget::FromHl)),
+        0x17 => CbInstruction::Rotation(CbRotation::Rl(CbTarget::Register(Register8::A))),
+
+        // RR
+        0x18 => CbInstruction::Rotation(CbRotation::Rr(CbTarget::Register(Register8::B))),
+        0x19 => CbInstruction::Rotation(CbRotation::Rr(CbTarget::Register(Register8::C))),
+        0x1A => CbInstruction::Rotation(CbRotation::Rr(CbTarget::Register(Register8::D))),
+        0x1B => CbInstruction::Rotation(CbRotation::Rr(CbTarget::Register(Register8::E))),
+        0x1C => CbInstruction::Rotation(CbRotation::Rr(CbTarget::Register(Register8::H))),
+        0x1D => CbInstruction::Rotation(CbRotation::Rr(CbTarget::Register(Register8::L))),
+        0x1E => CbInstruction::Rotation(CbRotation::Rr(CbTarget::FromHl)),
+        0x1F => CbInstruction::Rotation(CbRotation::Rr(CbTarget::Register(Register8::A))),
+
+        // SLA
+        0x20 => CbInstruction::Rotation(CbRotation::Sla(CbTarget::Register(Register8::B))),
+        0x21 => CbInstruction::Rotation(CbRotation::Sla(CbTarget::Register(Register8::C))),
+        0x22 => CbInstruction::Rotation(CbRotation::Sla(CbTarget::Register(Register8::D))),
+        0x23 => CbInstruction::Rotation(CbRotation::Sla(CbTarget::Register(Register8::E))),
+        0x24 => CbInstruction::Rotation(CbRotation::Sla(CbTarget::Register(Register8::H))),
+        0x25 => CbInstruction::Rotation(CbRotation::Sla(CbTarget::Register(Register8::L))),
+        0x26 => CbInstruction::Rotation(CbRotation::Sla(CbTarget::FromHl)),
+        0x27 => CbInstruction::Rotation(CbRotation::Sla(CbTarget::Register(Register8::A))),
+
+        // SRA
+        0x28 => CbInstruction::Rotation(CbRotation::Sra(CbTarget::Register(Register8::B))),
+        0x29 => CbInstruction::Rotation(CbRotation::Sra(CbTarget::Register(Register8::C))),
+        0x2A => CbInstruction::Rotation(CbRotation::Sra(CbTarget::Register(Register8::D))),
+        0x2B => CbInstruction::Rotation(CbRotation::Sra(CbTarget::Register(Register8::E))),
+        0x2C => CbInstruction::Rotation(CbRotation::Sra(CbTarget::Register(Register8::H))),
+        0x2D => CbInstruction::Rotation(CbRotation::Sra(CbTarget::Register(Register8::L))),
+        0x2E => CbInstruction::Rotation(CbRotation::Sra(CbTarget::FromHl)),
+        0x2F => CbInstruction::Rotation(CbRotation::Sra(CbTarget::Register(Register8::A))),
+
+        // SWAP
+        0x30 => CbInstruction::Rotation(CbRotation::Swap(CbTarget::Register(Register8::B))),
+        0x31 => CbInstruction::Rotation(CbRotation::Swap(CbTarget::Register(Register8::C))),
+        0x32 => CbInstruction::Rotation(CbRotation::Swap(CbTarget::Register(Register8::D))),
+        0x33 => CbInstruction::Rotation(CbRotation::Swap(CbTarget::Register(Register8::E))),
+        0x34 => CbInstruction::Rotation(CbRotation::Swap(CbTarget::Register(Register8::H))),
+        0x35 => CbInstruction::Rotation(CbRotation::Swap(CbTarget::Register(Register8::L))),
+        0x36 => CbInstruction::Rotation(CbRotation::Swap(CbTarget::FromHl)),
+        0x37 => CbInstruction::Rotation(CbRotation::Swap(CbTarget::Register(Register8::A))),
+
+        // SRL
+        0x38 => CbInstruction::Rotation(CbRotation::Srl(CbTarget::Register(Register8::B))),
+        0x39 => CbInstruction::Rotation(CbRotation::Srl(CbTarget::Register(Register8::C))),
+        0x3A => CbInstruction::Rotation(CbRotation::Srl(CbTarget::Register(Register8::D))),
+        0x3B => CbInstruction::Rotation(CbRotation::Srl(CbTarget::Register(Register8::E))),
+        0x3C => CbInstruction::Rotation(CbRotation::Srl(CbTarget::Register(Register8::H))),
+        0x3D => CbInstruction::Rotation(CbRotation::Srl(CbTarget::Register(Register8::L))),
+        0x3E => CbInstruction::Rotation(CbRotation::Srl(CbTarget::FromHl)),
+        0x3F => CbInstruction::Rotation(CbRotation::Srl(CbTarget::Register(Register8::A))),
+
+        // BIT 0
+        0x40 => CbInstruction::Bit(0, CbTarget::Register(Register8::B)),
+        0x41 => CbInstruction::Bit(0, CbTarget::Register(Register8::C)),
+        0x42 => CbInstruction::Bit(0, CbTarget::Register(Register8::D)),
+        0x43 => CbInstruction::Bit(0, CbTarget::Register(Register8::E)),
+        0x44 => CbInstruction::Bit(0, CbTarget::Register(Register8::H)),
+        0x45 => CbInstruction::Bit(0, CbTarget::Register(Register8::L)),
+        0x46 => CbInstruction::Bit(0, CbTarget::FromHl),
+        0x47 => CbInstruction::Bit(0, CbTarget::Register(Register8::A)),
+
+        // BIT 1
+        0x48 => CbInstruction::Bit(1, CbTarget::Register(Register8::B)),
+        0x49 => CbInstruction::Bit(1, CbTarget::Register(Register8::C)),
+        0x4A => CbInstruction::Bit(1, CbTarget::Register(Register8::D)),
+        0x4B => CbInstruction::Bit(1, CbTarget::Register(Register8::E)),
+        0x4C => CbInstruction::Bit(1, CbTarget::Register(Register8::H)),
+        0x4D => CbInstruction::Bit(1, CbTarget::Register(Register8::L)),
+        0x4E => CbInstruction::Bit(1, CbTarget::FromHl),
+        0x4F => CbInstruction::Bit(1, CbTarget::Register(Register8::A)),
+
+        // BIT 2
+        0x50 => CbInstruction::Bit(2, CbTarget::Register(Register8::B)),
+        0x51 => CbInstruction::Bit(2, CbTarget::Register(Register8::C)),
+        0x52 => CbInstruction::Bit(2, CbTarget::Register(Register8::D)),
+        0x53 => CbInstruction::Bit(2, CbTarget::Register(Register8::E)),
+        0x54 => CbInstruction::Bit(2, CbTarget::Register(Register8::H)),
+        0x55 => CbInstruction::Bit(2, CbTarget::Register(Register8::L)),
+        0x56 => CbInstruction::Bit(2, CbTarget::FromHl),
+        0x57 => CbInstruction::Bit(2, CbTarget::Register(Register8::A)),
+
+        // BIT 3
+        0x58 => CbInstruction::Bit(3, CbTarget::Register(Register8::B)),
+        0x59 => CbInstruction::Bit(3, CbTarget::Register(Register8::C)),
+        0x5A => CbInstruction::Bit(3, CbTarget::Register(Register8::D)),
+        0x5B => CbInstruction::Bit(3, CbTarget::Register(Register8::E)),
+        0x5C => CbInstruction::Bit(3, CbTarget::Register(Register8::H)),
+        0x5D => CbInstruction::Bit(3, CbTarget::Register(Register8::L)),
+        0x5E => CbInstruction::Bit(3, CbTarget::FromHl),
+        0x5F => CbInstruction::Bit(3, CbTarget::Register(Register8::A)),
+
+        // BIT 4
+        0x60 => CbInstruction::Bit(4, CbTarget::Register(Register8::B)),
+        0x61 => CbInstruction::Bit(4, CbTarget::Register(Register8::C)),
+        0x62 => CbInstruction::Bit(4, CbTarget::Register(Register8::D)),
+        0x63 => CbInstruction::Bit(4, CbTarget::Register(Register8::E)),
+        0x64 => CbInstruction::Bit(4, CbTarget::Register(Register8::H)),
+        0x65 => CbInstruction::Bit(4, CbTarget::Register(Register8::L)),
+        0x66 => CbInstruction::Bit(4, CbTarget::FromHl),
+        0x67 => CbInstruction::Bit(4, CbTarget::Register(Register8::A)),
+
+        // BIT 5
+        0x68 => CbInstruction::Bit(5, CbTarget::Register(Register8::B)),
+        0x69 => CbInstruction::Bit(5, CbTarget::Register(Register8::C)),
+        0x6A => CbInstruction::Bit(5, CbTarget::Register(Register8::D)),
+        0x6B => CbInstruction::Bit(5, CbTarget::Register(Register8::E)),
+        0x6C => CbInstruction::Bit(5, CbTarget::Register(Register8::H)),
+        0x6D => CbInstruction::Bit(5, CbTarget::Register(Register8::L)),
+        0x6E => CbInstruction::Bit(5, CbTarget::FromHl),
+        0x6F => CbInstruction::Bit(5, CbTarget::Register(Register8::A)),
+
+        // BIT 6
+        0x70 => CbInstruction::Bit(6, CbTarget::Register(Register8::B)),
+        0x71 => CbInstruction::Bit(6, CbTarget::Register(Register8::C)),
+        0x72 => CbInstruction::Bit(6, CbTarget::Register(Register8::D)),
+        0x73 => CbInstruction::Bit(6, CbTarget::Register(Register8::E)),
+        0x74 => CbInstruction::Bit(6, CbTarget::Register(Register8::H)),
+        0x75 => CbInstruction::Bit(6, CbTarget::Register(Register8::L)),
+        0x76 => CbInstruction::Bit(6, CbTarget::FromHl),
+        0x77 => CbInstruction::Bit(6, CbTarget::Register(Register8::A)),
+
+        // BIT 7
+        0x78 => CbInstruction::Bit(7, CbTarget::Register(Register8::B)),
+        0x79 => CbInstruction::Bit(7, CbTarget::Register(Register8::C)),
+        0x7A => CbInstruction::Bit(7, CbTarget::Register(Register8::D)),
+        0x7B => CbInstruction::Bit(7, CbTarget::Register(Register8::E)),
+        0x7C => CbInstruction::Bit(7, CbTarget::Register(Register8::H)),
+        0x7D => CbInstruction::Bit(7, CbTarget::Register(Register8::L)),
+        0x7E => CbInstruction::Bit(7, CbTarget::FromHl),
+        0x7F => CbInstruction::Bit(7, CbTarget::Register(Register8::A)),
+
+        // RES 0
+        0x80 => CbInstruction::Res(0, CbTarget::Register(Register8::B)),
+        0x81 => CbInstruction::Res(0, CbTarget::Register(Register8::C)),
+        0x82 => CbInstruction::Res(0, CbTarget::Register(Register8::D)),
+        0x83 => CbInstruction::Res(0, CbTarget::Register(Register8::E)),
+        0x84 => CbInstruction::Res(0, CbTarget::Register(Register8::H)),
+        0x85 => CbInstruction::Res(0, CbTarget::Register(Register8::L)),
+        0x86 => CbInstruction::Res(0, CbTarget::FromHl),
+        0x87 => CbInstruction::Res(0, CbTarget::Register(Register8::A)),
+
+        // RES 1
+        0x88 => CbInstruction::Res(1, CbTarget::Register(Register8::B)),
+        0x89 => CbInstruction::Res(1, CbTarget::Register(Register8::C)),
+        0x8A => CbInstruction::Res(1, CbTarget::Register(Register8::D)),
+        0x8B => CbInstruction::Res(1, CbTarget::Register(Register8::E)),
+        0x8C => CbInstruction::Res(1, CbTarget::Register(Register8::H)),
+        0x8D => CbInstruction::Res(1, CbTarget::Register(Register8::L)),
+        0x8E => CbInstruction::Res(1, CbTarget::FromHl),
+        0x8F => CbInstruction::Res(1, CbTarget::Register(Register8::A)),
+
+        // RES 2
+        0x90 => CbInstruction::Res(2, CbTarget::Register(Register8::B)),
+        0x91 => CbInstruction::Res(2, CbTarget::Register(Register8::C)),
+        0x92 => CbInstruction::Res(2, CbTarget::Register(Register8::D)),
+        0x93 => CbInstruction::Res(2, CbTarget::Register(Register8::E)),
+        0x94 => CbInstruction::Res(2, CbTarget::Register(Register8::H)),
+        0x95 => CbInstruction::Res(2, CbTarget::Register(Register8::L)),
+        0x96 => CbInstruction::Res(2, CbTarget::FromHl),
+        0x97 => CbInstruction::Res(2, CbTarget::Register(Register8::A)),
+
+        // RES 3
+        0x98 => CbInstruction::Res(3, CbTarget::Register(Register8::B)),
+        0x99 => CbInstruction::Res(3, CbTarget::Register(Register8::C)),
+        0x9A => CbInstruction::Res(3, CbTarget::Register(Register8::D)),
+        0x9B => CbInstruction::Res(3, CbTarget::Register(Register8::E)),
+        0x9C => CbInstruction::Res(3, CbTarget::Register(Register8::H)),
+        0x9D => CbInstruction::Res(3, CbTarget::Register(Register8::L)),
+        0x9E => CbInstruction::Res(3, CbTarget::FromHl),
+        0x9F => CbInstruction::Res(3, CbTarget::Register(Register8::A)),
+
+        // RES 4
+        0xA0 => CbInstruction::Res(4, CbTarget::Register(Register8::B)),
+        0xA1 => CbInstruction::Res(4, CbTarget::Register(Register8::C)),
+        0xA2 => CbInstruction::Res(4, CbTarget::Register(Register8::D)),
+        0xA3 => CbInstruction::Res(4, CbTarget::Register(Register8::E)),
+        0xA4 => CbInstruction::Res(4, CbTarget::Register(Register8::H)),
+        0xA5 => CbInstruction::Res(4, CbTarget::Register(Register8::L)),
+        0xA6 => CbInstruction::Res(4, CbTarget::FromHl),
+        0xA7 => CbInstruction::Res(4, CbTarget::Register(Register8::A)),
+
+        // RES 5
+        0xA8 => CbInstruction::Res(5, CbTarget::Register(Register8::B)),
+        0xA9 => CbInstruction::Res(5, CbTarget::Register(Register8::C)),
+        0xAA => CbInstruction::Res(5, CbTarget::Register(Register8::D)),
+        0xAB => CbInstruction::Res(5, CbTarget::Register(Register8::E)),
+        0xAC => CbInstruction::Res(5, CbTarget::Register(Register8::H)),
+        0xAD => CbInstruction::Res(5, CbTarget::Register(Register8::L)),
+        0xAE => CbInstruction::Res(5, CbTarget::FromHl),
+        0xAF => CbInstruction::Res(5, CbTarget::Register(Register8::A)),
+
+        // RES 6
+        0xB0 => CbInstruction::Res(6, CbTarget::Register(Register8::B)),
+        0xB1 => CbInstruction::Res(6, CbTarget::Register(Register8::C)),
+        0xB2 => CbInstruction::Res(6, CbTarget::Register(Register8::D)),
+        0xB3 => CbInstruction::Res(6, CbTarget::Register(Register8::E)),
+        0xB4 => CbInstruction::Res(6, CbTarget::Register(Register8::H)),
+        0xB5 => CbInstruction::Res(6, CbTarget::Register(Register8::L)),
+        0xB6 => CbInstruction::Res(6, CbTarget::FromHl),
+        0xB7 => CbInstruction::Res(6, CbTarget::Register(Register8::A)),
+
+        // RES 7
+        0xB8 => CbInstruction::Res(7, CbTarget::Register(Register8::B)),
+        0xB9 => CbInstruction::Res(7, CbTarget::Register(Register8::C)),
+        0xBA => CbInstruction::Res(7, CbTarget::Register(Register8::D)),
+        0xBB => CbInstruction::Res(7, CbTarget::Register(Register8::E)),
+        0xBC => CbInstruction::Res(7, CbTarget::Register(Register8::H)),
+        0xBD => CbInstruction::Res(7, CbTarget::Register(Register8::L)),
+        0xBE => CbInstruction::Res(7, CbTarget::FromHl),
+        0xBF => CbInstruction::Res(7, CbTarget::Register(Register8::A)),
+
+        // SET 0
+        0xC0 => CbInstruction::Set(0, CbTarget::Register(Register8::B)),
+        0xC1 => CbInstruction::Set(0, CbTarget::Register(Register8::C)),
+        0xC2 => CbInstruction::Set(0, CbTarget::Register(Register8::D)),
+        0xC3 => CbInstruction::Set(0, CbTarget::Register(Register8::E)),
+        0xC4 => CbInstruction::Set(0, CbTarget::Register(Register8::H)),
+        0xC5 => CbInstruction::Set(0, CbTarget::Register(Register8::L)),
+        0xC6 => CbInstruction::Set(0, CbTarget::FromHl),
+        0xC7 => CbInstruction::Set(0, CbTarget::Register(Register8::A)),
+
+        // SET 1
+        0xC8 => CbInstruction::Set(1, CbTarget::Register(Register8::B)),
+        0xC9 => CbInstruction::Set(1, CbTarget::Register(Register8::C)),
+        0xCA => CbInstruction::Set(1, CbTarget::Register(Register8::D)),
+        0xCB => CbInstruction::Set(1, CbTarget::Register(Register8::E)),
+        0xCC => CbInstruction::Set(1, CbTarget::Register(Register8::H)),
+        0xCD => CbInstruction::Set(1, CbTarget::Register(Register8::L)),
+        0xCE => CbInstruction::Set(1, CbTarget::FromHl),
+        0xCF => CbInstruction::Set(1, CbTarget::Register(Register8::A)),
+
+        // SET 2
+        0xD0 => CbInstruction::Set(2, CbTarget::Register(Register8::B)),
+        0xD1 => CbInstruction::Set(2, CbTarget::Register(Register8::C)),
+        0xD2 => CbInstruction::Set(2, CbTarget::Register(Register8::D)),
+        0xD3 => CbInstruction::Set(2, CbTarget::Register(Register8::E)),
+        0xD4 => CbInstruction::Set(2, CbTarget::Register(Register8::H)),
+        0xD5 => CbInstruction::Set(2, CbTarget::Register(Register8::L)),
+        0xD6 => CbInstruction::Set(2, CbTarget::FromHl),
+        0xD7 => CbInstruction::Set(2, CbTarget::Register(Register8::A)),
+
+        // SET 3
+        0xD8 => CbInstruction::Set(3, CbTarget::Register(Register8::B)),
+        0xD9 => CbInstruction::Set(3, CbTarget::Register(Register8::C)),
+        0xDA => CbInstruction::Set(3, CbTarget::Register(Register8::D)),
+        0xDB => CbInstruction::Set(3, CbTarget::Register(Register8::E)),
+        0xDC => CbInstruction::Set(3, CbTarget::Register(Register8::H)),
+        0xDD => CbInstruction::Set(3, CbTarget::Register(Register8::L)),
+        0xDE => CbInstruction::Set(3, CbTarget::FromHl),
+        0xDF => CbInstruction::Set(3, CbTarget::Register(Register8::A)),
+
+        // SET 4
+        0xE0 => CbInstruction::Set(4, CbTarget::Register(Register8::B)),
+        0xE1 => CbInstruction::Set(4, CbTarget::Register(Register8::C)),
+        0xE2 => CbInstruction::Set(4, CbTarget::Register(Register8::D)),
+        0xE3 => CbInstruction::Set(4, CbTarget::Register(Register8::E)),
+        0xE4 => CbInstruction::Set(4, CbTarget::Register(Register8::H)),
+        0xE5 => CbInstruction::Set(4, CbTarget::Register(Register8::L)),
+        0xE6 => CbInstruction::Set(4, CbTarget::FromHl),
+        0xE7 => CbInstruction::Set(4, CbTarget::Register(Register8::A)),
+
+        // SET 5
+        0xE8 => CbInstruction::Set(5, CbTarget::Register(Register8::B)),
+        0xE9 => CbInstruction::Set(5, CbTarget::Register(Register8::C)),
+        0xEA => CbInstruction::Set(5, CbTarget::Register(Register8::D)),
+        0xEB => CbInstruction::Set(5, CbTarget::Register(Register8::E)),
+        0xEC => CbInstruction::Set(5, CbTarget::Register(Register8::H)),
+        0xED => CbInstruction::Set(5, CbTarget::Register(Register8::L)),
+        0xEE => CbInstruction::Set(5, CbTarget::FromHl),
+        0xEF => CbInstruction::Set(5, CbTarget::Register(Register8::A)),
+
+        // SET 6
+        0xF0 => CbInstruction::Set(6, CbTarget::Register(Register8::B)),
+        0xF1 => CbInstruction::Set(6, CbTarget::Register(Register8::C)),
+        0xF2 => CbInstruction::Set(6, CbTarget::Register(Register8::D)),
+        0xF3 => CbInstruction::Set(6, CbTarget::Register(Register8::E)),
+        0xF4 => CbInstruction::Set(6, CbTarget::Register(Register8::H)),
+        0xF5 => CbInstruction::Set(6, CbTarget::Register(Register8::L)),
+        0xF6 => CbInstruction::Set(6, CbTarget::FromHl),
+        0xF7 => CbInstruction::Set(6, CbTarget::Register(Register8::A)),
+
+        // SET 7
+        0xF8 => CbInstruction::Set(7, CbTarget::Register(Register8::B)),
+        0xF9 => CbInstruction::Set(7, CbTarget::Register(Register8::C)),
+        0xFA => CbInstruction::Set(7, CbTarget::Register(Register8::D)),
+        0xFB => CbInstruction::Set(7, CbTarget::Register(Register8::E)),
+        0xFC => CbInstruction::Set(7, CbTarget::Register(Register8::H)),
+        0xFD => CbInstruction::Set(7, CbTarget::Register(Register8::L)),
+        0xFE => CbInstruction::Set(7, CbTarget::FromHl),
+        0xFF => CbInstruction::Set(7, CbTarget::Register(Register8::A)),
     }
 }
