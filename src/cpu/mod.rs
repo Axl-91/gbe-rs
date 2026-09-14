@@ -3,6 +3,7 @@
 //! Handles instruction fetching, decoding, execution, and CPU registers.
 
 mod arithmetic;
+mod cb;
 mod control;
 mod instruction;
 mod load;
@@ -97,33 +98,6 @@ impl Cpu {
 
         self.registers
             .set_carry((sp & 0x00FF) + offset as u16 > 0x00FF);
-    }
-
-    /// Executes the CB instruction.
-    fn execute_cb(&mut self, instruction: CbInstruction) {
-        match instruction {
-            CbInstruction::Bit(_value, _register) => {
-                todo!()
-            }
-            CbInstruction::BitFromHl(_value) => {
-                todo!()
-            }
-            CbInstruction::Res(_value, _register) => {
-                todo!()
-            }
-            CbInstruction::ResFromHl(_value) => {
-                todo!()
-            }
-            CbInstruction::Set(_value, _register) => {
-                todo!()
-            }
-            CbInstruction::SetFromHl(_value) => {
-                todo!()
-            }
-            CbInstruction::Rotation(instruction) => {
-                self.execute_cb_rotation(instruction);
-            }
-        }
     }
 
     /// Executes the instruction.
