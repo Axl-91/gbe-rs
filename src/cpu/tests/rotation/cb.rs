@@ -5,10 +5,10 @@ fn rlc_register() {
     let mut rng = rand::rng();
     let value = rng.random_range(1..=u8::MAX);
 
-    let mut cpu = create_cpu(0, None, None);
+    let mut cpu = create_cpu(0xCB, Some(0x00), None);
     cpu.registers.set_b(value);
 
-    cpu.execute_cb_rotation(CbRotation::Rlc(Register8::B));
+    cpu.step();
 
     let expected_carry = value & 0x80 != 0;
     let expected_value = value.rotate_left(1);
@@ -26,11 +26,11 @@ fn rlc_from_hl() {
     let value = rng.random_range(1..=u8::MAX);
     let address = get_rand_wram_address();
 
-    let mut cpu = create_cpu(0, None, None);
+    let mut cpu = create_cpu(0xCB, Some(0x06), None);
     cpu.registers.set_hl(address);
     cpu.bus.write(address, value);
 
-    cpu.execute_cb_rotation(CbRotation::RlcFromHl);
+    cpu.step();
 
     let expected_carry = value & 0x80 != 0;
     let expected_value = value.rotate_left(1);
@@ -47,10 +47,10 @@ fn rrc_register() {
     let mut rng = rand::rng();
     let value = rng.random_range(1..=u8::MAX);
 
-    let mut cpu = create_cpu(0, None, None);
+    let mut cpu = create_cpu(0xCB, Some(0x08), None);
     cpu.registers.set_b(value);
 
-    cpu.execute_cb_rotation(CbRotation::Rrc(Register8::B));
+    cpu.step();
 
     let expected_carry = value & 0x01 != 0;
     let expected_value = value.rotate_right(1);
@@ -68,11 +68,11 @@ fn rrc_from_hl() {
     let value = rng.random_range(1..=u8::MAX);
     let address = get_rand_wram_address();
 
-    let mut cpu = create_cpu(0, None, None);
+    let mut cpu = create_cpu(0xCB, Some(0x0E), None);
     cpu.registers.set_hl(address);
     cpu.bus.write(address, value);
 
-    cpu.execute_cb_rotation(CbRotation::RrcFromHl);
+    cpu.step();
 
     let expected_carry = value & 0x01 != 0;
     let expected_value = value.rotate_right(1);
@@ -90,11 +90,11 @@ fn rl_register() {
     let value = rng.random_range(1..=u8::MAX);
     let carry = rng.random_bool(0.5);
 
-    let mut cpu = create_cpu(0, None, None);
+    let mut cpu = create_cpu(0xCB, Some(0x10), None);
     cpu.registers.set_b(value);
     cpu.registers.set_carry(carry);
 
-    cpu.execute_cb_rotation(CbRotation::Rl(Register8::B));
+    cpu.step();
 
     let expected_carry = value & 0x80 != 0;
     let expected_value = (value << 1) | carry as u8;
@@ -113,12 +113,12 @@ fn rl_from_hl() {
     let carry = rng.random_bool(0.5);
     let address = get_rand_wram_address();
 
-    let mut cpu = create_cpu(0, None, None);
+    let mut cpu = create_cpu(0xCB, Some(0x16), None);
     cpu.registers.set_hl(address);
     cpu.registers.set_carry(carry);
     cpu.bus.write(address, value);
 
-    cpu.execute_cb_rotation(CbRotation::RlFromHl);
+    cpu.step();
 
     let expected_carry = value & 0x80 != 0;
     let expected_value = (value << 1) | carry as u8;
@@ -136,11 +136,11 @@ fn rr_register() {
     let value = rng.random_range(1..=u8::MAX);
     let carry = rng.random_bool(0.5);
 
-    let mut cpu = create_cpu(0, None, None);
+    let mut cpu = create_cpu(0xCB, Some(0x18), None);
     cpu.registers.set_b(value);
     cpu.registers.set_carry(carry);
 
-    cpu.execute_cb_rotation(CbRotation::Rr(Register8::B));
+    cpu.step();
 
     let expected_carry = value & 0x01 != 0;
     let expected_value = (value >> 1) | ((carry as u8) << 7);
@@ -159,12 +159,12 @@ fn rr_from_hl() {
     let carry = rng.random_bool(0.5);
     let address = get_rand_wram_address();
 
-    let mut cpu = create_cpu(0, None, None);
+    let mut cpu = create_cpu(0xCB, Some(0x1E), None);
     cpu.registers.set_hl(address);
     cpu.registers.set_carry(carry);
     cpu.bus.write(address, value);
 
-    cpu.execute_cb_rotation(CbRotation::RrFromHl);
+    cpu.step();
 
     let expected_carry = value & 0x01 != 0;
     let expected_value = (value >> 1) | ((carry as u8) << 7);
@@ -181,10 +181,10 @@ fn sla_register() {
     let mut rng = rand::rng();
     let value = rng.random_range(1..=u8::MAX);
 
-    let mut cpu = create_cpu(0, None, None);
+    let mut cpu = create_cpu(0xCB, Some(0x20), None);
     cpu.registers.set_b(value);
 
-    cpu.execute_cb_rotation(CbRotation::Sla(Register8::B));
+    cpu.step();
 
     let expected_carry = value & 0x80 != 0;
     let expected_value = value << 1;
@@ -202,11 +202,11 @@ fn sla_from_hl() {
     let value = rng.random_range(1..=u8::MAX);
     let address = get_rand_wram_address();
 
-    let mut cpu = create_cpu(0, None, None);
+    let mut cpu = create_cpu(0xCB, Some(0x26), None);
     cpu.registers.set_hl(address);
     cpu.bus.write(address, value);
 
-    cpu.execute_cb_rotation(CbRotation::SlaFromHl);
+    cpu.step();
 
     let expected_carry = value & 0x80 != 0;
     let expected_value = value << 1;
@@ -223,10 +223,10 @@ fn sra_register() {
     let mut rng = rand::rng();
     let value = rng.random_range(1..=u8::MAX);
 
-    let mut cpu = create_cpu(0, None, None);
+    let mut cpu = create_cpu(0xCB, Some(0x28), None);
     cpu.registers.set_b(value);
 
-    cpu.execute_cb_rotation(CbRotation::Sra(Register8::B));
+    cpu.step();
 
     let expected_carry = value & 0x01 != 0;
     let expected_value = (value >> 1) | (value & 0x80);
@@ -244,11 +244,11 @@ fn sra_from_hl() {
     let value = rng.random_range(1..=u8::MAX);
     let address = get_rand_wram_address();
 
-    let mut cpu = create_cpu(0, None, None);
+    let mut cpu = create_cpu(0xCB, Some(0x2E), None);
     cpu.registers.set_hl(address);
     cpu.bus.write(address, value);
 
-    cpu.execute_cb_rotation(CbRotation::SraFromHl);
+    cpu.step();
 
     let expected_carry = value & 0x01 != 0;
     let expected_value = (value >> 1) | (value & 0x80);
@@ -265,10 +265,10 @@ fn swap_register() {
     let mut rng = rand::rng();
     let value = rng.random_range(1..=u8::MAX);
 
-    let mut cpu = create_cpu(0, None, None);
+    let mut cpu = create_cpu(0xCB, Some(0x30), None);
     cpu.registers.set_b(value);
 
-    cpu.execute_cb_rotation(CbRotation::Swap(Register8::B));
+    cpu.step();
 
     let expected_value = value.rotate_left(4);
 
@@ -285,11 +285,11 @@ fn swap_from_hl() {
     let value = rng.random_range(1..=u8::MAX);
     let address = get_rand_wram_address();
 
-    let mut cpu = create_cpu(0, None, None);
+    let mut cpu = create_cpu(0xCB, Some(0x36), None);
     cpu.registers.set_hl(address);
     cpu.bus.write(address, value);
 
-    cpu.execute_cb_rotation(CbRotation::SwapFromHl);
+    cpu.step();
 
     let expected_value = value.rotate_left(4);
 
@@ -305,10 +305,10 @@ fn srl_register() {
     let mut rng = rand::rng();
     let value = rng.random_range(1..=u8::MAX);
 
-    let mut cpu = create_cpu(0, None, None);
+    let mut cpu = create_cpu(0xCB, Some(0x38), None);
     cpu.registers.set_b(value);
 
-    cpu.execute_cb_rotation(CbRotation::Srl(Register8::B));
+    cpu.step();
 
     let expected_carry = value & 0x01 != 0;
     let expected_value = value >> 1;
@@ -326,11 +326,11 @@ fn srl_from_hl() {
     let value = rng.random_range(1..=u8::MAX);
     let address = get_rand_wram_address();
 
-    let mut cpu = create_cpu(0, None, None);
+    let mut cpu = create_cpu(0xCB, Some(0x3E), None);
     cpu.registers.set_hl(address);
     cpu.bus.write(address, value);
 
-    cpu.execute_cb_rotation(CbRotation::SrlFromHl);
+    cpu.step();
 
     let expected_carry = value & 0x01 != 0;
     let expected_value = value >> 1;

@@ -7,10 +7,12 @@ fn bit_register() {
     let value = rng.random_range(0..=u8::MAX);
     let bit = rng.random_range(0..=7);
 
-    let mut cpu = create_cpu(0, None, None);
+    let opcode = 0x40 | (bit << 3);
+
+    let mut cpu = create_cpu(0xCB, Some(opcode), None);
     cpu.registers.set_b(value);
 
-    cpu.execute_cb(CbInstruction::Bit(bit, Register8::B));
+    cpu.step();
 
     let expected_zero = value & (1 << bit) == 0;
 
@@ -27,11 +29,13 @@ fn bit_from_hl() {
     let bit = rng.random_range(0..=7);
     let address = get_rand_wram_address();
 
-    let mut cpu = create_cpu(0, None, None);
+    let opcode = 0x40 | (bit << 3) | 0x06;
+
+    let mut cpu = create_cpu(0xCB, Some(opcode), None);
     cpu.registers.set_hl(address);
     cpu.bus.write(address, value);
 
-    cpu.execute_cb(CbInstruction::BitFromHl(bit));
+    cpu.step();
 
     let expected_zero = value & (1 << bit) == 0;
 
@@ -47,10 +51,12 @@ fn res_register() {
     let value = rng.random_range(0..=u8::MAX);
     let bit = rng.random_range(0..=7);
 
-    let mut cpu = create_cpu(0, None, None);
+    let opcode = 0x80 | (bit << 3);
+
+    let mut cpu = create_cpu(0xCB, Some(opcode), None);
     cpu.registers.set_b(value);
 
-    cpu.execute_cb(CbInstruction::Res(bit, Register8::B));
+    cpu.step();
 
     let expected = value & !(1 << bit);
 
@@ -65,11 +71,13 @@ fn res_from_hl() {
     let bit = rng.random_range(0..=7);
     let address = get_rand_wram_address();
 
-    let mut cpu = create_cpu(0, None, None);
+    let opcode = 0x80 | (bit << 3) | 0x06;
+
+    let mut cpu = create_cpu(0xCB, Some(opcode), None);
     cpu.registers.set_hl(address);
     cpu.bus.write(address, value);
 
-    cpu.execute_cb(CbInstruction::ResFromHl(bit));
+    cpu.step();
 
     let expected = value & !(1 << bit);
 
@@ -83,10 +91,12 @@ fn set_register() {
     let value = rng.random_range(0..=u8::MAX);
     let bit = rng.random_range(0..=7);
 
-    let mut cpu = create_cpu(0, None, None);
+    let opcode = 0xC0 | (bit << 3);
+
+    let mut cpu = create_cpu(0xCB, Some(opcode), None);
     cpu.registers.set_b(value);
 
-    cpu.execute_cb(CbInstruction::Set(bit, Register8::B));
+    cpu.step();
 
     let expected = value | (1 << bit);
 
@@ -101,11 +111,13 @@ fn set_from_hl() {
     let bit = rng.random_range(0..=7);
     let address = get_rand_wram_address();
 
-    let mut cpu = create_cpu(0, None, None);
+    let opcode = 0xC0 | (bit << 3) | 0x06;
+
+    let mut cpu = create_cpu(0xCB, Some(opcode), None);
     cpu.registers.set_hl(address);
     cpu.bus.write(address, value);
 
-    cpu.execute_cb(CbInstruction::SetFromHl(bit));
+    cpu.step();
 
     let expected = value | (1 << bit);
 
