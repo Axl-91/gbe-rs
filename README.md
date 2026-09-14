@@ -1,31 +1,24 @@
 <div align="center">
-  <img align="center" width="704" height="384" alt="gbe" src="https://github.com/Axl-91/gbe-rs/blob/main/assets/gbe.png" />
+  <img align="center" width="704" alt="gbe" src="https://github.com/Axl-91/gbe-rs/blob/main/assets/gbe.png" />
 </div>
-
 
 #
 
 A Game Boy DMG emulator written in Rust.
 
 The goal of this project is to build a simple and accurate emulator for the original Game Boy (DMG), starting from the core hardware and gradually adding the components required to run real games.
-
 ## Current progress
 
 ### CPU
 - [x] CPU registers and flags
 - [x] Fetch / decode / execute cycle
 - [ ] Instruction set
-  - [x] NOP
-  - [x] INC 8-bit
-  - [x] DEC 8-bit
-  - [x] LD 8-bit
-  - [x] LD 16-bit
-  - [x] 8-bit arithmetic / logic
-  - [x] 16-bit arithmetic
-  - [x] Rotations / shifts
-  - [ ] Bit operations
+  - [x] Arithmetic
+  - [x] Load / Store
   - [x] Control flow
   - [x] Stack operations
+  - [x] Rotations / shifts
+  - [ ] Bit operations
   - [ ] CPU control instructions
 - [ ] Instruction timing
 
