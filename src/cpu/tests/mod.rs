@@ -34,6 +34,7 @@ fn get_rand_wram_address() -> u16 {
 }
 
 mod arithmetic;
+mod cb;
 mod control;
 mod fetch;
 mod load;
