@@ -16,3 +16,6 @@ pub const WRAM_END: u16 = 0xDFFF;
 
 pub const RAM_BANK_SIZE: usize = (CARTRIDGE_RAM_END - CARTRIDGE_RAM_START + 1) as usize;
 pub const ROM_BANK_SIZE: usize = 0x4000;
+
+pub const INTERRUPT_FLAG_ADDRESS: u16 = 0xFF0F;
+pub const INTERRUPT_ENABLE_ADDRESS: u16 = 0xFFFF;

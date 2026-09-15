@@ -6,6 +6,7 @@ mod arithmetic;
 mod cb;
 mod control;
 mod instruction;
+mod interrupt;
 mod load;
 mod registers;
 mod rotation;
@@ -25,6 +26,8 @@ const GAME_ENTRY_POINT: u16 = 0x0100;
 pub struct Cpu {
     registers: Registers,
     bus: MemoryBus,
+    ime: bool,
+    ime_schedule: bool,
 }
 
 impl Cpu {
@@ -34,7 +37,12 @@ impl Cpu {
         let mut registers = Registers::new();
         registers.set_pc(GAME_ENTRY_POINT);
 
-        Self { registers, bus }
+        Self {
+            registers,
+            bus,
+            ime: false,
+            ime_schedule: false,
+        }
     }
 
     /// Fetches the next opcode from memory and advances the program counter.
@@ -101,9 +109,19 @@ impl Cpu {
             .set_carry((sp & 0x00FF) + offset as u16 > 0x00FF);
     }
 
+    /// Enables IME if the previous instruction scheduled it.
+    fn check_ime(&mut self, pending_ime: bool) {
+        if pending_ime {
+            self.ime = true;
+            self.ime_schedule = false;
+        }
+    }
+
     /// Executes the instruction and returns its T-Cycles.
     fn execute(&mut self, instruction: Instruction) -> u8 {
-        match instruction {
+        let pending_ime_schedule = self.ime_schedule;
+
+        let t_cycles = match instruction {
             Instruction::Nop => 4,
 
             Instruction::Load(instruction) => self.execute_load(instruction),
@@ -121,15 +139,26 @@ impl Cpu {
 
                 self.execute_cb(instruction)
             }
-        }
+        };
+
+        self.check_ime(pending_ime_schedule);
+
+        t_cycles
     }
 
     /// Fetches the opcode, decodes it and executes the instruction
     /// then returns its T-Cycles
     pub fn step(&mut self) -> u8 {
-        let opcode = self.fetch();
-        let instruction = decode(opcode);
+        let opt_interruption = self.check_interruption();
 
-        self.execute(instruction)
+        match opt_interruption {
+            Some(interruption) => self.handle_interruption(interruption),
+            None => {
+                let opcode = self.fetch();
+                let instruction = decode(opcode);
+
+                self.execute(instruction)
+            }
+        }
     }
 }

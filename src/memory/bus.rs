@@ -11,6 +11,8 @@ pub struct MemoryBus {
     cartridge: Cartridge,
     vram: [u8; 0x2000],
     wram: [u8; 0x2000],
+    interrupt_flags: u8,
+    interrupt_enable: u8,
 }
 
 impl MemoryBus {
@@ -20,6 +22,8 @@ impl MemoryBus {
             cartridge,
             vram: [0; 0x2000],
             wram: [0; 0x2000],
+            interrupt_flags: 0x00,
+            interrupt_enable: 0x00,
         }
     }
 
@@ -39,6 +43,8 @@ impl MemoryBus {
                 let offset = (address - WRAM_START) as usize;
                 self.wram[offset]
             }
+            INTERRUPT_FLAG_ADDRESS => self.interrupt_flags,
+            INTERRUPT_ENABLE_ADDRESS => self.interrupt_enable,
 
             _ => 0,
         }
@@ -58,6 +64,8 @@ impl MemoryBus {
             WRAM_START..=WRAM_END => {
                 self.wram[(address - WRAM_START) as usize] = value;
             }
+            INTERRUPT_FLAG_ADDRESS => self.interrupt_flags = value,
+            INTERRUPT_ENABLE_ADDRESS => self.interrupt_enable = value,
 
             _ => {}
         }

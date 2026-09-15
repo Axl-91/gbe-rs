@@ -8,7 +8,7 @@ use crate::cpu::{
 };
 
 impl Cpu {
-    fn should_i_jump(&self, condition: &Option<Condition>) -> bool {
+    fn should_i_jump(&self, condition: Option<Condition>) -> bool {
         match condition {
             None => true,
             Some(Condition::NotZero) => !self.registers.get_zero(),
@@ -20,7 +20,7 @@ impl Cpu {
 
     /// Executes a CPU control flow instruction.
     pub(crate) fn execute_control(&mut self, instruction: ControlInstruction) -> u8 {
-        match &instruction {
+        match instruction {
             ControlInstruction::Jr(condition) => {
                 let offset = self.fetch() as i8 as i16;
 
@@ -71,7 +71,7 @@ impl Cpu {
             ControlInstruction::Rst(code) => {
                 let pc = self.registers.get_pc();
                 self.push_into_sp(pc);
-                self.registers.set_pc(code.to_owned() as u16);
+                self.registers.set_pc(code as u16);
                 instruction.t_cycles()
             }
             ControlInstruction::JpHl => {
@@ -86,13 +86,19 @@ impl Cpu {
                 todo!("Once interruptions are implemented we add the logic")
             }
             ControlInstruction::DisableInterrupts => {
-                todo!("Once interruptions are implemented we add the logic")
+                self.ime = false;
+                instruction.t_cycles()
             }
             ControlInstruction::EnableInterrupts => {
-                todo!("Once interruptions are implemented we add the logic")
+                self.ime_schedule = true;
+                instruction.t_cycles()
             }
             ControlInstruction::Reti => {
-                todo!("Once interruptions are implemented we add the logic")
+                let new_pc = self.pop_from_sp();
+                self.registers.set_pc(new_pc);
+                self.ime = true;
+
+                instruction.t_cycles()
             }
         }
     }

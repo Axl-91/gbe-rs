@@ -13,7 +13,7 @@ pub enum Register8 {
     L,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Register16 {
     BC,
     DE,
@@ -21,7 +21,7 @@ pub enum Register16 {
     SP,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum StackRegister {
     AF,
     BC,
@@ -29,7 +29,7 @@ pub enum StackRegister {
     HL,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Condition {
     NotZero,
     Zero,
@@ -37,7 +37,7 @@ pub enum Condition {
     Carry,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Instruction {
     Nop,
 
@@ -54,7 +54,7 @@ pub enum Instruction {
     Cb,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum LoadInstruction {
     Load8Immediate(Register8),
     Load8Register(Register8, Register8),
@@ -84,7 +84,7 @@ pub enum LoadInstruction {
     Load8FromAddressHlDecrement,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ArithmeticInstruction {
     Inc(Register8),
     Dec(Register8),
@@ -135,13 +135,13 @@ pub enum ArithmeticInstruction {
     DecFromHl,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum StackInstruction {
     Push(StackRegister),
     Pop(StackRegister),
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum RotationInstruction {
     Rlca,
     Rla,
@@ -149,7 +149,7 @@ pub enum RotationInstruction {
     Rra,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ControlInstruction {
     Jr(Option<Condition>),
     Jp(Option<Condition>),
@@ -552,7 +552,7 @@ pub fn decode(opcode: u8) -> Instruction {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CbRotation {
     Rlc(Register8),
     RlcFromHl,
@@ -579,7 +579,7 @@ pub enum CbRotation {
     SrlFromHl,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CbInstruction {
     Bit(u8, Register8),
     BitFromHl(u8),
