@@ -10,6 +10,7 @@ mod load;
 mod registers;
 mod rotation;
 mod stack;
+mod t_cycles;
 
 #[cfg(test)]
 mod tests;
@@ -100,45 +101,35 @@ impl Cpu {
             .set_carry((sp & 0x00FF) + offset as u16 > 0x00FF);
     }
 
-    /// Executes the instruction.
-    fn execute(&mut self, instruction: Instruction) {
+    /// Executes the instruction and returns its T-Cycles.
+    fn execute(&mut self, instruction: Instruction) -> u8 {
         match instruction {
-            Instruction::Nop => {}
+            Instruction::Nop => 4,
 
-            Instruction::Load(instruction) => {
-                self.execute_load(instruction);
-            }
+            Instruction::Load(instruction) => self.execute_load(instruction),
 
-            Instruction::Arithmetic(instruction) => {
-                self.execute_arithmetic(instruction);
-            }
+            Instruction::Arithmetic(instruction) => self.execute_arithmetic(instruction),
 
-            Instruction::Stack(instruction) => {
-                self.execute_stack(instruction);
-            }
+            Instruction::Stack(instruction) => self.execute_stack(instruction),
 
-            Instruction::Rotation(instruction) => {
-                self.execute_rotation(instruction);
-            }
+            Instruction::Rotation(instruction) => self.execute_rotation(instruction),
 
-            Instruction::Control(instruction) => {
-                self.execute_control(instruction);
-            }
+            Instruction::Control(instruction) => self.execute_control(instruction),
             Instruction::Cb => {
                 let opcode = self.fetch();
-
                 let instruction = decode_cb(opcode);
 
-                self.execute_cb(instruction);
+                self.execute_cb(instruction)
             }
         }
     }
 
     /// Fetches the opcode, decodes it and executes the instruction
-    pub fn step(&mut self) {
+    /// then returns its T-Cycles
+    pub fn step(&mut self) -> u8 {
         let opcode = self.fetch();
         let instruction = decode(opcode);
 
-        self.execute(instruction);
+        self.execute(instruction)
     }
 }

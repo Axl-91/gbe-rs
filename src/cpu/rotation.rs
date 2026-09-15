@@ -16,7 +16,9 @@ impl Cpu {
     }
 
     /// Executes a CPU rotation instruction.
-    pub(crate) fn execute_rotation(&mut self, instruction: RotationInstruction) {
+    pub(crate) fn execute_rotation(&mut self, instruction: RotationInstruction) -> u8 {
+        let t_cycles = instruction.t_cycles();
+
         match instruction {
             RotationInstruction::Rlca => {
                 let a = self.registers.get_a();
@@ -57,6 +59,7 @@ impl Cpu {
                 self.registers.set_a(new_a);
             }
         }
+        t_cycles
     }
 
     /// Executes a CB-prefixed CPU rotation instruction.

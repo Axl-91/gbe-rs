@@ -52,7 +52,8 @@ impl Cpu {
     }
 
     /// Executes a CPU stack instruction.
-    pub(crate) fn execute_stack(&mut self, instruction: StackInstruction) {
+    pub(crate) fn execute_stack(&mut self, instruction: StackInstruction) -> u8 {
+        let t_cycles = instruction.t_cycles();
         match instruction {
             StackInstruction::Push(register) => {
                 let value = self.get_stack_register(&register);
@@ -63,5 +64,6 @@ impl Cpu {
                 self.set_stack_register(&register, value);
             }
         }
+        t_cycles
     }
 }

@@ -6,7 +6,9 @@ use crate::cpu::{Cpu, instruction::LoadInstruction};
 
 impl Cpu {
     /// Executes a CPU load instruction.
-    pub(crate) fn execute_load(&mut self, instruction: LoadInstruction) {
+    pub(crate) fn execute_load(&mut self, instruction: LoadInstruction) -> u8 {
+        let t_cycles = instruction.t_cycles();
+
         match instruction {
             LoadInstruction::Load8Immediate(register) => {
                 let value = self.fetch();
@@ -179,5 +181,6 @@ impl Cpu {
                 self.registers.set_hl(hl.wrapping_sub(1));
             }
         }
+        t_cycles
     }
 }

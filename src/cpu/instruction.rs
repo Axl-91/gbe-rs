@@ -593,6 +593,39 @@ pub enum CbInstruction {
     Rotation(CbRotation),
 }
 
+impl CbRotation {
+    pub(crate) fn t_cycles(&self) -> u8 {
+        match self {
+            CbRotation::Rlc(_) => 8,
+            CbRotation::Rrc(_) => 8,
+            CbRotation::Rl(_) => 8,
+            CbRotation::Rr(_) => 8,
+            CbRotation::Sla(_) => 8,
+            CbRotation::Sra(_) => 8,
+            CbRotation::Swap(_) => 8,
+            CbRotation::Srl(_) => 8,
+            _ => 16,
+        }
+    }
+}
+
+impl CbInstruction {
+    pub(crate) fn t_cycles(&self) -> u8 {
+        match self {
+            CbInstruction::Bit(_, _) => 8,
+            CbInstruction::BitFromHl(_) => 12,
+
+            CbInstruction::Res(_, _) => 8,
+            CbInstruction::ResFromHl(_) => 16,
+
+            CbInstruction::Set(_, _) => 8,
+            CbInstruction::SetFromHl(_) => 16,
+
+            CbInstruction::Rotation(instruction) => instruction.t_cycles(),
+        }
+    }
+}
+
 pub fn decode_cb(opcode: u8) -> CbInstruction {
     match opcode {
         // RLC

@@ -2,7 +2,9 @@ use crate::cpu::{Cpu, instruction::CbInstruction};
 
 impl Cpu {
     /// Executes a CB-prefixed instruction.
-    pub(crate) fn execute_cb(&mut self, instruction: CbInstruction) {
+    pub(crate) fn execute_cb(&mut self, instruction: CbInstruction) -> u8 {
+        let t_cycles = instruction.t_cycles();
+
         match instruction {
             CbInstruction::Bit(bit_value, register) => {
                 let test = (self.get_register8(&register) >> bit_value) & 0x01;
@@ -49,5 +51,6 @@ impl Cpu {
                 self.execute_cb_rotation(instruction);
             }
         }
+        t_cycles
     }
 }

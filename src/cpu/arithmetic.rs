@@ -100,7 +100,9 @@ impl Cpu {
     }
 
     /// Executes an arithmetic or logical CPU instruction.
-    pub(crate) fn execute_arithmetic(&mut self, instruction: ArithmeticInstruction) {
+    pub(crate) fn execute_arithmetic(&mut self, instruction: ArithmeticInstruction) -> u8 {
+        let t_cycles = instruction.t_cycles();
+
         match instruction {
             ArithmeticInstruction::Inc(register) => {
                 let register_value = self.get_register8(&register);
@@ -451,5 +453,6 @@ impl Cpu {
                 self.bus.write(hl, value);
             }
         }
+        t_cycles
     }
 }
