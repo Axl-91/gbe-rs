@@ -7,6 +7,7 @@
 A Game Boy DMG emulator written in Rust.
 
 The goal of this project is to build a simple and accurate emulator for the original Game Boy (DMG), starting from the core hardware and gradually adding the components required to run real games.
+
 ## Current progress
 
 ### CPU
@@ -28,7 +29,7 @@ The goal of this project is to build a simple and accurate emulator for the orig
 - [x] WRAM
 - [ ] HRAM
 - [ ] I/O registers
-- [ ] Interrupt registers
+- [x] Interrupt registers
 
 ### Cartridge
 - [x] Cartridge ROM
@@ -37,7 +38,7 @@ The goal of this project is to build a simple and accurate emulator for the orig
 
 ### Hardware
 - [ ] Timer
-- [ ] Interrupts
+- [x] Interrupts
 - [ ] PPU
 - [ ] Input
 
