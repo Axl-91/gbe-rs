@@ -2,9 +2,6 @@
 //!
 //! Provides access to the CPU registers and their individual flags.
 
-// TODO: Once we use all registers we can delete this
-#![allow(dead_code)]
-
 pub struct Registers {
     a: u8,
     f: u8,
