@@ -84,6 +84,7 @@ gbe-rs/
 │   │   ├── mbc1.rs
 │   │   └── mod.rs
 │   ├── cpu/
+│   │   ├── tests/
 │   │   ├── arithmetic.rs
 │   │   ├── cb.rs
 │   │   ├── control.rs
