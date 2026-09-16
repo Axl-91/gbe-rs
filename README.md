@@ -37,7 +37,7 @@ The goal of this project is to build a simple and accurate emulator for the orig
 - [x] Cartridge RAM
 
 ### Hardware
-- [ ] Timer
+- [x] Timer
 - [x] Interrupts
 - [ ] PPU
 - [ ] Input
