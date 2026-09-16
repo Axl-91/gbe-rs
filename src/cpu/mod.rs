@@ -161,10 +161,10 @@ impl Cpu {
             return self.step_halted();
         }
 
-        if self.ime {
-            if let Some(interruption) = self.check_interruption() {
-                return self.handle_interruption(interruption);
-            }
+        if self.ime
+            && let Some(interruption) = self.check_interruption()
+        {
+            return self.handle_interruption(interruption);
         }
 
         let opcode = self.fetch();
