@@ -4,7 +4,10 @@
 //! such as the cartridge, VRAM, and WRAM.
 
 use super::map::*;
-use crate::{cartridge::Cartridge, timer::Timer};
+use crate::{
+    cartridge::Cartridge,
+    timer::{Timer, TimerEvent},
+};
 
 /// Provides access to the Game Boy memory address space.
 pub struct MemoryBus {
@@ -29,9 +32,17 @@ impl MemoryBus {
         }
     }
 
+    fn check_time_overflow(&mut self, event: Option<TimerEvent>) {
+        match event {
+            Some(TimerEvent::Overflow) => self.interrupt_flags |= 1 << 2,
+            _ => {}
+        }
+    }
+
     pub fn tick(&mut self, t_cycles: u8) {
         for _ in 0..t_cycles {
-            self.timer.tick();
+            let event = self.timer.tick();
+            self.check_time_overflow(event);
         }
     }
 

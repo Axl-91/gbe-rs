@@ -21,6 +21,10 @@ pub struct Timer {
     tac: u8,
 }
 
+pub enum TimerEvent {
+    Overflow,
+}
+
 impl Timer {
     pub fn new() -> Self {
         Self {
@@ -103,7 +107,7 @@ impl Timer {
     /// The internal divider is incremented every T-Cycle. When the timer
     /// is enabled, TIMA is incremented when the selected divider bit
     /// transitions from `1` to `0` (falling edge).
-    pub(crate) fn tick(&mut self) {
+    pub(crate) fn tick(&mut self) -> Option<TimerEvent> {
         let timer_enabled = self.tac & (1 << 2) != 0;
 
         let div_bit = self.get_frequency_bit();
@@ -116,7 +120,9 @@ impl Timer {
 
         if timer_enabled && prev_bit == 1 && actual_bit == 0 {
             self.increment_tima();
+            return Some(TimerEvent::Overflow);
         }
+        None
     }
 }
 

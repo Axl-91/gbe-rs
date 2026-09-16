@@ -94,6 +94,7 @@ impl Cpu {
             }
             ControlInstruction::DisableInterrupts => {
                 self.ime = false;
+                self.ime_schedule = false;
                 instruction.t_cycles()
             }
             ControlInstruction::EnableInterrupts => {
