@@ -33,9 +33,8 @@ impl MemoryBus {
     }
 
     fn check_time_overflow(&mut self, event: Option<TimerEvent>) {
-        match event {
-            Some(TimerEvent::Overflow) => self.interrupt_flags |= 1 << 2,
-            _ => {}
+        if let Some(TimerEvent::Overflow) = event {
+            self.interrupt_flags |= 1 << 2;
         }
     }
 
