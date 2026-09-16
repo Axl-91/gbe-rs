@@ -7,3 +7,4 @@ mod jr;
 mod ret;
 mod reti;
 mod rst;
+mod stop;

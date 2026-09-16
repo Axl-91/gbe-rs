@@ -22,6 +22,9 @@ use registers::Registers;
 /// Address where the Game Boy starts executing the game after the boot sequence.
 const GAME_ENTRY_POINT: u16 = 0x0100;
 
+const NON_CYCLES: u8 = 0x00;
+const HALT_CYCLES: u8 = 0x04;
+
 /// Represents the Game Boy CPU and its connection to the memory bus.
 pub struct Cpu {
     registers: Registers,
@@ -30,6 +33,7 @@ pub struct Cpu {
     ime_schedule: bool,
     halted: bool,
     halt_bug: bool,
+    stopped: bool,
 }
 
 impl Cpu {
@@ -46,6 +50,7 @@ impl Cpu {
             ime_schedule: false,
             halted: false,
             halt_bug: false,
+            stopped: false,
         }
     }
 
@@ -157,6 +162,9 @@ impl Cpu {
 
     /// Executes one CPU step and returns the number of T-Cycles consumed.
     pub fn step(&mut self) -> u8 {
+        if self.stopped {
+            return NON_CYCLES;
+        }
         if self.halted {
             return self.step_halted();
         }
@@ -175,7 +183,7 @@ impl Cpu {
     fn step_halted(&mut self) -> u8 {
         let Some(interruption) = self.check_interruption() else {
             // HALT without interruptions consumes 4 T-Cycles.
-            return 4;
+            return HALT_CYCLES;
         };
 
         self.halted = false;
@@ -184,7 +192,7 @@ impl Cpu {
             self.handle_interruption(interruption)
         } else {
             // Wake from HALT without servicing the interrupt.
-            0
+            NON_CYCLES
         }
     }
 }

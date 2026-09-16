@@ -13,14 +13,14 @@ The goal of this project is to build a simple and accurate emulator for the orig
 ### CPU
 - [x] CPU registers and flags
 - [x] Fetch / decode / execute cycle
-- [ ] Instruction set
+- [x] Instruction set
   - [x] Arithmetic
   - [x] Load / Store
   - [x] Control flow
   - [x] Stack operations
   - [x] Rotations / shifts
   - [x] Bit operations
-  - [ ] CPU control instructions
+  - [x] CPU control instructions
 - [x] Instruction timing
 
 ### Memory

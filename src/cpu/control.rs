@@ -80,7 +80,9 @@ impl Cpu {
                 instruction.t_cycles()
             }
             ControlInstruction::Stop => {
-                todo!("Once interruptions are implemented we add the logic")
+                _ = self.fetch();
+                self.stopped = true;
+                instruction.t_cycles()
             }
             ControlInstruction::Halt => {
                 self.halted = true;
