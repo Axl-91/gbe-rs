@@ -28,6 +28,8 @@ pub struct Cpu {
     bus: MemoryBus,
     ime: bool,
     ime_schedule: bool,
+    halted: bool,
+    halt_bug: bool,
 }
 
 impl Cpu {
@@ -42,6 +44,8 @@ impl Cpu {
             bus,
             ime: false,
             ime_schedule: false,
+            halted: false,
+            halt_bug: false,
         }
     }
 
@@ -50,7 +54,12 @@ impl Cpu {
         let pc = self.registers.get_pc();
         let opcode = self.bus.read(pc);
 
-        self.registers.set_pc(pc + 1);
+        if self.halt_bug {
+            self.halt_bug = false;
+        } else {
+            let next_pc = pc.wrapping_add(1);
+            self.registers.set_pc(next_pc);
+        }
         opcode
     }
 
@@ -146,19 +155,36 @@ impl Cpu {
         t_cycles
     }
 
-    /// Fetches the opcode, decodes it and executes the instruction
-    /// then returns its T-Cycles
+    /// Executes one CPU step and returns the number of T-Cycles consumed.
     pub fn step(&mut self) -> u8 {
-        let opt_interruption = self.check_interruption();
+        if self.halted {
+            return self.step_halted();
+        }
 
-        match opt_interruption {
-            Some(interruption) => self.handle_interruption(interruption),
-            None => {
-                let opcode = self.fetch();
-                let instruction = decode(opcode);
-
-                self.execute(instruction)
+        if self.ime {
+            if let Some(interruption) = self.check_interruption() {
+                return self.handle_interruption(interruption);
             }
+        }
+
+        let opcode = self.fetch();
+        let instruction = decode(opcode);
+        self.execute(instruction)
+    }
+
+    fn step_halted(&mut self) -> u8 {
+        let Some(interruption) = self.check_interruption() else {
+            // HALT without interruptions consumes 4 T-Cycles.
+            return 4;
+        };
+
+        self.halted = false;
+
+        if self.ime {
+            self.handle_interruption(interruption)
+        } else {
+            // Wake from HALT without servicing the interrupt.
+            0
         }
     }
 }

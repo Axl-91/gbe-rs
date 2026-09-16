@@ -4,7 +4,7 @@
 //! such as the cartridge, VRAM, and WRAM.
 
 use super::map::*;
-use crate::cartridge::Cartridge;
+use crate::{cartridge::Cartridge, timer::Timer};
 
 /// Provides access to the Game Boy memory address space.
 pub struct MemoryBus {
@@ -13,6 +13,7 @@ pub struct MemoryBus {
     wram: [u8; 0x2000],
     interrupt_flags: u8,
     interrupt_enable: u8,
+    timer: Timer,
 }
 
 impl MemoryBus {
@@ -24,6 +25,13 @@ impl MemoryBus {
             wram: [0; 0x2000],
             interrupt_flags: 0x00,
             interrupt_enable: 0x00,
+            timer: Timer::new(),
+        }
+    }
+
+    pub fn tick(&mut self, t_cycles: u8) {
+        for _ in 0..t_cycles {
+            self.timer.tick();
         }
     }
 
@@ -46,6 +54,11 @@ impl MemoryBus {
             INTERRUPT_FLAG_ADDRESS => self.interrupt_flags,
             INTERRUPT_ENABLE_ADDRESS => self.interrupt_enable,
 
+            TIMER_DIV_ADDRESS => self.timer.read_div(),
+            TIMER_TIMA_ADDRESS => self.timer.read_tima(),
+            TIMER_TMA_ADDRESS => self.timer.read_tma(),
+            TIMER_TAC_ADDRESS => self.timer.read_tac(),
+
             _ => 0,
         }
     }
@@ -66,6 +79,11 @@ impl MemoryBus {
             }
             INTERRUPT_FLAG_ADDRESS => self.interrupt_flags = value,
             INTERRUPT_ENABLE_ADDRESS => self.interrupt_enable = value,
+
+            TIMER_DIV_ADDRESS => self.timer.reset_div(),
+            TIMER_TIMA_ADDRESS => self.timer.write_tima(value),
+            TIMER_TMA_ADDRESS => self.timer.write_tma(value),
+            TIMER_TAC_ADDRESS => self.timer.write_tac(value),
 
             _ => {}
         }

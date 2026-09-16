@@ -19,3 +19,8 @@ pub const ROM_BANK_SIZE: usize = 0x4000;
 
 pub const INTERRUPT_FLAG_ADDRESS: u16 = 0xFF0F;
 pub const INTERRUPT_ENABLE_ADDRESS: u16 = 0xFFFF;
+
+pub const TIMER_DIV_ADDRESS: u16 = 0xFF04;
+pub const TIMER_TIMA_ADDRESS: u16 = 0xFF05;
+pub const TIMER_TMA_ADDRESS: u16 = 0xFF06;
+pub const TIMER_TAC_ADDRESS: u16 = 0xFF07;

@@ -83,7 +83,14 @@ impl Cpu {
                 todo!("Once interruptions are implemented we add the logic")
             }
             ControlInstruction::Halt => {
-                todo!("Once interruptions are implemented we add the logic")
+                self.halted = true;
+
+                if !self.ime && self.check_interruption().is_some() {
+                    self.halted = false;
+                    self.halt_bug = true;
+                }
+
+                instruction.t_cycles()
             }
             ControlInstruction::DisableInterrupts => {
                 self.ime = false;

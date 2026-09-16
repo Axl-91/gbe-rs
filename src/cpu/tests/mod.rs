@@ -40,3 +40,4 @@ mod fetch;
 mod load;
 mod rotation;
 mod stack;
+mod timer;

@@ -55,15 +55,7 @@ fn interruption_bit(bit: u8) -> Interruption {
 
 impl Cpu {
     /// Returns the highest-priority interrupt that can currently be serviced.
-    ///
-    /// An interrupt can be serviced only when IME is enabled and the
-    /// corresponding bit is set in both the interrupt enable and interrupt
-    /// flag registers.
     pub(crate) fn check_interruption(&self) -> Option<Interruption> {
-        if !self.ime {
-            return None;
-        }
-
         let interrupt_enable = self.bus.read(INTERRUPT_ENABLE_ADDRESS);
         let interrupt_flag = self.bus.read(INTERRUPT_FLAG_ADDRESS);
 
