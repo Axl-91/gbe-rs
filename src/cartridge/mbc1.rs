@@ -214,7 +214,7 @@ mod tests {
         }
 
         #[test]
-        fn read_rom_bank_n_zero_low_with_high_bits_then_remaps() {
+        fn write_rom_bank_low_zero_remaps_to_one_regardless_of_high_bits() {
             let mut rng = rand::rng();
 
             let high: u8 = rng.random_range(1..=0x03);
@@ -226,19 +226,18 @@ mod tests {
             mbc.write(ROM_BANK_LOW_START, 0);
 
             let offset = address - ROM_BANK_N_START;
-            let bank = (high as usize) << 5;
+            let bank = ((high as usize) << 5) | 1;
             let expected = ROM_BANK_SIZE * bank + offset as usize;
 
-            // If the low bits are set to 0 while the high bits are non-zero,
-            // the selected bank remains determined by the high bits.
+            // Writing 0 to the low bits always remaps them to 1, regardless
+            // of the high bits (banks 0x20/0x40/0x60 don't exist on MBC1).
             assert_eq!(mbc.read(address), expected);
 
             mbc.write(BANK_HIGH_START, 0);
 
             let expected = ROM_BANK_SIZE + offset as usize;
 
-            // Once the high bits are set to 0, the selected bank becomes 0
-            // and is remapped to bank 1.
+            // With the high bits cleared, only the remapped low bits (1) remain.
             assert_eq!(mbc.read(address), expected);
         }
     }
