@@ -2,7 +2,7 @@
 //!
 //! Handles ROM and RAM bank selection for Game Boy cartridges.
 
-use crate::memory::map::{CARTRIDGE_RAM_END, CARTRIDGE_RAM_START, ROM_BANK_SIZE};
+use crate::memory::map::ROM_BANK_SIZE;
 
 // Addresses ranges for read
 const ROM_BANK_0_START: u16 = 0x0000;
@@ -107,7 +107,6 @@ impl Mbc1 {
                     BankingMode::Ram
                 };
             }
-            CARTRIDGE_RAM_START..=CARTRIDGE_RAM_END => {}
             _ => {}
         }
     }
@@ -126,6 +125,7 @@ mod tests {
 
     mod roms {
         use super::*;
+        use crate::memory::map::CARTRIDGE_RAM_END;
 
         #[test]
         fn read_rom_bank_0() {
