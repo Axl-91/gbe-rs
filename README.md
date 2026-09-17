@@ -51,23 +51,7 @@ The emulator works by reproducing the main hardware components of the Game Boy a
 
 At the center is the CPU, which fetches instructions from memory, decodes them, and executes them. Memory access is handled through a memory bus, which routes reads and writes to the appropriate hardware component.
 
-<img width="1408" height="768" alt="gbe_logic" src="https://github.com/user-attachments/assets/14a29bc9-92fa-462c-a574-9d1160820e01" />
-
-
-As development progresses, the bus will also connect the CPU with the remaining hardware components:
-
-```text
-Memory Bus
-├── Cartridge
-├── VRAM
-├── WRAM
-├── HRAM
-├── I/O Registers
-├── Timer
-├── PPU
-├── Input
-└── Interrupts
-```
+<img width="1408" alt="gbe_logic" src="https://github.com/Axl-91/gbe-rs/blob/main/assets/diagram.jpg" />
 
 The emulator advances the hardware over time by executing CPU instructions and, eventually, consuming the corresponding number of cycles. This allows components such as the PPU and timer to remain synchronized with the CPU.
 
