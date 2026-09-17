@@ -98,7 +98,6 @@ gbe-rs/
 
 ------------------
 
-
 <div align="center">
-  <img width="500" height="342" alt="gameboy" src="https://github.com/user-attachments/assets/df020866-0056-465e-9664-b5b50a88f5e4" />
+  <img align="center" width="352" alt="blargg" src="https://github.com/Axl-91/gbe-rs/blob/main/assets/Blargg.jpg" />
 </div>
