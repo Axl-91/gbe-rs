@@ -139,3 +139,45 @@ fn pop_af_clears_unused_flag_bits() {
 
     assert_eq!(cpu.registers.get_af() & 0x0F, 0);
 }
+
+#[test]
+fn pop_af_restores_flags() {
+    let mut rng = rand::rng();
+
+    let mut cpu = create_cpu(0xF1, None, None);
+
+    let sp = WRAM_START;
+
+    cpu.registers.set_sp(sp);
+
+    let flags = rng.random::<u8>() & 0xF0;
+    let a = rng.random::<u8>();
+
+    cpu.bus.write(sp, flags);
+    cpu.bus.write(sp + 1, a);
+
+    cpu.step();
+
+    assert_eq!(cpu.registers.get_a(), a);
+
+    assert_eq!(cpu.registers.get_zero(), flags & 0x80 != 0);
+    assert_eq!(cpu.registers.get_subtract(), flags & 0x40 != 0);
+    assert_eq!(cpu.registers.get_half_carry(), flags & 0x20 != 0);
+    assert_eq!(cpu.registers.get_carry(), flags & 0x10 != 0);
+}
+
+#[test]
+fn push_de_pop_af_round_trip() {
+    let mut rng = rand::rng();
+
+    let mut cpu = create_cpu(0xF5, None, None);
+
+    let de = rng.random::<u16>();
+    cpu.registers.set_de(de);
+
+    // PUSH DE
+    cpu.step();
+
+    // POP AF
+    cpu.bus.write(cpu.registers.get_sp(), rng.random());
+}

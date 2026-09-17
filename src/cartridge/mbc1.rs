@@ -90,8 +90,8 @@ impl Mbc1 {
             }
 
             ROM_BANK_LOW_START..=ROM_BANK_LOW_END => {
-                // We check for the lower 5 bits
-                self.rom_bank_low = value & 0x1F;
+                let bank = value & 0x1F;
+                self.rom_bank_low = if bank == 0 { 1 } else { bank };
             }
 
             BANK_HIGH_START..=BANK_HIGH_END => {
@@ -109,9 +109,6 @@ impl Mbc1 {
             }
             CARTRIDGE_RAM_START..=CARTRIDGE_RAM_END => {}
             _ => {}
-        }
-        if self.rom_bank_low == 0 && self.bank_high == 0 {
-            self.rom_bank_low = 1;
         }
     }
 }

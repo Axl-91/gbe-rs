@@ -160,6 +160,14 @@ impl Cpu {
         t_cycles
     }
 
+    pub fn take_serial_output(&mut self) -> Option<u8> {
+        self.bus.take_serial_output()
+    }
+
+    pub fn tick(&mut self, t_cycles: u8) {
+        self.bus.tick(t_cycles);
+    }
+
     /// Executes one CPU step and returns the number of T-Cycles consumed.
     pub fn step(&mut self) -> u8 {
         if self.stopped {

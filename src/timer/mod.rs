@@ -94,11 +94,14 @@ impl Timer {
             _ => unreachable!(),
         }
     }
-    fn increment_tima(&mut self) {
+
+    fn increment_tima(&mut self) -> Option<TimerEvent> {
         if self.tima == 0xFF {
             self.tima = self.tma;
+            Some(TimerEvent::Overflow)
         } else {
             self.tima += 1;
+            None
         }
     }
 
@@ -114,13 +117,12 @@ impl Timer {
 
         let prev_bit = (self.div >> div_bit) & 0x01;
 
-        self.div += 1;
+        self.div = self.div.wrapping_add(1);
 
         let actual_bit = (self.div >> div_bit) & 0x01;
 
         if timer_enabled && prev_bit == 1 && actual_bit == 0 {
-            self.increment_tima();
-            return Some(TimerEvent::Overflow);
+            return self.increment_tima();
         }
         None
     }

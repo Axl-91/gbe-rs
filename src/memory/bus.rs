@@ -6,6 +6,7 @@
 use super::map::*;
 use crate::{
     cartridge::Cartridge,
+    serial::Serial,
     timer::{Timer, TimerEvent},
 };
 
@@ -14,9 +15,11 @@ pub struct MemoryBus {
     cartridge: Cartridge,
     vram: [u8; 0x2000],
     wram: [u8; 0x2000],
+    hram: [u8; 0x7F],
     interrupt_flags: u8,
     interrupt_enable: u8,
     timer: Timer,
+    serial: Serial,
 }
 
 impl MemoryBus {
@@ -26,10 +29,16 @@ impl MemoryBus {
             cartridge,
             vram: [0; 0x2000],
             wram: [0; 0x2000],
+            hram: [0; 0x7F],
             interrupt_flags: 0x00,
             interrupt_enable: 0x00,
             timer: Timer::new(),
+            serial: Serial::new(),
         }
+    }
+
+    pub fn take_serial_output(&mut self) -> Option<u8> {
+        self.serial.take_output()
     }
 
     fn check_time_overflow(&mut self, event: Option<TimerEvent>) {
@@ -61,6 +70,12 @@ impl MemoryBus {
                 let offset = (address - WRAM_START) as usize;
                 self.wram[offset]
             }
+
+            HRAM_START..=HRAM_END => {
+                let offset = (address - HRAM_START) as usize;
+                self.hram[offset]
+            }
+
             INTERRUPT_FLAG_ADDRESS => self.interrupt_flags,
             INTERRUPT_ENABLE_ADDRESS => self.interrupt_enable,
 
@@ -68,6 +83,9 @@ impl MemoryBus {
             TIMER_TIMA_ADDRESS => self.timer.read_tima(),
             TIMER_TMA_ADDRESS => self.timer.read_tma(),
             TIMER_TAC_ADDRESS => self.timer.read_tac(),
+
+            SERIAL_DATA_ADDRESS => self.serial.read_data(),
+            SERIAL_CONTROL_ADDRESS => self.serial.read_control(),
 
             _ => 0,
         }
@@ -87,6 +105,11 @@ impl MemoryBus {
             WRAM_START..=WRAM_END => {
                 self.wram[(address - WRAM_START) as usize] = value;
             }
+
+            HRAM_START..=HRAM_END => {
+                self.hram[(address - HRAM_START) as usize] = value;
+            }
+
             INTERRUPT_FLAG_ADDRESS => self.interrupt_flags = value,
             INTERRUPT_ENABLE_ADDRESS => self.interrupt_enable = value,
 
@@ -94,6 +117,9 @@ impl MemoryBus {
             TIMER_TIMA_ADDRESS => self.timer.write_tima(value),
             TIMER_TMA_ADDRESS => self.timer.write_tma(value),
             TIMER_TAC_ADDRESS => self.timer.write_tac(value),
+
+            SERIAL_DATA_ADDRESS => self.serial.write_data(value),
+            SERIAL_CONTROL_ADDRESS => self.serial.write_control(value),
 
             _ => {}
         }
