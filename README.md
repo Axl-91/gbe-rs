@@ -27,7 +27,7 @@ The goal of this project is to build a simple and accurate emulator for the orig
 - [x] Memory bus
 - [x] VRAM
 - [x] WRAM
-- [ ] HRAM
+- [x] HRAM
 - [ ] I/O registers
 - [x] Interrupt registers
 
