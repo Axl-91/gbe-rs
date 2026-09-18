@@ -36,7 +36,7 @@ impl MemoryBus {
             vram: [0; 0x2000],
             wram: [0; 0x2000],
             hram: [0; 0x7F],
-            interrupt_flags: 0x00,
+            interrupt_flags: 0xE1,
             interrupt_enable: 0x00,
             timer: Timer::new(),
             serial: Serial::new(),
