@@ -161,9 +161,9 @@ impl Cpu {
 
     /// Executes the instruction and returns its T-Cycles.
     fn execute(&mut self, instruction: Instruction) -> u8 {
-        let pending_ime_schedule = self.ime_schedule;
+        self.check_ime(self.ime_schedule);
 
-        let t_cycles = match instruction {
+        match instruction {
             Instruction::Nop => 4,
 
             Instruction::Load(instruction) => self.execute_load(instruction),
@@ -181,11 +181,7 @@ impl Cpu {
 
                 self.execute_cb(instruction)
             }
-        };
-
-        self.check_ime(pending_ime_schedule);
-
-        t_cycles
+        }
     }
 
     pub fn take_serial_output(&mut self) -> Option<u8> {
@@ -204,25 +200,41 @@ impl Cpu {
         if self.ime
             && let Some(interruption) = self.check_interruption()
         {
-            return self.handle_interruption(interruption);
+            let t_cycles_interrupt = self.handle_interruption(interruption);
+            assert_eq!(20, t_cycles_interrupt);
+
+            return t_cycles_interrupt;
         }
+
+        let past = self.get_total_ticks();
 
         let opcode = self.fetch();
         let instruction = decode(opcode);
 
-        self.execute(instruction)
+        let real_t = self.execute(instruction);
+
+        let present = self.get_total_ticks();
+
+        assert_eq!(present - past, real_t as u64);
+
+        real_t
     }
 
     fn step_halted(&mut self) -> u8 {
         let Some(interruption) = self.check_interruption() else {
             // HALT without interruptions consumes 4 T-Cycles.
+            self.tick_internal();
+
             return HALT_CYCLES;
         };
 
         self.halted = false;
 
         if self.ime {
-            self.handle_interruption(interruption)
+            let t_cycles_interrupt = self.handle_interruption(interruption);
+            assert_eq!(20, t_cycles_interrupt);
+
+            t_cycles_interrupt
         } else {
             // Wake from HALT without servicing the interrupt.
             NON_CYCLES

@@ -56,8 +56,8 @@ fn interruption_bit(bit: u8) -> Interruption {
 impl Cpu {
     /// Returns the highest-priority interrupt that can currently be serviced.
     pub(crate) fn check_interruption(&mut self) -> Option<Interruption> {
-        let interrupt_enable = self.tick_read(INTERRUPT_ENABLE_ADDRESS);
-        let interrupt_flag = self.tick_read(INTERRUPT_FLAG_ADDRESS);
+        let interrupt_enable = self.bus.read(INTERRUPT_ENABLE_ADDRESS);
+        let interrupt_flag = self.bus.read(INTERRUPT_FLAG_ADDRESS);
 
         let mut offset: u8 = 0;
 
@@ -72,19 +72,29 @@ impl Cpu {
         }
         None
     }
+
     pub(crate) fn handle_interruption(&mut self, interruption: Interruption) -> u8 {
         self.ime = false;
 
-        // Clear the interrupt request.
-        let interrupt_flag = self.tick_read(INTERRUPT_FLAG_ADDRESS);
-        let interrupt_bit = interruption.bit();
-        let clear_mask = !(0x01 << interrupt_bit);
+        // Real hardware always begins fetching the next opcode before
+        // deciding to dispatch an interrupt instead; that discarded fetch,
+        // plus two further internal decision cycles, account for 3
+        // M-Cycles here. None of them touch the bus.
+        self.tick_internal();
+        self.tick_internal();
+        self.tick_internal();
 
-        let new_if = interrupt_flag & clear_mask;
-        self.tick_write(INTERRUPT_FLAG_ADDRESS, new_if);
-
-        // Push the current PC onto the stack.
         let pc = self.registers.get_pc();
+
+        // Acknowledging (clearing) the IF bit is an internal CPU operation
+        // that happens alongside the low-byte push below, not a bus access
+        // of its own — so it must not consume an extra M-Cycle by itself.
+        let interrupt_flag = self.bus.read(INTERRUPT_FLAG_ADDRESS);
+        let clear_mask = !(0x01 << interruption.bit());
+        self.bus
+            .write(INTERRUPT_FLAG_ADDRESS, interrupt_flag & clear_mask);
+
+        // Push the current PC onto the stack (2 M-Cycles: high byte, low byte).
         self.push_into_sp(pc);
 
         // Jump to the interrupt vector.

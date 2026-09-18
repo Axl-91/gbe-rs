@@ -123,10 +123,13 @@ impl MemoryBus {
                 self.hram[(address - HRAM_START) as usize] = value;
             }
 
-            INTERRUPT_FLAG_ADDRESS => self.interrupt_flags = value,
+            INTERRUPT_FLAG_ADDRESS => self.interrupt_flags = value | 0xE0,
             INTERRUPT_ENABLE_ADDRESS => self.interrupt_enable = value,
 
-            TIMER_DIV_ADDRESS => self.timer.reset_div(),
+            TIMER_DIV_ADDRESS => {
+                let event = self.timer.write_div();
+                self.check_time_overflow(event);
+            }
             TIMER_TIMA_ADDRESS => self.timer.write_tima(value),
             TIMER_TMA_ADDRESS => self.timer.write_tma(value),
             TIMER_TAC_ADDRESS => {
