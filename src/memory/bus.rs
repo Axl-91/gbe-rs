@@ -6,9 +6,14 @@
 use super::map::*;
 use crate::{
     cartridge::Cartridge,
+    joypad::Joypad,
     serial::Serial,
     timer::{Timer, TimerEvent},
 };
+
+/// Value returned when reading from an address that isn't backed by any
+/// implemented memory or I/O register.
+const UNMAPPED_ADDRESS_VALUE: u8 = 0xFF;
 
 /// Provides access to the Game Boy memory address space.
 pub struct MemoryBus {
@@ -20,6 +25,7 @@ pub struct MemoryBus {
     interrupt_enable: u8,
     timer: Timer,
     serial: Serial,
+    joypad: Joypad,
 }
 
 impl MemoryBus {
@@ -34,7 +40,12 @@ impl MemoryBus {
             interrupt_enable: 0x00,
             timer: Timer::new(),
             serial: Serial::new(),
+            joypad: Joypad::new(),
         }
+    }
+
+    pub fn is_joypad_active(&self) -> bool {
+        self.joypad.is_joypad_active()
     }
 
     pub fn take_serial_output(&mut self) -> Option<u8> {
@@ -87,7 +98,9 @@ impl MemoryBus {
             SERIAL_DATA_ADDRESS => self.serial.read_data(),
             SERIAL_CONTROL_ADDRESS => self.serial.read_control(),
 
-            _ => 0,
+            JOYPAD_ADDRESS => self.joypad.read(),
+
+            _ => UNMAPPED_ADDRESS_VALUE,
         }
     }
 
@@ -120,6 +133,8 @@ impl MemoryBus {
 
             SERIAL_DATA_ADDRESS => self.serial.write_data(value),
             SERIAL_CONTROL_ADDRESS => self.serial.write_control(value),
+
+            JOYPAD_ADDRESS => self.joypad.write(value),
 
             _ => {}
         }

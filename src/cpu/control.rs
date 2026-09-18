@@ -81,7 +81,15 @@ impl Cpu {
             }
             ControlInstruction::Stop => {
                 _ = self.fetch();
-                self.stopped = true;
+
+                let joypad_active = self.bus.is_joypad_active();
+                let interrupt_pending = self.check_interruption().is_some();
+
+                if joypad_active || interrupt_pending {
+                    // TODO: There's still logic to do here
+                } else {
+                    self.stopped = true;
+                }
                 instruction.t_cycles()
             }
             ControlInstruction::Halt => {
