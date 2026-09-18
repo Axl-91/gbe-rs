@@ -337,26 +337,26 @@ mod tests {
             assert!(cpu.get_zero());
             assert!(!cpu.get_subtract());
 
-            assert!(!cpu.get_half_carry());
-            assert!(!cpu.get_carry());
+            assert!(cpu.get_half_carry());
+            assert!(cpu.get_carry());
 
             cpu.set_subtract(true);
             assert!(cpu.get_zero());
             assert!(cpu.get_subtract());
-            assert!(!cpu.get_half_carry());
-            assert!(!cpu.get_carry());
-
-            cpu.set_half_carry(true);
-            assert!(cpu.get_zero());
-            assert!(cpu.get_subtract());
-            assert!(cpu.get_half_carry());
-            assert!(!cpu.get_carry());
-
-            cpu.set_carry(true);
-            assert!(cpu.get_zero());
-            assert!(cpu.get_subtract());
             assert!(cpu.get_half_carry());
             assert!(cpu.get_carry());
+
+            cpu.set_half_carry(false);
+            assert!(cpu.get_zero());
+            assert!(cpu.get_subtract());
+            assert!(!cpu.get_half_carry());
+            assert!(cpu.get_carry());
+
+            cpu.set_carry(false);
+            assert!(cpu.get_zero());
+            assert!(cpu.get_subtract());
+            assert!(!cpu.get_half_carry());
+            assert!(!cpu.get_carry());
         }
 
         #[test]
