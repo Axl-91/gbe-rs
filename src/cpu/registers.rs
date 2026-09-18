@@ -22,6 +22,7 @@ const SHIFT_CARRY: u8 = 4;
 
 impl Registers {
     pub fn new() -> Self {
+        //Default values as seen in PanDocs
         Self {
             a: 0x01,
             f: 0xB0,
@@ -32,7 +33,7 @@ impl Registers {
             h: 0x01,
             l: 0x4D,
             sp: 0xFFFE,
-            pc: 0,
+            pc: 0x0100,
         }
     }
 

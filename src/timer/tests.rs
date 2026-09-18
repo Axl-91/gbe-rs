@@ -214,6 +214,7 @@ fn writing_tima_during_the_reload_m_cycle_is_ignored() {
 
     let mut timer = Timer::new();
 
+    let _ = timer.write_div();
     let _ = timer.write_tac(0b100);
     timer.write_tma(modulo);
     timer.write_tima(0xFF);
@@ -239,6 +240,7 @@ fn writing_tma_during_the_reload_m_cycle_is_also_copied_to_tima() {
 
     let mut timer = Timer::new();
 
+    let _ = timer.write_div();
     let _ = timer.write_tac(0b100);
     timer.write_tma(old_modulo);
     timer.write_tima(0xFF);

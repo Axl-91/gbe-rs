@@ -73,32 +73,59 @@ impl Cpu {
         None
     }
 
+    /// Services a pending interrupt.
+    ///
+    /// Real hardware spends 5 M-Cycles here: 3 internal cycles (the CPU begins
+    /// fetching the next opcode before deciding to dispatch an interrupt
+    /// instead, then spends two more cycles on internal decision-making) plus
+    /// the 2 M-Cycles of the PC push.
+    ///
+    /// The high-byte push can hit `IE` (`0xFFFF`) if `SP` lands there, so the
+    /// interrupt actually serviced is re-decided right after that write, not
+    /// before it. If the corrupted `IE` no longer has any interrupt pending
+    /// against `IF`, dispatch is cancelled entirely: PC jumps to `0x0000` and
+    /// `IF` is left untouched. Otherwise the (possibly different) interrupt is
+    /// serviced as normal.
     pub(crate) fn handle_interruption(&mut self, interruption: Interruption) -> u8 {
         self.ime = false;
 
-        // Real hardware always begins fetching the next opcode before
-        // deciding to dispatch an interrupt instead; that discarded fetch,
-        // plus two further internal decision cycles, account for 3
-        // M-Cycles here. None of them touch the bus.
         self.tick_internal();
         self.tick_internal();
         self.tick_internal();
 
         let pc = self.registers.get_pc();
+        let sp = self.registers.get_sp();
 
-        // Acknowledging (clearing) the IF bit is an internal CPU operation
-        // that happens alongside the low-byte push below, not a bus access
-        // of its own — so it must not consume an extra M-Cycle by itself.
-        let interrupt_flag = self.bus.read(INTERRUPT_FLAG_ADDRESS);
-        let clear_mask = !(0x01 << interruption.bit());
-        self.bus
-            .write(INTERRUPT_FLAG_ADDRESS, interrupt_flag & clear_mask);
+        // Push the high byte first. This is the write that can corrupt IE.
+        let sp_high = sp.wrapping_sub(1);
+        self.tick_write(sp_high, (pc >> 8) as u8);
 
-        // Push the current PC onto the stack (2 M-Cycles: high byte, low byte).
-        self.push_into_sp(pc);
+        // Re-evaluate which interrupt (if any) is still pending now that IE
+        // may have changed. This is the vector that actually gets serviced.
+        let final_interruption = self.check_interruption();
 
-        // Jump to the interrupt vector.
-        self.registers.set_pc(interruption.vector());
+        // Push the low byte. This can also hit IE, but it's too late to
+        // affect the decision we just made above.
+        let sp_low = sp.wrapping_sub(2);
+        self.tick_write(sp_low, pc as u8);
+        self.registers.set_sp(sp_low);
+
+        match final_interruption {
+            Some(final_interruption) => {
+                // Clear only the bit for the interrupt we're actually servicing.
+                let interrupt_flag = self.bus.read(INTERRUPT_FLAG_ADDRESS);
+                let clear_mask = !(0x01 << final_interruption.bit());
+
+                self.bus
+                    .write(INTERRUPT_FLAG_ADDRESS, interrupt_flag & clear_mask);
+                self.registers.set_pc(final_interruption.vector());
+            }
+            None => {
+                // The IE corruption cancelled the dispatch entirely: IF is
+                // left untouched, and PC jumps to the null vector instead.
+                self.registers.set_pc(0x0000);
+            }
+        }
 
         interruption.t_cycles()
     }

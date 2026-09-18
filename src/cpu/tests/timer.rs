@@ -46,6 +46,7 @@ fn writing_to_div_resets_divider() {
 fn writing_to_div_can_increment_tima() {
     let mut cpu = create_cpu(0x00, None, None);
 
+    cpu.bus.write(TIMER_DIV_ADDRESS, 0);
     cpu.bus.write(TIMER_TAC_ADDRESS, 0b101);
 
     for _ in 0..2 {

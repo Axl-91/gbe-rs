@@ -55,11 +55,12 @@ pub enum TimerEvent {
 
 impl Timer {
     pub fn new() -> Self {
+        //Default values as seen in PanDocs
         Self {
-            div: 0,
+            div: 0x00AB,
             tima: 0,
             tma: 0,
-            tac: 0,
+            tac: 0xF8,
             reload: Reload::Idle,
         }
     }

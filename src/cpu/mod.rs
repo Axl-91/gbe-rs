@@ -19,9 +19,6 @@ mod tests;
 use crate::{cpu::instruction::*, memory::MemoryBus};
 use registers::Registers;
 
-/// Address where the Game Boy starts executing the game after the boot sequence.
-const GAME_ENTRY_POINT: u16 = 0x0100;
-
 const NON_CYCLES: u8 = 0x00;
 const HALT_CYCLES: u8 = 0x04;
 const TICK_CYCLES: u8 = 0x04;
@@ -42,8 +39,7 @@ impl Cpu {
     /// Creates a new CPU with initialized registers and the program counter
     /// set to the game's entry point.
     pub fn new(bus: MemoryBus) -> Self {
-        let mut registers = Registers::new();
-        registers.set_pc(GAME_ENTRY_POINT);
+        let registers = Registers::new();
 
         Self {
             registers,
