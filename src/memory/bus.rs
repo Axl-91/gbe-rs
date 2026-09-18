@@ -87,7 +87,7 @@ impl MemoryBus {
                 self.hram[offset]
             }
 
-            INTERRUPT_FLAG_ADDRESS => self.interrupt_flags,
+            INTERRUPT_FLAG_ADDRESS => self.interrupt_flags | 0xE0,
             INTERRUPT_ENABLE_ADDRESS => self.interrupt_enable,
 
             TIMER_DIV_ADDRESS => self.timer.read_div(),
@@ -123,7 +123,7 @@ impl MemoryBus {
                 self.hram[(address - HRAM_START) as usize] = value;
             }
 
-            INTERRUPT_FLAG_ADDRESS => self.interrupt_flags = value | 0xE0,
+            INTERRUPT_FLAG_ADDRESS => self.interrupt_flags = value,
             INTERRUPT_ENABLE_ADDRESS => self.interrupt_enable = value,
 
             TIMER_DIV_ADDRESS => {
