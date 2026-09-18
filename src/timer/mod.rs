@@ -71,8 +71,23 @@ impl Timer {
         self.tma = value;
     }
 
-    pub(crate) fn write_tac(&mut self, value: u8) {
+    // TODO: Make documentation for this logic
+    pub(crate) fn write_tac(&mut self, value: u8) -> Option<TimerEvent> {
+        let old_enabled = self.tac & (1 << 2) != 0;
+        let old_bit = self.get_frequency_bit();
+        let old_selected = old_enabled && ((self.div >> old_bit) & 0x01) == 1;
+
         self.tac = value;
+
+        let new_enabled = self.tac & (1 << 2) != 0;
+        let new_bit = self.get_frequency_bit();
+        let new_selected = new_enabled && ((self.div >> new_bit) & 0x01) == 1;
+
+        if old_selected && !new_selected {
+            self.increment_tima()
+        } else {
+            None
+        }
     }
 
     /// Returns the divider bit selected by the timer frequency.

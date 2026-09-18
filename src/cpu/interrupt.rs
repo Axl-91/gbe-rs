@@ -55,9 +55,9 @@ fn interruption_bit(bit: u8) -> Interruption {
 
 impl Cpu {
     /// Returns the highest-priority interrupt that can currently be serviced.
-    pub(crate) fn check_interruption(&self) -> Option<Interruption> {
-        let interrupt_enable = self.bus.read(INTERRUPT_ENABLE_ADDRESS);
-        let interrupt_flag = self.bus.read(INTERRUPT_FLAG_ADDRESS);
+    pub(crate) fn check_interruption(&mut self) -> Option<Interruption> {
+        let interrupt_enable = self.tick_read(INTERRUPT_ENABLE_ADDRESS);
+        let interrupt_flag = self.tick_read(INTERRUPT_FLAG_ADDRESS);
 
         let mut offset: u8 = 0;
 
@@ -76,12 +76,12 @@ impl Cpu {
         self.ime = false;
 
         // Clear the interrupt request.
-        let interrupt_flag = self.bus.read(INTERRUPT_FLAG_ADDRESS);
+        let interrupt_flag = self.tick_read(INTERRUPT_FLAG_ADDRESS);
         let interrupt_bit = interruption.bit();
         let clear_mask = !(0x01 << interrupt_bit);
 
         let new_if = interrupt_flag & clear_mask;
-        self.bus.write(INTERRUPT_FLAG_ADDRESS, new_if);
+        self.tick_write(INTERRUPT_FLAG_ADDRESS, new_if);
 
         // Push the current PC onto the stack.
         let pc = self.registers.get_pc();

@@ -26,7 +26,10 @@ impl Cpu {
 
                 if self.should_i_jump(condition) {
                     let pc = self.registers.get_pc();
+
+                    self.tick_internal();
                     self.registers.set_pc(pc.wrapping_add_signed(offset));
+
                     instruction.t_cycles_conditional(true)
                 } else {
                     instruction.t_cycles_conditional(false)
@@ -39,7 +42,9 @@ impl Cpu {
                 let new_pc = u16::from_le_bytes([low_bits, high_bits]);
 
                 if self.should_i_jump(condition) {
+                    self.tick_internal();
                     self.registers.set_pc(new_pc);
+
                     instruction.t_cycles_conditional(true)
                 } else {
                     instruction.t_cycles_conditional(false)
@@ -52,17 +57,25 @@ impl Cpu {
 
                 if self.should_i_jump(condition) {
                     let pc = self.registers.get_pc();
+
+                    self.tick_internal();
                     self.push_into_sp(pc);
                     self.registers.set_pc(new_pc);
+
                     instruction.t_cycles_conditional(true)
                 } else {
                     instruction.t_cycles_conditional(false)
                 }
             }
             ControlInstruction::Ret(condition) => {
+                self.tick_internal();
+
                 if self.should_i_jump(condition) {
                     let new_pc = self.pop_from_sp();
+
+                    self.tick_internal();
                     self.registers.set_pc(new_pc);
+
                     instruction.t_cycles_conditional(true)
                 } else {
                     instruction.t_cycles_conditional(false)
@@ -70,8 +83,11 @@ impl Cpu {
             }
             ControlInstruction::Rst(code) => {
                 let pc = self.registers.get_pc();
+
+                self.tick_internal();
                 self.push_into_sp(pc);
                 self.registers.set_pc(code as u16);
+
                 instruction.t_cycles()
             }
             ControlInstruction::JpHl => {
@@ -80,7 +96,9 @@ impl Cpu {
                 instruction.t_cycles()
             }
             ControlInstruction::Stop => {
-                _ = self.fetch();
+                let pc = self.registers.get_pc();
+                self.bus.read(pc);
+                self.registers.set_pc(pc.wrapping_add(1));
 
                 let joypad_active = self.bus.is_joypad_active();
                 let interrupt_pending = self.check_interruption().is_some();
@@ -113,6 +131,8 @@ impl Cpu {
             }
             ControlInstruction::Reti => {
                 let new_pc = self.pop_from_sp();
+
+                self.tick_internal();
                 self.registers.set_pc(new_pc);
                 self.ime = true;
 

@@ -129,7 +129,10 @@ impl MemoryBus {
             TIMER_DIV_ADDRESS => self.timer.reset_div(),
             TIMER_TIMA_ADDRESS => self.timer.write_tima(value),
             TIMER_TMA_ADDRESS => self.timer.write_tma(value),
-            TIMER_TAC_ADDRESS => self.timer.write_tac(value),
+            TIMER_TAC_ADDRESS => {
+                let event = self.timer.write_tac(value);
+                self.check_time_overflow(event);
+            }
 
             SERIAL_DATA_ADDRESS => self.serial.write_data(value),
             SERIAL_CONTROL_ADDRESS => self.serial.write_control(value),

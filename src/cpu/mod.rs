@@ -24,6 +24,7 @@ const GAME_ENTRY_POINT: u16 = 0x0100;
 
 const NON_CYCLES: u8 = 0x00;
 const HALT_CYCLES: u8 = 0x04;
+const TICK_CYCLES: u8 = 0x04;
 
 /// Represents the Game Boy CPU and its connection to the memory bus.
 pub struct Cpu {
@@ -34,6 +35,7 @@ pub struct Cpu {
     halted: bool,
     halt_bug: bool,
     stopped: bool,
+    total_t_cycles: u64,
 }
 
 impl Cpu {
@@ -51,13 +53,39 @@ impl Cpu {
             halted: false,
             halt_bug: false,
             stopped: false,
+            total_t_cycles: 0,
         }
+    }
+
+    fn tick_read(&mut self, address: u16) -> u8 {
+        self.total_t_cycles = self.total_t_cycles.wrapping_add(TICK_CYCLES as u64);
+
+        let value = self.bus.read(address);
+        self.bus.tick(TICK_CYCLES);
+        value
+    }
+
+    fn tick_write(&mut self, address: u16, value: u8) {
+        self.total_t_cycles = self.total_t_cycles.wrapping_add(TICK_CYCLES as u64);
+
+        self.bus.write(address, value);
+        self.bus.tick(TICK_CYCLES);
+    }
+
+    fn tick_internal(&mut self) {
+        self.total_t_cycles = self.total_t_cycles.wrapping_add(TICK_CYCLES as u64);
+
+        self.bus.tick(TICK_CYCLES);
+    }
+
+    pub fn get_total_ticks(&self) -> u64 {
+        self.total_t_cycles
     }
 
     /// Fetches the next opcode from memory and advances the program counter.
     fn fetch(&mut self) -> u8 {
         let pc = self.registers.get_pc();
-        let opcode = self.bus.read(pc);
+        let opcode = self.tick_read(pc);
 
         if self.halt_bug {
             self.halt_bug = false;
@@ -164,10 +192,6 @@ impl Cpu {
         self.bus.take_serial_output()
     }
 
-    pub fn tick(&mut self, t_cycles: u8) {
-        self.bus.tick(t_cycles);
-    }
-
     /// Executes one CPU step and returns the number of T-Cycles consumed.
     pub fn step(&mut self) -> u8 {
         if self.stopped {
@@ -185,6 +209,7 @@ impl Cpu {
 
         let opcode = self.fetch();
         let instruction = decode(opcode);
+
         self.execute(instruction)
     }
 

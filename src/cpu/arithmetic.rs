@@ -119,15 +119,18 @@ impl Cpu {
             ArithmeticInstruction::Inc16(register) => {
                 let value = self.get_register16(&register);
                 self.set_register16(&register, value.wrapping_add(1));
+                self.tick_internal();
             }
             ArithmeticInstruction::Dec16(register) => {
                 let value = self.get_register16(&register);
                 self.set_register16(&register, value.wrapping_sub(1));
+                self.tick_internal();
             }
             ArithmeticInstruction::AddHl(register) => {
                 let hl = self.registers.get_hl();
                 let register_value = self.get_register16(&register);
 
+                self.tick_internal();
                 let value = hl.wrapping_add(register_value);
 
                 self.registers.set_subtract(false);
@@ -141,6 +144,9 @@ impl Cpu {
                 let value = sp.wrapping_add_signed(offset as i16);
 
                 self.set_flags_sp_plus_immediate(sp, offset);
+                self.tick_internal();
+                self.tick_internal();
+
                 self.registers.set_sp(value);
             }
 
@@ -160,7 +166,7 @@ impl Cpu {
                 let hl = self.registers.get_hl();
                 let a = self.registers.get_a();
 
-                let value = self.bus.read(hl);
+                let value = self.tick_read(hl);
 
                 let new_a = a.wrapping_add(value);
 
@@ -200,7 +206,7 @@ impl Cpu {
                 let hl = self.registers.get_hl();
                 let carry = self.registers.get_carry() as u8;
 
-                let value = self.bus.read(hl);
+                let value = self.tick_read(hl);
 
                 let new_a = a.wrapping_add(value).wrapping_add(carry);
 
@@ -239,7 +245,7 @@ impl Cpu {
                 let hl = self.registers.get_hl();
                 let a = self.registers.get_a();
 
-                let value = self.bus.read(hl);
+                let value = self.tick_read(hl);
 
                 let new_a = a.wrapping_sub(value);
 
@@ -279,7 +285,7 @@ impl Cpu {
                 let hl = self.registers.get_hl();
                 let borrow = self.registers.get_carry() as u8;
 
-                let value = self.bus.read(hl);
+                let value = self.tick_read(hl);
 
                 let new_a = a.wrapping_sub(value).wrapping_sub(borrow);
 
@@ -313,7 +319,7 @@ impl Cpu {
                 let a = self.registers.get_a();
                 let hl = self.registers.get_hl();
 
-                let value = self.bus.read(hl) & a;
+                let value = self.tick_read(hl) & a;
 
                 self.set_and_flags(value);
                 self.registers.set_a(value);
@@ -336,7 +342,7 @@ impl Cpu {
                 let a = self.registers.get_a();
                 let hl = self.registers.get_hl();
 
-                let value = self.bus.read(hl) | a;
+                let value = self.tick_read(hl) | a;
 
                 self.set_or_flags(value);
                 self.registers.set_a(value);
@@ -359,7 +365,7 @@ impl Cpu {
                 let a = self.registers.get_a();
                 let hl = self.registers.get_hl();
 
-                let value = self.bus.read(hl) ^ a;
+                let value = self.tick_read(hl) ^ a;
 
                 self.set_or_flags(value);
                 self.registers.set_a(value);
@@ -385,7 +391,7 @@ impl Cpu {
                 let hl = self.registers.get_hl();
                 let a = self.registers.get_a();
 
-                let value = self.bus.read(hl);
+                let value = self.tick_read(hl);
 
                 let result = a.wrapping_sub(value);
 
@@ -434,23 +440,23 @@ impl Cpu {
             }
             ArithmeticInstruction::IncFromHl => {
                 let hl = self.registers.get_hl();
-                let value = self.bus.read(hl).wrapping_add(1);
+                let value = self.tick_read(hl).wrapping_add(1);
 
                 self.registers.set_zero(value == 0);
                 self.registers.set_subtract(false);
                 self.registers.set_half_carry(value & 0x0F == 0x00);
 
-                self.bus.write(hl, value);
+                self.tick_write(hl, value);
             }
             ArithmeticInstruction::DecFromHl => {
                 let hl = self.registers.get_hl();
-                let value = self.bus.read(hl).wrapping_sub(1);
+                let value = self.tick_read(hl).wrapping_sub(1);
 
                 self.registers.set_zero(value == 0);
                 self.registers.set_subtract(true);
                 self.registers.set_half_carry(value & 0x0F == 0x0F);
 
-                self.bus.write(hl, value);
+                self.tick_write(hl, value);
             }
         }
         t_cycles

@@ -76,13 +76,13 @@ impl Cpu {
             }
             CbRotation::RlcFromHl => {
                 let hl = self.registers.get_hl();
-                let value = self.bus.read(hl);
+                let value = self.tick_read(hl);
 
                 let new_carry = value >> 7;
                 let new_value = value.rotate_left(1);
 
                 self.set_rotation_flags(new_value == 0, new_carry != 0);
-                self.bus.write(hl, new_value);
+                self.tick_write(hl, new_value);
             }
             CbRotation::Rrc(register) => {
                 let value = self.get_register8(&register);
@@ -95,13 +95,13 @@ impl Cpu {
             }
             CbRotation::RrcFromHl => {
                 let hl = self.registers.get_hl();
-                let value = self.bus.read(hl);
+                let value = self.tick_read(hl);
 
                 let new_carry = value & 0x01;
                 let new_value = value.rotate_right(1);
 
                 self.set_rotation_flags(new_value == 0, new_carry != 0);
-                self.bus.write(hl, new_value);
+                self.tick_write(hl, new_value);
             }
             CbRotation::Rl(register) => {
                 let value = self.get_register8(&register);
@@ -115,14 +115,14 @@ impl Cpu {
             }
             CbRotation::RlFromHl => {
                 let hl = self.registers.get_hl();
-                let value = self.bus.read(hl);
+                let value = self.tick_read(hl);
                 let carry = self.registers.get_carry() as u8;
 
                 let new_carry = value >> 7;
                 let new_value = (value << 1) | carry;
 
                 self.set_rotation_flags(new_value == 0, new_carry != 0);
-                self.bus.write(hl, new_value);
+                self.tick_write(hl, new_value);
             }
             CbRotation::Rr(register) => {
                 let value = self.get_register8(&register);
@@ -136,14 +136,14 @@ impl Cpu {
             }
             CbRotation::RrFromHl => {
                 let hl = self.registers.get_hl();
-                let value = self.bus.read(hl);
+                let value = self.tick_read(hl);
                 let carry = self.registers.get_carry() as u8;
 
                 let new_carry = value & 0x01;
                 let new_value = (value >> 1) | (carry << 7);
 
                 self.set_rotation_flags(new_value == 0, new_carry != 0);
-                self.bus.write(hl, new_value);
+                self.tick_write(hl, new_value);
             }
             CbRotation::Sla(register) => {
                 let value = self.get_register8(&register);
@@ -156,13 +156,13 @@ impl Cpu {
             }
             CbRotation::SlaFromHl => {
                 let hl = self.registers.get_hl();
-                let value = self.bus.read(hl);
+                let value = self.tick_read(hl);
 
                 let new_carry = value >> 7;
                 let new_value = value << 1;
 
                 self.set_rotation_flags(new_value == 0, new_carry != 0);
-                self.bus.write(hl, new_value);
+                self.tick_write(hl, new_value);
             }
             CbRotation::Sra(register) => {
                 let value = self.get_register8(&register);
@@ -175,13 +175,13 @@ impl Cpu {
             }
             CbRotation::SraFromHl => {
                 let hl = self.registers.get_hl();
-                let value = self.bus.read(hl);
+                let value = self.tick_read(hl);
 
                 let new_carry = value & 0x01;
                 let new_value = value >> 1 | (value & 0x80);
 
                 self.set_rotation_flags(new_value == 0, new_carry != 0);
-                self.bus.write(hl, new_value);
+                self.tick_write(hl, new_value);
             }
             CbRotation::Swap(register) => {
                 let value = self.get_register8(&register);
@@ -194,13 +194,13 @@ impl Cpu {
             }
             CbRotation::SwapFromHl => {
                 let hl = self.registers.get_hl();
-                let value = self.bus.read(hl);
+                let value = self.tick_read(hl);
 
                 // Rotating an 8-bit value by 4 bits swaps its high and low nibbles.
                 let new_value = value.rotate_left(4);
 
                 self.set_rotation_flags(new_value == 0, false);
-                self.bus.write(hl, new_value);
+                self.tick_write(hl, new_value);
             }
             CbRotation::Srl(register) => {
                 let value = self.get_register8(&register);
@@ -213,14 +213,14 @@ impl Cpu {
             }
             CbRotation::SrlFromHl => {
                 let hl = self.registers.get_hl();
-                let value = self.bus.read(hl);
+                let value = self.tick_read(hl);
 
                 let new_carry = value & 0x01;
                 let new_value = value >> 1;
 
                 self.set_rotation_flags(new_value == 0, new_carry != 0);
 
-                self.bus.write(hl, new_value);
+                self.tick_write(hl, new_value);
             }
         }
     }

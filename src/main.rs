@@ -9,9 +9,7 @@ fn main() -> io::Result<()> {
     let mut cpu = Cpu::new(bus);
 
     loop {
-        let t_cycles = cpu.step();
-
-        cpu.tick(t_cycles);
+        cpu.step();
 
         if let Some(byte) = cpu.take_serial_output() {
             print!("{}", byte as char);

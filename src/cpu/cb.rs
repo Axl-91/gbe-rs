@@ -15,7 +15,7 @@ impl Cpu {
             }
             CbInstruction::BitFromHl(bit_value) => {
                 let hl = self.registers.get_hl();
-                let test = (self.bus.read(hl) >> bit_value) & 0x01;
+                let test = (self.tick_read(hl) >> bit_value) & 0x01;
 
                 self.registers.set_zero(test == 0);
                 self.registers.set_subtract(false);
@@ -30,9 +30,9 @@ impl Cpu {
             CbInstruction::ResFromHl(bit_value) => {
                 let hl = self.registers.get_hl();
                 let zero_bit: u8 = !(0x01 << bit_value);
-                let new_value = self.bus.read(hl) & zero_bit;
+                let new_value = self.tick_read(hl) & zero_bit;
 
-                self.bus.write(hl, new_value);
+                self.tick_write(hl, new_value);
             }
             CbInstruction::Set(bit_value, register) => {
                 let one_bit: u8 = 0x01 << bit_value;
@@ -43,9 +43,9 @@ impl Cpu {
             CbInstruction::SetFromHl(bit_value) => {
                 let hl = self.registers.get_hl();
                 let one_bit: u8 = 0x01 << bit_value;
-                let new_value = self.bus.read(hl) | one_bit;
+                let new_value = self.tick_read(hl) | one_bit;
 
-                self.bus.write(hl, new_value);
+                self.tick_write(hl, new_value);
             }
             CbInstruction::Rotation(instruction) => {
                 self.execute_cb_rotation(instruction);

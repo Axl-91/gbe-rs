@@ -20,7 +20,7 @@ impl Cpu {
             }
             LoadInstruction::Load8FromHl(register) => {
                 let address = self.registers.get_hl();
-                let value = self.bus.read(address);
+                let value = self.tick_read(address);
 
                 self.set_register8(&register, value);
             }
@@ -28,23 +28,23 @@ impl Cpu {
                 let address = self.registers.get_hl();
                 let value = self.get_register8(&register);
 
-                self.bus.write(address, value);
+                self.tick_write(address, value);
             }
             LoadInstruction::Load8ToHlImmediate => {
                 let address = self.registers.get_hl();
                 let value = self.fetch();
 
-                self.bus.write(address, value);
+                self.tick_write(address, value);
             }
             LoadInstruction::Load8FromBc => {
                 let address = self.registers.get_bc();
-                let value = self.bus.read(address);
+                let value = self.tick_read(address);
 
                 self.registers.set_a(value);
             }
             LoadInstruction::Load8FromDe => {
                 let address = self.registers.get_de();
-                let value = self.bus.read(address);
+                let value = self.tick_read(address);
 
                 self.registers.set_a(value);
             }
@@ -52,20 +52,20 @@ impl Cpu {
                 let address = self.registers.get_bc();
                 let value = self.registers.get_a();
 
-                self.bus.write(address, value);
+                self.tick_write(address, value);
             }
             LoadInstruction::Load8ToDe => {
                 let address = self.registers.get_de();
                 let value = self.registers.get_a();
 
-                self.bus.write(address, value);
+                self.tick_write(address, value);
             }
             LoadInstruction::Load8FromAddress => {
                 let lower_bits = self.fetch();
                 let higher_bits = self.fetch();
 
                 let address = ((higher_bits as u16) << 8) | lower_bits as u16;
-                let value = self.bus.read(address);
+                let value = self.tick_read(address);
 
                 self.registers.set_a(value);
             }
@@ -76,7 +76,7 @@ impl Cpu {
                 let address = ((higher_bits as u16) << 8) | lower_bits as u16;
                 let value = self.registers.get_a();
 
-                self.bus.write(address, value);
+                self.tick_write(address, value);
             }
             LoadInstruction::Load16Immediate(register) => {
                 let lower_bits = self.fetch();
@@ -96,12 +96,13 @@ impl Cpu {
                 let lower_value = value as u8;
                 let higher_value = (value >> 8) as u8;
 
-                self.bus.write(address, lower_value);
-                self.bus.write(address + 1, higher_value);
+                self.tick_write(address, lower_value);
+                self.tick_write(address + 1, higher_value);
             }
             LoadInstruction::LoadSpFromHl => {
                 let value = self.registers.get_hl();
                 self.registers.set_sp(value);
+                self.tick_internal();
             }
             LoadInstruction::LoadHlFromSpPlusImmediate => {
                 let sp = self.registers.get_sp();
@@ -111,6 +112,7 @@ impl Cpu {
                 self.set_flags_sp_plus_immediate(sp, offset);
 
                 self.registers.set_hl(value);
+                self.tick_internal();
             }
             LoadInstruction::Load8ToHighAddress => {
                 let offset = self.fetch();
@@ -119,14 +121,14 @@ impl Cpu {
 
                 let a = self.registers.get_a();
 
-                self.bus.write(address, a);
+                self.tick_write(address, a);
             }
             LoadInstruction::Load8FromHighAddress => {
                 let offset = self.fetch();
                 let high_address: u16 = 0xFF00;
                 let address = high_address.wrapping_add(offset as u16);
 
-                let value = self.bus.read(address);
+                let value = self.tick_read(address);
 
                 self.registers.set_a(value);
             }
@@ -137,14 +139,14 @@ impl Cpu {
 
                 let a = self.registers.get_a();
 
-                self.bus.write(address, a);
+                self.tick_write(address, a);
             }
             LoadInstruction::Load8FromHighRegister => {
                 let offset = self.registers.get_c();
                 let high_address: u16 = 0xFF00;
                 let address = high_address.wrapping_add(offset as u16);
 
-                let value = self.bus.read(address);
+                let value = self.tick_read(address);
 
                 self.registers.set_a(value);
             }
@@ -152,7 +154,7 @@ impl Cpu {
                 let a = self.registers.get_a();
                 let hl = self.registers.get_hl();
 
-                self.bus.write(hl, a);
+                self.tick_write(hl, a);
 
                 self.registers.set_hl(hl.wrapping_add(1));
             }
@@ -160,14 +162,14 @@ impl Cpu {
                 let a = self.registers.get_a();
                 let hl = self.registers.get_hl();
 
-                self.bus.write(hl, a);
+                self.tick_write(hl, a);
 
                 self.registers.set_hl(hl.wrapping_sub(1));
             }
             LoadInstruction::Load8FromAddressHlIncrement => {
                 let hl = self.registers.get_hl();
 
-                let value = self.bus.read(hl);
+                let value = self.tick_read(hl);
 
                 self.registers.set_a(value);
                 self.registers.set_hl(hl.wrapping_add(1));
@@ -175,7 +177,7 @@ impl Cpu {
             LoadInstruction::Load8FromAddressHlDecrement => {
                 let hl = self.registers.get_hl();
 
-                let value = self.bus.read(hl);
+                let value = self.tick_read(hl);
 
                 self.registers.set_a(value);
                 self.registers.set_hl(hl.wrapping_sub(1));
