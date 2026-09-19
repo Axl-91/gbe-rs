@@ -9,7 +9,6 @@ impl Cpu {
         let new_register = register.wrapping_add(1);
 
         self.registers.set_half_carry(register & 0x0F == 0x0F);
-
         self.registers.set_zero(new_register == 0x00);
         self.registers.set_subtract(false);
 
@@ -20,7 +19,6 @@ impl Cpu {
         let new_register = register.wrapping_sub(1);
 
         self.registers.set_half_carry(register & 0x0F == 0x00);
-
         self.registers.set_zero(new_register == 0x00);
         self.registers.set_subtract(true);
 

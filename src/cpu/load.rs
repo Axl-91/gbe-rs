@@ -97,7 +97,7 @@ impl Cpu {
                 let higher_value = (value >> 8) as u8;
 
                 self.tick_write(address, lower_value);
-                self.tick_write(address + 1, higher_value);
+                self.tick_write(address.wrapping_add(1), higher_value);
             }
             LoadInstruction::LoadSpFromHl => {
                 let value = self.registers.get_hl();
