@@ -37,6 +37,7 @@ impl Serial {
 
     /// Writes a value to the serial transfer data register (SB).
     pub fn write_data(&mut self, value: u8) {
+        // panic!();
         self.data = value;
     }
 

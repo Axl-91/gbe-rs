@@ -68,10 +68,11 @@ impl Cpu {
         self.bus.tick(TICK_CYCLES);
     }
 
-    fn tick_internal(&mut self) {
-        self.total_t_cycles = self.total_t_cycles.wrapping_add(TICK_CYCLES as u64);
+    fn tick_internal(&mut self, m_cycles: u8) {
+        let total_t_cycles = TICK_CYCLES * m_cycles;
+        self.total_t_cycles = self.total_t_cycles.wrapping_add(total_t_cycles as u64);
 
-        self.bus.tick(TICK_CYCLES);
+        self.bus.tick(total_t_cycles);
     }
 
     pub fn get_total_ticks(&self) -> u64 {
@@ -202,24 +203,28 @@ impl Cpu {
             return t_cycles_interrupt;
         }
 
-        let past = self.get_total_ticks();
+        let prev_ticks = self.get_total_ticks();
 
         let opcode = self.fetch();
         let instruction = decode(opcode);
 
         let real_t = self.execute(instruction);
 
-        let present = self.get_total_ticks();
+        let current_ticks = self.get_total_ticks();
 
-        assert_eq!(present - past, real_t as u64);
+        assert_eq!(current_ticks - prev_ticks, real_t as u64);
 
         real_t
     }
 
     fn step_halted(&mut self) -> u8 {
+        let prev_ticks = self.get_total_ticks();
+
         let Some(interruption) = self.check_interruption() else {
             // HALT without interruptions consumes 4 T-Cycles.
-            self.tick_internal();
+            self.tick_internal(1);
+            let current_ticks = self.get_total_ticks();
+            assert_eq!(current_ticks - prev_ticks, HALT_CYCLES as u64);
 
             return HALT_CYCLES;
         };
@@ -228,7 +233,9 @@ impl Cpu {
 
         if self.ime {
             let t_cycles_interrupt = self.handle_interruption(interruption);
-            assert_eq!(20, t_cycles_interrupt);
+            let current_ticks = self.get_total_ticks();
+
+            assert_eq!(current_ticks - prev_ticks, t_cycles_interrupt as u64);
 
             t_cycles_interrupt
         } else {

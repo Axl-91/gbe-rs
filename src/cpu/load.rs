@@ -102,7 +102,7 @@ impl Cpu {
             LoadInstruction::LoadSpFromHl => {
                 let value = self.registers.get_hl();
                 self.registers.set_sp(value);
-                self.tick_internal();
+                self.tick_internal(1);
             }
             LoadInstruction::LoadHlFromSpPlusImmediate => {
                 let sp = self.registers.get_sp();
@@ -112,7 +112,7 @@ impl Cpu {
                 self.set_flags_sp_plus_immediate(sp, offset);
 
                 self.registers.set_hl(value);
-                self.tick_internal();
+                self.tick_internal(1);
             }
             LoadInstruction::Load8ToHighAddress => {
                 let offset = self.fetch();

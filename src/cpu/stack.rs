@@ -58,7 +58,7 @@ impl Cpu {
             StackInstruction::Push(register) => {
                 let value = self.get_stack_register(&register);
 
-                self.tick_internal();
+                self.tick_internal(1);
 
                 self.push_into_sp(value);
             }

@@ -89,9 +89,7 @@ impl Cpu {
     pub(crate) fn handle_interruption(&mut self, interruption: Interruption) -> u8 {
         self.ime = false;
 
-        self.tick_internal();
-        self.tick_internal();
-        self.tick_internal();
+        self.tick_internal(3);
 
         let pc = self.registers.get_pc();
         let sp = self.registers.get_sp();

@@ -27,7 +27,7 @@ impl Cpu {
                 if self.should_i_jump(condition) {
                     let pc = self.registers.get_pc();
 
-                    self.tick_internal();
+                    self.tick_internal(1);
                     self.registers.set_pc(pc.wrapping_add_signed(offset));
 
                     instruction.t_cycles_conditional(true)
@@ -42,7 +42,7 @@ impl Cpu {
                 let new_pc = u16::from_le_bytes([low_bits, high_bits]);
 
                 if self.should_i_jump(condition) {
-                    self.tick_internal();
+                    self.tick_internal(1);
                     self.registers.set_pc(new_pc);
 
                     instruction.t_cycles_conditional(true)
@@ -58,7 +58,7 @@ impl Cpu {
                 if self.should_i_jump(condition) {
                     let pc = self.registers.get_pc();
 
-                    self.tick_internal();
+                    self.tick_internal(1);
                     self.push_into_sp(pc);
                     self.registers.set_pc(new_pc);
 
@@ -68,12 +68,12 @@ impl Cpu {
                 }
             }
             ControlInstruction::Ret(condition) => {
-                self.tick_internal();
+                self.tick_internal(1);
 
                 if self.should_i_jump(condition) {
                     let new_pc = self.pop_from_sp();
 
-                    self.tick_internal();
+                    self.tick_internal(1);
                     self.registers.set_pc(new_pc);
 
                     instruction.t_cycles_conditional(true)
@@ -84,7 +84,7 @@ impl Cpu {
             ControlInstruction::Rst(code) => {
                 let pc = self.registers.get_pc();
 
-                self.tick_internal();
+                self.tick_internal(1);
                 self.push_into_sp(pc);
                 self.registers.set_pc(code as u16);
 
@@ -132,7 +132,7 @@ impl Cpu {
             ControlInstruction::Reti => {
                 let new_pc = self.pop_from_sp();
 
-                self.tick_internal();
+                self.tick_internal(1);
                 self.registers.set_pc(new_pc);
                 self.ime = true;
 

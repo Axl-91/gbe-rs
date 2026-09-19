@@ -117,18 +117,18 @@ impl Cpu {
             ArithmeticInstruction::Inc16(register) => {
                 let value = self.get_register16(&register);
                 self.set_register16(&register, value.wrapping_add(1));
-                self.tick_internal();
+                self.tick_internal(1);
             }
             ArithmeticInstruction::Dec16(register) => {
                 let value = self.get_register16(&register);
                 self.set_register16(&register, value.wrapping_sub(1));
-                self.tick_internal();
+                self.tick_internal(1);
             }
             ArithmeticInstruction::AddHl(register) => {
                 let hl = self.registers.get_hl();
                 let register_value = self.get_register16(&register);
 
-                self.tick_internal();
+                self.tick_internal(1);
                 let value = hl.wrapping_add(register_value);
 
                 self.registers.set_subtract(false);
@@ -142,8 +142,7 @@ impl Cpu {
                 let value = sp.wrapping_add_signed(offset as i16);
 
                 self.set_flags_sp_plus_immediate(sp, offset);
-                self.tick_internal();
-                self.tick_internal();
+                self.tick_internal(2);
 
                 self.registers.set_sp(value);
             }
