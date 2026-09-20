@@ -101,28 +101,25 @@ gbe-rs/
 
 | Test name | Status |
 |---|---|
-| `cpu_instrs.gb` | ✅ Passing |
-| `isolated instructions tests` | ✅ Passing |
-| `halt_bug.gb` | ❌ Failing |
-| `instr_timing.gb` | ❌ Failing |
+| 11 CPU instructions tests (Isolated) | ✅ Passing |
+| CPU instructions tests (Integrated) | ✅ Passing |
+| Instructions Timing tests | ✅ Passing |
 
 ## Mooneye
 
 | Test name | Status |
 |---|---|
-| `timer/* tests` | ✅ Passing |
-| `interrupt/* tests` | ✅ Passing |
-| `boot/boot_div-dmgABCmgb.gb` | ❌ Failing |
-| `boot/boot_hwio-dmgABCmgb.gb` | ❌ Failing |
-| `boot/boot_regs-dmgABC.gb` | ✅ Passing |
-| `cpu/daa.gb` | ✅ Passing |
-| `cpu/halt_ime0_ei.gb` | ⏳ Not tested |
-| `cpu/halt_ime0_nointr_timing.gb` | ⏳ Not tested |
-| `cpu/halt_ime1_timing.gb` | ✅ Passing |
-| `cpu/pop_timing.gb` | ✅ Passing |
-| `intr_timing.gb` | ✅ Passing |
-| `mbc1/bits_bank1.gb` | ✅ Passing |
-| `mbc1/bits_bank2.gb` | ✅ Passing |
-| `mbc1/bits_mode.gb` | ⏳ Not tested |
-| `mbc1/bits_ramg.gb` | ✅ Passing |
+| Instructions Timing Tests | ✅ Passing |
+| Boot registers tests | ✅ Passing |
+| DAA instruction tests | ✅ Passing |
+| POP Timing tests | ✅ Passing |
+| Interrupt tests | ✅ Passing |
+| Timing tests | ✅ Passing |
+| MBC1/2/3 | ❌ Failing|
+| HALT Tests | ⏳ Not tested |
+
+---------------------------------------
+<div align="center">
+  <img align="center" width="352" alt="gbe" src="https://github.com/Axl-91/gbe-rs/blob/main/assets/Blargg.jpg" />
+</div>
 
