@@ -110,12 +110,15 @@ gbe-rs/
 | Test name | Status |
 |---|---|
 | Instructions Timing Tests | ✅ Passing |
-| Boot registers tests | ✅ Passing |
+| Boot registers test | ✅ Passing |
+| Boot DIV test | ✅ Passing |
 | DAA instruction tests | ✅ Passing |
 | POP Timing tests | ✅ Passing |
 | Interrupt tests | ✅ Passing |
 | Timing tests | ✅ Passing |
-| MBC1/2/3 | ❌ Failing|
+| MBC1 (Up until 4Mb) | ✅ Passing |
+| MBC1 (bigger than 4Mb) |❌ Failing|
+| MBC2/3| ⏳ Not tested |
 | HALT Tests | ⏳ Not tested |
 
 ---------------------------------------
