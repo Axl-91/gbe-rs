@@ -35,10 +35,10 @@ pub struct Timer {
 impl Timer {
     pub fn new() -> Self {
         Self {
-            sys_counter: 0, // DMG value after the boot ROM; use 0 if you run the boot ROM
+            sys_counter: 0x00AB, // DMG value after the boot ROM; use 0 if you run the boot ROM
             tima: 0,
             tma: 0,
-            tac: 0,
+            tac: 0xF8,
             reload_delay: 0,
             reload_window: 0,
         }
@@ -133,5 +133,11 @@ impl Timer {
             }
             _ => {}
         }
+    }
+}
+
+impl Default for Timer {
+    fn default() -> Self {
+        Self::new()
     }
 }
