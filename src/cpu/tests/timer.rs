@@ -7,6 +7,7 @@ const TIMER_TAC_ADDRESS: u16 = 0xFF07;
 #[test]
 fn cpu_instructions_advance_timer_divider() {
     let mut cpu = create_cpu(0x00, None, None);
+    cpu.bus.write(TIMER_DIV_ADDRESS, 0x00);
 
     for _ in 0..64 {
         cpu.step();
@@ -19,6 +20,7 @@ fn cpu_instructions_advance_timer_divider() {
 fn cpu_instructions_increment_tima() {
     let mut cpu = create_cpu(0x00, None, None);
 
+    cpu.bus.write(TIMER_DIV_ADDRESS, 0x00);
     cpu.bus.write(TIMER_TAC_ADDRESS, 0b101);
 
     for _ in 0..4 {
