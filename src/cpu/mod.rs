@@ -56,16 +56,15 @@ impl Cpu {
     fn tick_read(&mut self, address: u16) -> u8 {
         self.total_t_cycles = self.total_t_cycles.wrapping_add(TICK_CYCLES as u64);
 
-        let value = self.bus.read(address);
         self.bus.tick(TICK_CYCLES);
-        value
+        self.bus.read(address)
     }
 
     fn tick_write(&mut self, address: u16, value: u8) {
         self.total_t_cycles = self.total_t_cycles.wrapping_add(TICK_CYCLES as u64);
 
-        self.bus.write(address, value);
         self.bus.tick(TICK_CYCLES);
+        self.bus.write(address, value);
     }
 
     fn tick_internal(&mut self, m_cycles: u8) {
@@ -187,6 +186,8 @@ impl Cpu {
 
     /// Executes one CPU step and returns the number of T-Cycles consumed.
     pub fn step(&mut self) -> u8 {
+        let prev_ticks = self.get_total_ticks();
+
         if self.stopped {
             return NON_CYCLES;
         }
@@ -198,13 +199,12 @@ impl Cpu {
             && let Some(interruption) = self.check_interruption()
         {
             let t_cycles_interrupt = self.handle_interruption(interruption);
-            assert_eq!(20, t_cycles_interrupt);
+
+            let current_ticks = self.get_total_ticks();
+            assert_eq!(current_ticks - prev_ticks, t_cycles_interrupt as u64);
 
             return t_cycles_interrupt;
         }
-
-        let prev_ticks = self.get_total_ticks();
-
         let opcode = self.fetch();
         let instruction = decode(opcode);
 
