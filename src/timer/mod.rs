@@ -88,7 +88,6 @@ impl Timer {
         if tac_non_zero_before && !self.tac_non_zero() {
             self.increment_tima();
         }
-
         interrupt_requested
     }
 

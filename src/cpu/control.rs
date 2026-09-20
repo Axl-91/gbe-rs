@@ -67,6 +67,12 @@ impl Cpu {
                     instruction.t_cycles_conditional(false)
                 }
             }
+            ControlInstruction::Ret(None) => {
+                self.tick_internal(1);
+                let new_pc = self.pop_from_sp();
+                self.registers.set_pc(new_pc);
+                instruction.t_cycles()
+            }
             ControlInstruction::Ret(condition) => {
                 self.tick_internal(1);
 

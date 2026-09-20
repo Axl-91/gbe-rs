@@ -120,6 +120,7 @@ impl ControlInstruction {
             ControlInstruction::DisableInterrupts => 4,
             ControlInstruction::EnableInterrupts => 4,
             ControlInstruction::Reti => 16,
+            ControlInstruction::Ret(None) => 16,
 
             _ => unreachable!("Conditional instruction requires a condition result"),
         }
