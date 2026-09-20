@@ -35,7 +35,7 @@ pub struct Timer {
 impl Timer {
     pub fn new() -> Self {
         Self {
-            sys_counter: 0x00AB, // DMG value after the boot ROM; use 0 if you run the boot ROM
+            sys_counter: 0xABCC,
             tima: 0,
             tma: 0,
             tac: 0xF8,
@@ -48,20 +48,30 @@ impl Timer {
     fn selected_bit(&self) -> u16 {
         match self.tac & 0b11 {
             0 => 9, // 4096 Hz
-            1 => 3, // 262144 Hz (one TIMA increment every 16 T-cycles)
+            1 => 3, // 262144 Hz
             2 => 5, // 65536 Hz
             _ => 7, // 16384 Hz
         }
     }
 
-    // Check if TAC is enabled (bit 2 of tac) and the selected clock bit is 1
-    fn tac_non_zero(&self) -> bool {
-        self.tac & TAC_ENABLE_MASK != 0 && (self.sys_counter >> self.selected_bit()) & 0x0001 != 0
+    // Check if the timer is enabled (bit 2 of TAC)
+    fn is_timer_enabled(&self) -> bool {
+        self.tac & TAC_ENABLE_MASK != 0
+    }
+
+    // Check if the bit in the selected clock is active
+    fn is_bit_active(&self) -> bool {
+        (self.sys_counter >> self.selected_bit()) & 0x0001 != 0
+    }
+
+    fn timer_signal(&self) -> bool {
+        self.is_timer_enabled() && self.is_bit_active()
     }
 
     fn increment_tima(&mut self) {
         let (value, overflowed) = self.tima.overflowing_add(1);
-        self.tima = value; // reads as 0x00 until the reload happens
+        // On overflow, TIMA becomes 0x00 until the reload happens.
+        self.tima = value;
         if overflowed {
             self.reload_delay = RELOAD_DELAY_T_CYCLES;
         }
@@ -83,9 +93,11 @@ impl Timer {
             }
         }
 
-        let tac_non_zero_before = self.tac_non_zero();
+        let timer_signal_before = self.timer_signal();
+
         self.sys_counter = self.sys_counter.wrapping_add(1);
-        if tac_non_zero_before && !self.tac_non_zero() {
+
+        if timer_signal_before && !self.timer_signal() {
             self.increment_tima();
         }
         interrupt_requested
@@ -105,7 +117,7 @@ impl Timer {
         match address {
             DIV_ADDRESS => {
                 // Resetting the counter can produce a falling edge.
-                if self.tac_non_zero() {
+                if self.timer_signal() {
                     self.increment_tima();
                 }
                 self.sys_counter = 0;
@@ -124,9 +136,11 @@ impl Timer {
                 }
             }
             TAC_ADDRESS => {
-                let tac_non_zero_before = self.tac_non_zero();
+                let timer_signal_before = self.timer_signal();
+
                 self.tac = value & 0b111;
-                if tac_non_zero_before && !self.tac_non_zero() {
+
+                if timer_signal_before && !self.timer_signal() {
                     self.increment_tima();
                 }
             }
