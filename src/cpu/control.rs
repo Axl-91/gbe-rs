@@ -42,8 +42,8 @@ impl Cpu {
                 let new_pc = u16::from_le_bytes([low_bits, high_bits]);
 
                 if self.should_i_jump(condition) {
-                    self.tick_internal(1);
                     self.registers.set_pc(new_pc);
+                    self.tick_internal(1);
 
                     instruction.t_cycles_conditional(true)
                 } else {

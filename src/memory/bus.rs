@@ -4,12 +4,7 @@
 //! such as the cartridge, VRAM, and WRAM.
 
 use super::map::*;
-use crate::{
-    cartridge::Cartridge,
-    joypad::Joypad,
-    serial::Serial,
-    timer::{Timer, TimerEvent},
-};
+use crate::{cartridge::Cartridge, joypad::Joypad, serial::Serial, timer::Timer};
 
 /// Value returned when reading from an address that isn't backed by any
 /// implemented memory or I/O register.
@@ -52,16 +47,11 @@ impl MemoryBus {
         self.serial.take_output()
     }
 
-    fn check_time_overflow(&mut self, event: Option<TimerEvent>) {
-        if let Some(TimerEvent::Overflow) = event {
-            self.interrupt_flags |= 1 << 2;
-        }
-    }
-
     pub fn tick(&mut self, t_cycles: u8) {
         for _ in 0..t_cycles {
-            let event = self.timer.tick();
-            self.check_time_overflow(event);
+            if self.timer.tick() {
+                self.interrupt_flags |= 0x04;
+            }
         }
     }
 
@@ -86,14 +76,10 @@ impl MemoryBus {
                 let offset = (address - HRAM_START) as usize;
                 self.hram[offset]
             }
+            TIMER_ADDRESS_START..=TIMER_ADDRESS_END => self.timer.read(address),
 
             INTERRUPT_FLAG_ADDRESS => self.interrupt_flags | 0xE0,
             INTERRUPT_ENABLE_ADDRESS => self.interrupt_enable,
-
-            TIMER_DIV_ADDRESS => self.timer.read_div(),
-            TIMER_TIMA_ADDRESS => self.timer.read_tima(),
-            TIMER_TMA_ADDRESS => self.timer.read_tma(),
-            TIMER_TAC_ADDRESS => self.timer.read_tac(),
 
             SERIAL_DATA_ADDRESS => self.serial.read_data(),
             SERIAL_CONTROL_ADDRESS => self.serial.read_control(),
@@ -122,20 +108,10 @@ impl MemoryBus {
             HRAM_START..=HRAM_END => {
                 self.hram[(address - HRAM_START) as usize] = value;
             }
+            TIMER_ADDRESS_START..=TIMER_ADDRESS_END => self.timer.write(address, value),
 
             INTERRUPT_FLAG_ADDRESS => self.interrupt_flags = value,
             INTERRUPT_ENABLE_ADDRESS => self.interrupt_enable = value,
-
-            TIMER_DIV_ADDRESS => {
-                let event = self.timer.write_div();
-                self.check_time_overflow(event);
-            }
-            TIMER_TIMA_ADDRESS => self.timer.write_tima(value),
-            TIMER_TMA_ADDRESS => self.timer.write_tma(value),
-            TIMER_TAC_ADDRESS => {
-                let event = self.timer.write_tac(value);
-                self.check_time_overflow(event);
-            }
 
             SERIAL_DATA_ADDRESS => self.serial.write_data(value),
             SERIAL_CONTROL_ADDRESS => self.serial.write_control(value),

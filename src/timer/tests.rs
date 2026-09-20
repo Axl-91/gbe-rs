@@ -1,309 +1,420 @@
-use super::Timer;
-use rand::RngExt;
+use super::*;
 
-#[test]
-fn timer_starts_with_zeroed_registers() {
-    let timer = Timer::new();
-
-    assert_eq!(timer.read_div(), 0);
-    assert_eq!(timer.read_tima(), 0);
-    assert_eq!(timer.read_tma(), 0);
-    // The 3 upper bits of TAC are unused and always read back as 1.
-    assert_eq!(timer.read_tac(), 0xF8);
-}
-
-#[test]
-fn div_increments_every_t_cycle() {
-    let mut timer = Timer::new();
-
-    for _ in 0..256 {
-        timer.tick();
+/// Ticks the timer and returns how many interrupts were requested.
+fn tick_n(timer: &mut Timer, t_cycles: u32) -> u32 {
+    let mut interrupts = 0;
+    for _ in 0..t_cycles {
+        if timer.tick() {
+            interrupts += 1;
+        }
     }
+    interrupts
+}
 
-    assert_eq!(timer.read_div(), 1);
+/// Timer configured the way Blargg's `init_timer` does: TMA = 0, TAC = 5 (262144 Hz).
+fn configured_timer() -> Timer {
+    let mut timer = Timer::new();
+    timer.write(TMA_ADDRESS, 0);
+    timer.write(TAC_ADDRESS, 0x05);
+    timer
+}
+
+/// Timer whose TIMA has just overflowed: TIMA reads 0x00 and the reload is pending.
+fn just_overflowed_timer(tma: u8) -> Timer {
+    let mut timer = configured_timer();
+    timer.write(TMA_ADDRESS, tma);
+    timer.write(DIV_ADDRESS, 0);
+    timer.write(TIMA_ADDRESS, 0xFF);
+    assert_eq!(tick_n(&mut timer, 16), 0);
+    assert_eq!(timer.read(TIMA_ADDRESS), 0x00);
+    timer
+}
+
+// ---------------------------------------------------------------
+// DIV
+// ---------------------------------------------------------------
+
+#[test]
+fn div_increments_every_256_t_cycles() {
+    let mut timer = Timer::new();
+    timer.write(DIV_ADDRESS, 0);
+
+    tick_n(&mut timer, 255);
+    assert_eq!(timer.read(DIV_ADDRESS), 0);
+
+    tick_n(&mut timer, 1);
+    assert_eq!(timer.read(DIV_ADDRESS), 1);
+
+    tick_n(&mut timer, 256 * 3);
+    assert_eq!(timer.read(DIV_ADDRESS), 4);
 }
 
 #[test]
-fn resetting_div_clears_divider() {
+fn writing_div_resets_the_internal_counter() {
     let mut timer = Timer::new();
+    tick_n(&mut timer, 1234);
 
-    for _ in 0..256 {
-        timer.tick();
+    timer.write(DIV_ADDRESS, 0x55);
+
+    assert_eq!(timer.sys_counter, 0);
+    assert_eq!(timer.read(DIV_ADDRESS), 0);
+}
+
+// ---------------------------------------------------------------
+// TIMA frequency and enable
+// ---------------------------------------------------------------
+
+#[test]
+fn tima_increments_every_16_t_cycles_at_262144_hz() {
+    let mut timer = configured_timer();
+    timer.write(DIV_ADDRESS, 0);
+    timer.write(TIMA_ADDRESS, 0);
+
+    tick_n(&mut timer, 15);
+    assert_eq!(timer.read(TIMA_ADDRESS), 0);
+
+    tick_n(&mut timer, 1);
+    assert_eq!(timer.read(TIMA_ADDRESS), 1);
+
+    tick_n(&mut timer, 16 * 9);
+    assert_eq!(timer.read(TIMA_ADDRESS), 10);
+}
+
+#[test]
+fn tima_period_matches_each_tac_clock_select() {
+    let cases = [(0b100u8, 1024u32), (0b101, 16), (0b110, 64), (0b111, 256)];
+
+    for (tac, period) in cases {
+        let mut timer = Timer::new();
+        timer.write(TAC_ADDRESS, tac);
+        timer.write(DIV_ADDRESS, 0);
+        timer.write(TIMA_ADDRESS, 0);
+
+        tick_n(&mut timer, period * 10);
+
+        assert_eq!(timer.read(TIMA_ADDRESS), 10, "TAC = {tac:#05b}");
     }
-
-    let _ = timer.write_div();
-
-    assert_eq!(timer.read_div(), 0);
-}
-
-#[test]
-fn tima_can_be_written_and_read() {
-    let mut rng = rand::rng();
-    let value: u8 = rng.random();
-
-    let mut timer = Timer::new();
-
-    timer.write_tima(value);
-
-    assert_eq!(timer.read_tima(), value);
-}
-
-#[test]
-fn tma_can_be_written_and_read() {
-    let mut rng = rand::rng();
-    let value: u8 = rng.random();
-
-    let mut timer = Timer::new();
-
-    timer.write_tma(value);
-
-    assert_eq!(timer.read_tma(), value);
-}
-
-#[test]
-fn tac_can_be_written_and_read() {
-    let mut rng = rand::rng();
-    // Only the lower 3 bits of TAC are actually stored.
-    let value: u8 = rng.random_range(0..=0b111);
-
-    let mut timer = Timer::new();
-
-    let _ = timer.write_tac(value);
-
-    assert_eq!(timer.read_tac(), value | 0xF8);
-}
-
-#[test]
-fn frequency_selects_correct_divider_bit() {
-    let mut timer = Timer::new();
-
-    let _ = timer.write_tac(0b00);
-    assert_eq!(timer.get_frequency_bit(), 9);
-
-    let _ = timer.write_tac(0b01);
-    assert_eq!(timer.get_frequency_bit(), 3);
-
-    let _ = timer.write_tac(0b10);
-    assert_eq!(timer.get_frequency_bit(), 5);
-
-    let _ = timer.write_tac(0b11);
-    assert_eq!(timer.get_frequency_bit(), 7);
 }
 
 #[test]
 fn tima_does_not_increment_when_timer_is_disabled() {
-    let mut rng = rand::rng();
-    let initial_tima: u8 = rng.random();
-
     let mut timer = Timer::new();
+    timer.write(TAC_ADDRESS, 0b001); // 262144 Hz but enable bit clear
+    timer.write(TIMA_ADDRESS, 0);
 
-    timer.write_tima(initial_tima);
-    let _ = timer.write_tac(0);
+    tick_n(&mut timer, 10_000);
 
-    for _ in 0..1024 {
-        timer.tick();
-    }
-
-    assert_eq!(timer.read_tima(), initial_tima);
+    assert_eq!(timer.read(TIMA_ADDRESS), 0);
 }
 
 #[test]
-fn tima_increments_on_falling_edge() {
+fn tac_unused_bits_read_as_one() {
     let mut timer = Timer::new();
+    timer.write(TAC_ADDRESS, 0x05);
 
-    // Timer enabled, frequency = 4096 Hz (bit 9).
-    let _ = timer.write_tac(0b100);
+    assert_eq!(timer.read(TAC_ADDRESS), 0xFD);
+}
 
-    for _ in 0..1024 {
-        timer.tick();
-    }
+// ---------------------------------------------------------------
+// Falling-edge side effects
+// ---------------------------------------------------------------
 
-    assert_eq!(timer.read_tima(), 1);
+#[test]
+fn writing_tima_does_not_reset_the_counter_phase() {
+    let mut timer = configured_timer();
+    tick_n(&mut timer, 7);
+    let counter_before = timer.sys_counter;
+
+    timer.write(TIMA_ADDRESS, 0);
+
+    assert_eq!(timer.sys_counter, counter_before);
 }
 
 #[test]
-fn tima_reads_zero_during_the_m_cycle_right_after_overflow() {
-    let mut timer = Timer::new();
+fn writing_div_while_selected_bit_is_high_increments_tima() {
+    let mut timer = configured_timer();
+    timer.write(DIV_ADDRESS, 0);
+    timer.write(TIMA_ADDRESS, 0);
+    tick_n(&mut timer, 8); // counter = 8, bit 3 is now high
 
-    let _ = timer.write_tac(0b100);
-    timer.write_tima(0xFF);
+    timer.write(DIV_ADDRESS, 0);
 
-    // The tick where the falling edge overflows TIMA.
-    for _ in 0..1024 {
-        timer.tick();
-    }
-
-    // TIMA reads 0x00 for the whole M-Cycle right after the overflow;
-    // TMA hasn't been copied in yet.
-    assert_eq!(timer.read_tima(), 0x00);
+    assert_eq!(timer.read(TIMA_ADDRESS), 1);
 }
 
 #[test]
-fn tima_overflow_reloads_from_tma_one_m_cycle_later() {
-    let mut rng = rand::rng();
-    let modulo: u8 = rng.random();
+fn writing_div_while_selected_bit_is_low_does_not_increment_tima() {
+    let mut timer = configured_timer();
+    timer.write(DIV_ADDRESS, 0);
+    timer.write(TIMA_ADDRESS, 0);
+    tick_n(&mut timer, 4); // counter = 4, bit 3 still low
 
-    let mut timer = Timer::new();
+    timer.write(DIV_ADDRESS, 0);
 
-    let _ = timer.write_tac(0b100);
-    timer.write_tma(modulo);
-    timer.write_tima(0xFF);
-
-    // 1024 ticks to overflow, plus one M-Cycle (4 T-Cycles) for the delayed reload.
-    for _ in 0..1028 {
-        timer.tick();
-    }
-
-    assert_eq!(timer.read_tima(), modulo);
+    assert_eq!(timer.read(TIMA_ADDRESS), 0);
 }
 
 #[test]
-fn overflow_event_is_emitted_exactly_once_one_m_cycle_after_overflow() {
+fn disabling_timer_while_selected_bit_is_high_increments_tima() {
+    let mut timer = configured_timer();
+    timer.write(DIV_ADDRESS, 0);
+    timer.write(TIMA_ADDRESS, 0);
+    tick_n(&mut timer, 8); // bit 3 is high
+
+    timer.write(TAC_ADDRESS, 0b001); // clears the enable bit
+
+    assert_eq!(timer.read(TIMA_ADDRESS), 1);
+}
+
+#[test]
+fn enabling_timer_never_increments_tima() {
     let mut timer = Timer::new();
+    timer.write(DIV_ADDRESS, 0);
+    tick_n(&mut timer, 8); // bit 3 is high while the timer is disabled
+    timer.write(TIMA_ADDRESS, 0);
 
-    let _ = timer.write_tac(0b100);
-    timer.write_tima(0xFF);
+    timer.write(TAC_ADDRESS, 0b101);
 
-    let mut events = 0;
+    assert_eq!(timer.read(TIMA_ADDRESS), 0);
+}
 
-    for _ in 0..1028 {
-        if timer.tick().is_some() {
-            events += 1;
+// ---------------------------------------------------------------
+// Overflow, reload and interrupt
+// ---------------------------------------------------------------
+
+#[test]
+fn overflow_reads_zero_then_loads_tma_and_requests_interrupt_after_4_t_cycles() {
+    let mut timer = just_overflowed_timer(0x23);
+
+    for _ in 0..3 {
+        assert!(!timer.tick());
+        assert_eq!(timer.read(TIMA_ADDRESS), 0x00);
+    }
+
+    assert!(timer.tick());
+    assert_eq!(timer.read(TIMA_ADDRESS), 0x23);
+}
+
+#[test]
+fn writing_tima_during_overflow_delay_cancels_reload_and_interrupt() {
+    let mut timer = just_overflowed_timer(0x23);
+
+    timer.write(TIMA_ADDRESS, 0x55);
+    let interrupts = tick_n(&mut timer, 10);
+
+    assert_eq!(interrupts, 0);
+    assert_eq!(timer.read(TIMA_ADDRESS), 0x55);
+}
+
+#[test]
+fn writing_tima_in_the_reload_window_is_ignored() {
+    let mut timer = just_overflowed_timer(0x23);
+    tick_n(&mut timer, 4); // reload happens on the 4th tick
+
+    timer.write(TIMA_ADDRESS, 0x99);
+
+    assert_eq!(timer.read(TIMA_ADDRESS), 0x23);
+}
+
+#[test]
+fn writing_tima_after_the_reload_window_is_accepted() {
+    let mut timer = just_overflowed_timer(0x23);
+    tick_n(&mut timer, 4 + 4);
+
+    timer.write(TIMA_ADDRESS, 0x99);
+
+    assert_eq!(timer.read(TIMA_ADDRESS), 0x99);
+}
+
+#[test]
+fn writing_tma_in_the_reload_window_also_updates_tima() {
+    let mut timer = just_overflowed_timer(0x23);
+    tick_n(&mut timer, 4);
+
+    timer.write(TMA_ADDRESS, 0x77);
+
+    assert_eq!(timer.read(TIMA_ADDRESS), 0x77);
+}
+
+#[test]
+fn counting_resumes_from_tma_after_overflow() {
+    let mut timer = just_overflowed_timer(0xF0);
+    tick_n(&mut timer, 4); // reload: TIMA = 0xF0
+
+    // Two more falling edges (counter 32 and 48).
+    tick_n(&mut timer, 32);
+
+    assert_eq!(timer.read(TIMA_ADDRESS), 0xF2);
+}
+
+// ---------------------------------------------------------------
+// Blargg's cycle-accurate timer routines (timer.s)
+//
+// The harness below models the M-cycles spent by `init_timer`,
+// `start_timer`, `stop_timer` and `stop_timer_word`, running the timer
+// alongside them. If these pass, the timer is not what makes
+// `instr_timing` fail: the CPU instruction cycle counts are.
+// ---------------------------------------------------------------
+
+struct Harness {
+    timer: Timer,
+    interrupt_flag: bool,
+}
+
+impl Harness {
+    /// `phase_t_cycles` offsets the start so every counter alignment is exercised.
+    fn new(phase_t_cycles: u32) -> Self {
+        let mut harness = Self {
+            timer: Timer::new(),
+            interrupt_flag: false,
+        };
+        harness.timer.write(TMA_ADDRESS, 0);
+        harness.timer.write(TAC_ADDRESS, 0x05);
+        harness.tick_t_cycles(phase_t_cycles);
+        harness
+    }
+
+    fn tick_t_cycles(&mut self, t_cycles: u32) {
+        for _ in 0..t_cycles {
+            if self.timer.tick() {
+                self.interrupt_flag = true;
+            }
         }
     }
 
-    assert_eq!(events, 1);
+    fn wait(&mut self, m_cycles: u32) {
+        self.tick_t_cycles(m_cycles * 4);
+    }
+
+    /// `ldh (n),a`: 3 M-cycles, the bus write happens on the last one.
+    fn ldh_write(&mut self, address: u16, value: u8) {
+        self.wait(2);
+        self.timer.write(address, value);
+        self.wait(1);
+    }
+
+    /// `ldh a,(n)`: 3 M-cycles, the bus read happens on the last one.
+    fn ldh_read(&mut self, address: u16) -> u8 {
+        self.wait(2);
+        let value = self.timer.read(address);
+        self.wait(1);
+        value
+    }
+
+    /// `ldh a,(IF)` followed by looking at bit 2.
+    fn read_timer_interrupt_flag(&mut self) -> bool {
+        self.wait(2);
+        let value = self.interrupt_flag;
+        self.wait(1);
+        value
+    }
+
+    /// `call start_timer`
+    fn start_timer(&mut self) {
+        self.wait(6); // call
+        self.wait(4); // push af
+        loop {
+            self.wait(1); // xor a
+            self.ldh_write(TIMA_ADDRESS, 0);
+            let tima = self.ldh_read(TIMA_ADDRESS);
+            self.wait(1); // or a
+            if tima == 0 {
+                self.wait(2); // jr nz, not taken
+                break;
+            }
+            self.wait(3); // jr nz, taken
+        }
+        self.wait(3); // pop af
+        self.wait(4); // ret
+    }
+
+    /// Body of `stop_timer_word` (the `call` is charged by the caller). Returns DE.
+    fn stop_timer_word(&mut self) -> u16 {
+        self.wait(2); // ld d,0
+        let tima = self.ldh_read(TIMA_ADDRESS);
+        self.wait(2); // sub 5
+        let a = tima.wrapping_sub(5);
+        self.wait(1 + 2 + 1 + 2 + 1); // add a, rl d, add a, rl d, ld e,a
+        let mut de = (a as u16) << 2;
+
+        loop {
+            self.wait(1); // xor a
+            self.ldh_write(TIMA_ADDRESS, 0);
+            let tima = self.ldh_read(TIMA_ADDRESS);
+            de = de.wrapping_sub(1);
+            self.wait(2); // dec de
+            self.wait(1); // or a
+            if tima == 0 {
+                self.wait(2); // jr nz, not taken
+                break;
+            }
+            self.wait(3); // jr nz, taken
+        }
+
+        self.wait(4); // ret
+        de
+    }
+
+    /// `call stop_timer`. Returns A.
+    fn stop_timer(&mut self) -> u8 {
+        self.wait(6); // call stop_timer
+        self.wait(4); // push de
+        self.wait(6); // call stop_timer_word
+        let de = self.stop_timer_word();
+        self.wait(1); // ld a,e
+        self.wait(2); // sub 10
+        self.wait(3); // pop de
+        self.wait(4); // ret
+        (de as u8).wrapping_sub(10)
+    }
+
+    /// start_timer, `delay_m_cycles` of other code, stop_timer.
+    fn measure(&mut self, delay_m_cycles: u32) -> u8 {
+        self.start_timer();
+        self.wait(delay_m_cycles);
+        self.stop_timer()
+    }
 }
 
 #[test]
-fn writing_tima_during_the_overflow_m_cycle_cancels_the_reload() {
-    let mut rng = rand::rng();
-    let modulo: u8 = rng.random();
-    let written: u8 = rng.random();
+fn blargg_test_timer_measures_zero_cycles_for_every_phase() {
+    for phase in 0..16 {
+        let mut harness = Harness::new(phase);
 
-    let mut timer = Timer::new();
-
-    let _ = timer.write_tac(0b100);
-    timer.write_tma(modulo);
-    timer.write_tima(0xFF);
-
-    // Advance to the overflow tick (TIMA == 0x00, reload pending).
-    for _ in 0..1024 {
-        timer.tick();
+        assert_eq!(harness.measure(0), 0, "phase {phase}");
     }
+}
 
-    // A write during this M-Cycle cancels the pending reload entirely:
-    // TMA is never copied in, and no interrupt is requested.
-    timer.write_tima(written);
+#[test]
+fn blargg_stop_timer_returns_elapsed_m_cycles_for_every_phase() {
+    for phase in 0..16 {
+        for delay in 0..=200u32 {
+            let mut harness = Harness::new(phase);
 
-    let mut events = 0;
-    for _ in 0..8 {
-        if timer.tick().is_some() {
-            events += 1;
+            assert_eq!(
+                harness.measure(delay),
+                delay as u8,
+                "phase {phase}, delay {delay}"
+            );
         }
     }
-
-    assert_eq!(timer.read_tima(), written);
-    assert_eq!(events, 0);
 }
 
 #[test]
-fn writing_tima_during_the_reload_m_cycle_is_ignored() {
-    let mut rng = rand::rng();
-    let modulo: u8 = rng.random();
+fn blargg_init_timer_overflow_window_holds_for_every_phase() {
+    for phase in 0..16 {
+        let mut harness = Harness::new(phase);
 
-    let mut timer = Timer::new();
+        harness.interrupt_flag = false; // wreg IF,0
+        harness.ldh_write(TIMA_ADDRESS, 0xEC); // wreg TIMA,-20
+        harness.wait(70); // delay 70
 
-    let _ = timer.write_div();
-    let _ = timer.write_tac(0b100);
-    timer.write_tma(modulo);
-    timer.write_tima(0xFF);
+        let too_early = harness.read_timer_interrupt_flag();
+        harness.wait(2); // and $04
+        harness.wait(3); // jp nz, not taken
+        let late_enough = harness.read_timer_interrupt_flag();
 
-    // Advance to the tick where TMA gets copied into TIMA.
-    for _ in 0..1028 {
-        timer.tick();
+        assert!(!too_early, "TIMA expired too early, phase {phase}");
+        assert!(late_enough, "TIMA took too long to expire, phase {phase}");
     }
-
-    assert_eq!(timer.read_tima(), modulo);
-
-    // A write during this same M-Cycle is overwritten by the reload again.
-    timer.write_tima(0x00);
-
-    assert_eq!(timer.read_tima(), modulo);
-}
-
-#[test]
-fn writing_tma_during_the_reload_m_cycle_is_also_copied_to_tima() {
-    let mut rng = rand::rng();
-    let old_modulo: u8 = rng.random();
-    let new_modulo: u8 = rng.random();
-
-    let mut timer = Timer::new();
-
-    let _ = timer.write_div();
-    let _ = timer.write_tac(0b100);
-    timer.write_tma(old_modulo);
-    timer.write_tima(0xFF);
-
-    for _ in 0..1028 {
-        timer.tick();
-    }
-
-    assert_eq!(timer.read_tima(), old_modulo);
-
-    // A write to TMA during the reload M-Cycle lands in TIMA as well.
-    timer.write_tma(new_modulo);
-
-    assert_eq!(timer.read_tima(), new_modulo);
-}
-
-#[test]
-fn writing_div_can_trigger_an_early_tick_when_selected_bit_is_set() {
-    let mut timer = Timer::new();
-
-    // Timer enabled, frequency = 4096 Hz (bit 9).
-    let _ = timer.write_tac(0b100);
-
-    // Advance div until bit 9 is set (halfway through its period).
-    for _ in 0..512 {
-        timer.tick();
-    }
-
-    let _ = timer.write_div();
-
-    // Resetting the counter dropped the selected bit from 1 to 0,
-    // producing an early tick.
-    assert_eq!(timer.read_tima(), 1);
-    assert_eq!(timer.read_div(), 0);
-}
-
-#[test]
-fn writing_tac_can_trigger_an_early_tick_when_disabling_with_selected_bit_set() {
-    let mut timer = Timer::new();
-
-    // Timer enabled, frequency = 4096 Hz (bit 9).
-    let _ = timer.write_tac(0b100);
-
-    // Advance div until bit 9 is set.
-    for _ in 0..512 {
-        timer.tick();
-    }
-
-    // Disabling the timer while the selected bit is set ticks once (DMG).
-    let _ = timer.write_tac(0b000);
-
-    assert_eq!(timer.read_tima(), 1);
-}
-
-#[test]
-fn writing_tac_does_not_tick_when_switching_to_a_bit_that_is_already_unset() {
-    let mut timer = Timer::new();
-
-    // Timer enabled, frequency = 4096 Hz (bit 9), div stays at 0 so bit 9 is unset.
-    let _ = timer.write_tac(0b100);
-
-    // Switch to frequency 262144 Hz (bit 3), also unset at div == 0.
-    let _ = timer.write_tac(0b101);
-
-    assert_eq!(timer.read_tima(), 0);
 }

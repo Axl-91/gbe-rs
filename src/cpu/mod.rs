@@ -56,15 +56,17 @@ impl Cpu {
     fn tick_read(&mut self, address: u16) -> u8 {
         self.total_t_cycles = self.total_t_cycles.wrapping_add(TICK_CYCLES as u64);
 
+        let value = self.bus.read(address);
+
         self.bus.tick(TICK_CYCLES);
-        self.bus.read(address)
+        value
     }
 
     fn tick_write(&mut self, address: u16, value: u8) {
         self.total_t_cycles = self.total_t_cycles.wrapping_add(TICK_CYCLES as u64);
 
-        self.bus.tick(TICK_CYCLES);
         self.bus.write(address, value);
+        self.bus.tick(TICK_CYCLES);
     }
 
     fn tick_internal(&mut self, m_cycles: u8) {

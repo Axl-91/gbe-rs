@@ -1,6 +1,8 @@
-use crate::memory::map::{TIMER_DIV_ADDRESS, TIMER_TAC_ADDRESS, TIMER_TIMA_ADDRESS};
-
 use super::*;
+
+const TIMER_DIV_ADDRESS: u16 = 0xFF04;
+const TIMER_TIMA_ADDRESS: u16 = 0xFF05;
+const TIMER_TAC_ADDRESS: u16 = 0xFF07;
 
 #[test]
 fn cpu_instructions_advance_timer_divider() {
