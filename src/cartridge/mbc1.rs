@@ -5,11 +5,11 @@
 use crate::memory::map::ROM_BANK_SIZE;
 
 // Addresses ranges for read
-const ROM_BANK_0_START: u16 = 0x0000;
-const ROM_BANK_0_END: u16 = 0x3FFF;
+const FIXED_ROM_BANK_START: u16 = 0x0000;
+const FIXED_ROM_BANK_END: u16 = 0x3FFF;
 
-const ROM_BANK_N_START: u16 = 0x4000;
-const ROM_BANK_N_END: u16 = 0x7FFF;
+const SWITCHABLE_ROM_BANK_START: u16 = 0x4000;
+const SWITCHABLE_ROM_BANK_END: u16 = 0x7FFF;
 
 // MBC1 control ranges
 pub(crate) const RAM_ENABLE_START: u16 = 0x0000;
@@ -69,12 +69,22 @@ impl Mbc1 {
         }
     }
 
+    fn get_fixed_rom_bank(&self) -> u8 {
+        match self.banking_mode {
+            BankingMode::Rom => 0,
+            BankingMode::Ram => self.bank_high << 5,
+        }
+    }
+
     /// Translates a cartridge address into a physical ROM address.
     pub fn read(&self, address: u16) -> usize {
         match address {
-            ROM_BANK_0_START..=ROM_BANK_0_END => address as usize,
-            ROM_BANK_N_START..=ROM_BANK_N_END => {
-                let offset = address - ROM_BANK_N_START;
+            FIXED_ROM_BANK_START..=FIXED_ROM_BANK_END => {
+                let init_bank = ROM_BANK_SIZE * self.get_fixed_rom_bank() as usize;
+                init_bank + address as usize
+            }
+            SWITCHABLE_ROM_BANK_START..=SWITCHABLE_ROM_BANK_END => {
+                let offset = address - SWITCHABLE_ROM_BANK_START;
                 (ROM_BANK_SIZE * self.get_rom_bank() as usize) + offset as usize
             }
             _ => unreachable!("Invalid cartridge address: {address:#06X}"),
@@ -131,7 +141,7 @@ mod tests {
         fn read_rom_bank_0() {
             let mut rng = rand::rng();
 
-            let address: u16 = rng.random_range(ROM_BANK_0_START..=ROM_BANK_0_END);
+            let address: u16 = rng.random_range(FIXED_ROM_BANK_START..=FIXED_ROM_BANK_END);
 
             let mbc = Mbc1::new();
 
@@ -152,12 +162,13 @@ mod tests {
         fn read_rom_bank_n_zero_maps_to_bank_one() {
             let mut rng = rand::rng();
 
-            let address: u16 = rng.random_range(ROM_BANK_N_START..=ROM_BANK_N_END);
+            let address: u16 =
+                rng.random_range(SWITCHABLE_ROM_BANK_START..=SWITCHABLE_ROM_BANK_END);
 
             let mut mbc = Mbc1::new();
             mbc.write(ROM_BANK_LOW_START, 0);
 
-            let offset = address - ROM_BANK_N_START;
+            let offset = address - SWITCHABLE_ROM_BANK_START;
             let expected = ROM_BANK_SIZE + offset as usize;
 
             assert_eq!(mbc.read(address), expected);
@@ -167,11 +178,12 @@ mod tests {
         fn read_rom_bank_n_initial_bank() {
             let mut rng = rand::rng();
 
-            let address: u16 = rng.random_range(ROM_BANK_N_START..=ROM_BANK_N_END);
+            let address: u16 =
+                rng.random_range(SWITCHABLE_ROM_BANK_START..=SWITCHABLE_ROM_BANK_END);
 
             let mbc = Mbc1::new();
 
-            let offset = address - ROM_BANK_N_START;
+            let offset = address - SWITCHABLE_ROM_BANK_START;
             let expected = ROM_BANK_SIZE + offset as usize;
 
             assert_eq!(mbc.read(address), expected);
@@ -181,13 +193,14 @@ mod tests {
         fn read_rom_bank_n() {
             let mut rng = rand::rng();
 
-            let address: u16 = rng.random_range(ROM_BANK_N_START..=ROM_BANK_N_END);
+            let address: u16 =
+                rng.random_range(SWITCHABLE_ROM_BANK_START..=SWITCHABLE_ROM_BANK_END);
             let bank: u8 = rng.random_range(1..=0x1F);
 
             let mut mbc = Mbc1::new();
             mbc.write(ROM_BANK_LOW_START, bank);
 
-            let offset = address - ROM_BANK_N_START;
+            let offset = address - SWITCHABLE_ROM_BANK_START;
             let expected = ROM_BANK_SIZE * bank as usize + offset as usize;
 
             assert_eq!(mbc.read(address), expected);
@@ -197,7 +210,8 @@ mod tests {
         fn read_rom_bank_n_with_high_bits() {
             let mut rng = rand::rng();
 
-            let address: u16 = rng.random_range(ROM_BANK_N_START..=ROM_BANK_N_END);
+            let address: u16 =
+                rng.random_range(SWITCHABLE_ROM_BANK_START..=SWITCHABLE_ROM_BANK_END);
             let bank_high: u8 = rng.random_range(0..=0x03);
             let bank_low: u8 = rng.random_range(1..=0x1F);
 
@@ -206,7 +220,7 @@ mod tests {
             mbc.write(ROM_BANK_LOW_START, bank_low);
             mbc.write(BANK_HIGH_START, bank_high);
 
-            let offset = address - ROM_BANK_N_START;
+            let offset = address - SWITCHABLE_ROM_BANK_START;
             let bank = ((bank_high << 5) | bank_low) as usize;
             let expected = ROM_BANK_SIZE * bank + offset as usize;
 
@@ -218,14 +232,15 @@ mod tests {
             let mut rng = rand::rng();
 
             let high: u8 = rng.random_range(1..=0x03);
-            let address: u16 = rng.random_range(ROM_BANK_N_START..=ROM_BANK_N_END);
+            let address: u16 =
+                rng.random_range(SWITCHABLE_ROM_BANK_START..=SWITCHABLE_ROM_BANK_END);
 
             let mut mbc = Mbc1::new();
 
             mbc.write(BANK_HIGH_START, high);
             mbc.write(ROM_BANK_LOW_START, 0);
 
-            let offset = address - ROM_BANK_N_START;
+            let offset = address - SWITCHABLE_ROM_BANK_START;
             let bank = ((high as usize) << 5) | 1;
             let expected = ROM_BANK_SIZE * bank + offset as usize;
 
@@ -353,7 +368,8 @@ mod tests {
 
             let high: u8 = rng.random_range(1..=0x03);
             let low: u8 = rng.random_range(1..=0x1F);
-            let address: u16 = rng.random_range(ROM_BANK_N_START..=ROM_BANK_N_END);
+            let address: u16 =
+                rng.random_range(SWITCHABLE_ROM_BANK_START..=SWITCHABLE_ROM_BANK_END);
 
             let mut mbc = Mbc1::new();
 
@@ -361,7 +377,7 @@ mod tests {
             mbc.write(ROM_BANK_LOW_START, low);
             mbc.write(BANKING_MODE_START, 1);
 
-            let offset = address - ROM_BANK_N_START;
+            let offset = address - SWITCHABLE_ROM_BANK_START;
             let expected = ROM_BANK_SIZE * low as usize + offset as usize;
 
             assert_eq!(mbc.read(address), expected);

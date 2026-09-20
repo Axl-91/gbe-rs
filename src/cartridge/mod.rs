@@ -64,14 +64,14 @@ impl Cartridge {
     pub fn read(&self, address: u16) -> u8 {
         match address {
             CARTRIDGE_ROM_START..=CARTRIDGE_ROM_END => {
-                let real_address = self.mbc.read(address);
+                let real_address = self.mbc.read(address) % self.rom.len();
                 self.rom[real_address]
             }
             CARTRIDGE_RAM_START..=CARTRIDGE_RAM_END => {
-                if self.mbc.is_ram_enabled() {
+                if self.mbc.is_ram_enabled() && !self.ram.is_empty() {
                     let bank_selected = self.mbc.get_ram_bank() as usize;
                     let offset = (address - CARTRIDGE_RAM_START) as usize;
-                    let ram_address = (bank_selected * RAM_BANK_SIZE) + offset;
+                    let ram_address = ((bank_selected * RAM_BANK_SIZE) + offset) % self.ram.len();
 
                     self.ram[ram_address]
                 } else {
@@ -89,10 +89,10 @@ impl Cartridge {
                 self.mbc.write(address, value);
             }
             CARTRIDGE_RAM_START..=CARTRIDGE_RAM_END => {
-                if self.mbc.is_ram_enabled() {
+                if self.mbc.is_ram_enabled() && !self.ram.is_empty() {
                     let bank_selected = self.mbc.get_ram_bank() as usize;
                     let offset = (address - CARTRIDGE_RAM_START) as usize;
-                    let ram_address = (bank_selected * RAM_BANK_SIZE) + offset;
+                    let ram_address = ((bank_selected * RAM_BANK_SIZE) + offset) % self.ram.len();
 
                     self.ram[ram_address] = value;
                 }
