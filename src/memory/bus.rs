@@ -72,19 +72,33 @@ impl MemoryBus {
                 self.wram[offset]
             }
 
-            HRAM_START..=HRAM_END => {
-                let offset = (address - HRAM_START) as usize;
-                self.hram[offset]
+            // Echo RAM mirrors WRAM addresses
+            ECHO_RAM_START..=ECHO_RAM_END => {
+                let offset = (address - ECHO_RAM_START) as usize;
+                self.wram[offset]
             }
-            TIMER_ADDRESS_START..=TIMER_ADDRESS_END => self.timer.read(address),
 
-            INTERRUPT_FLAG_ADDRESS => self.interrupt_flags | 0xE0,
-            INTERRUPT_ENABLE_ADDRESS => self.interrupt_enable,
+            OAM_START..=OAM_END => {
+                todo!("OAM implementation in progress...")
+            }
+
+            UNUSABLE_MEMORY_START..=UNUSABLE_MEMORY_END => 0x00,
+
+            JOYPAD_ADDRESS => self.joypad.read(),
 
             SERIAL_DATA_ADDRESS => self.serial.read_data(),
             SERIAL_CONTROL_ADDRESS => self.serial.read_control(),
 
-            JOYPAD_ADDRESS => self.joypad.read(),
+            TIMER_ADDRESS_START..=TIMER_ADDRESS_END => self.timer.read(address),
+
+            INTERRUPT_FLAG_ADDRESS => self.interrupt_flags | 0xE0,
+
+            HRAM_START..=HRAM_END => {
+                let offset = (address - HRAM_START) as usize;
+                self.hram[offset]
+            }
+
+            INTERRUPT_ENABLE_ADDRESS => self.interrupt_enable,
 
             _ => UNMAPPED_ADDRESS_VALUE,
         }
@@ -105,18 +119,32 @@ impl MemoryBus {
                 self.wram[(address - WRAM_START) as usize] = value;
             }
 
-            HRAM_START..=HRAM_END => {
-                self.hram[(address - HRAM_START) as usize] = value;
+            // Echo RAM mirrors WRAM addresses
+            ECHO_RAM_START..=ECHO_RAM_END => {
+                let offset = (address - ECHO_RAM_START) as usize;
+                self.wram[offset] = value;
             }
-            TIMER_ADDRESS_START..=TIMER_ADDRESS_END => self.timer.write(address, value),
 
-            INTERRUPT_FLAG_ADDRESS => self.interrupt_flags = value,
-            INTERRUPT_ENABLE_ADDRESS => self.interrupt_enable = value,
+            OAM_START..=OAM_END => {
+                todo!("OAM implementation in progress...")
+            }
+
+            UNUSABLE_MEMORY_START..=UNUSABLE_MEMORY_END => {}
+
+            JOYPAD_ADDRESS => self.joypad.write(value),
 
             SERIAL_DATA_ADDRESS => self.serial.write_data(value),
             SERIAL_CONTROL_ADDRESS => self.serial.write_control(value),
 
-            JOYPAD_ADDRESS => self.joypad.write(value),
+            TIMER_ADDRESS_START..=TIMER_ADDRESS_END => self.timer.write(address, value),
+
+            INTERRUPT_FLAG_ADDRESS => self.interrupt_flags = value,
+
+            HRAM_START..=HRAM_END => {
+                self.hram[(address - HRAM_START) as usize] = value;
+            }
+
+            INTERRUPT_ENABLE_ADDRESS => self.interrupt_enable = value,
 
             _ => {}
         }
