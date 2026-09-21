@@ -104,3 +104,126 @@ fn last_vblank_line_returns_to_first_line() {
     assert_eq!(ppu.ly, 0);
     assert!(matches!(ppu.mode, PpuMode::OamSearch));
 }
+
+#[test]
+fn lyc_match_is_detected_only_when_entering_match() {
+    let mut ppu = Ppu::new();
+
+    ppu.lyc = ppu.ly;
+
+    assert!(ppu.update_lyc_match());
+    assert!(!ppu.update_lyc_match());
+
+    ppu.lyc = ppu.ly.wrapping_add(1);
+
+    assert!(!ppu.update_lyc_match());
+
+    ppu.lyc = ppu.ly;
+
+    assert!(ppu.update_lyc_match());
+}
+
+#[test]
+fn hblank_stat_interrupt_is_requested_when_enabled() {
+    let mut ppu = Ppu::new();
+
+    ppu.mode = PpuMode::HBlank;
+    ppu.stat |= 1 << 3;
+
+    assert!(ppu.stat_interrupt_requested(false));
+}
+
+#[test]
+fn hblank_stat_interrupt_is_not_requested_when_disabled() {
+    let mut ppu = Ppu::new();
+
+    ppu.mode = PpuMode::HBlank;
+
+    assert!(!ppu.stat_interrupt_requested(false));
+}
+
+#[test]
+fn vblank_stat_interrupt_is_requested_when_enabled() {
+    let mut ppu = Ppu::new();
+
+    ppu.mode = PpuMode::VBlank;
+    ppu.stat |= 1 << 4;
+
+    assert!(ppu.stat_interrupt_requested(false));
+}
+
+#[test]
+fn vblank_stat_interrupt_is_not_requested_when_disabled() {
+    let mut ppu = Ppu::new();
+
+    ppu.mode = PpuMode::VBlank;
+
+    assert!(!ppu.stat_interrupt_requested(false));
+}
+
+#[test]
+fn oam_search_stat_interrupt_is_requested_when_enabled() {
+    let mut ppu = Ppu::new();
+
+    ppu.mode = PpuMode::OamSearch;
+    ppu.stat |= 1 << 5;
+
+    assert!(ppu.stat_interrupt_requested(false));
+}
+
+#[test]
+fn oam_search_stat_interrupt_is_not_requested_when_disabled() {
+    let mut ppu = Ppu::new();
+
+    ppu.mode = PpuMode::OamSearch;
+
+    assert!(!ppu.stat_interrupt_requested(false));
+}
+
+#[test]
+fn drawing_does_not_request_stat_interrupt() {
+    let mut ppu = Ppu::new();
+
+    ppu.mode = PpuMode::Drawing;
+    ppu.stat |= 1 << 3;
+    ppu.stat |= 1 << 4;
+    ppu.stat |= 1 << 5;
+
+    assert!(!ppu.stat_interrupt_requested(false));
+}
+
+#[test]
+fn lyc_stat_interrupt_is_requested_when_enabled() {
+    let mut ppu = Ppu::new();
+
+    ppu.stat |= 1 << 6;
+
+    assert!(ppu.stat_interrupt_requested(true));
+}
+
+#[test]
+fn lyc_stat_interrupt_is_not_requested_when_disabled() {
+    let ppu = Ppu::new();
+
+    assert!(!ppu.stat_interrupt_requested(true));
+}
+
+#[test]
+fn lyc_stat_interrupt_is_not_requested_without_new_match() {
+    let mut ppu = Ppu::new();
+
+    ppu.stat |= 1 << 6;
+
+    assert!(!ppu.stat_interrupt_requested(false));
+}
+
+#[test]
+fn mode_and_lyc_stat_interrupts_share_the_same_request() {
+    let mut ppu = Ppu::new();
+
+    ppu.mode = PpuMode::HBlank;
+    ppu.stat |= 1 << 3;
+    ppu.stat |= 1 << 6;
+
+    assert!(ppu.stat_interrupt_requested(true));
+}

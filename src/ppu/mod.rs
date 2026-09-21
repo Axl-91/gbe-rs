@@ -61,6 +61,8 @@ pub struct Ppu {
 
     mode: PpuMode,
     mode_cycles: u16,
+
+    ly_eq_lyc: bool,
 }
 
 impl Ppu {
@@ -83,6 +85,8 @@ impl Ppu {
 
             mode: PpuMode::OamSearch,
             mode_cycles: 0x00,
+
+            ly_eq_lyc: false,
         }
     }
 
@@ -96,14 +100,7 @@ impl Ppu {
         }
     }
 
-    pub fn tick(&mut self) {
-        self.mode_cycles += 1;
-
-        if self.mode_cycles < self.mode_duration() {
-            return;
-        }
-        self.mode_cycles = 0;
-
+    pub fn advance_mode(&mut self) {
         match self.mode {
             PpuMode::HBlank => {
                 self.ly += 1;
@@ -130,6 +127,43 @@ impl Ppu {
                 self.mode = PpuMode::HBlank;
             }
         }
+    }
+
+    fn update_lyc_match(&mut self) -> bool {
+        let previous_eq = self.ly_eq_lyc;
+        self.ly_eq_lyc = self.ly == self.lyc;
+
+        let value_was_changed = self.ly_eq_lyc != previous_eq;
+
+        value_was_changed && self.ly_eq_lyc
+    }
+
+    fn stat_interrupt_requested(&self, lyc_changed: bool) -> bool {
+        let mode_interrupt_enabled = match self.mode {
+            PpuMode::HBlank => self.stat & (1 << 3) != 0,
+            PpuMode::VBlank => self.stat & (1 << 4) != 0,
+            PpuMode::OamSearch => self.stat & (1 << 5) != 0,
+            PpuMode::Drawing => false,
+        };
+
+        let lyc_interrupt_enabled = lyc_changed && self.stat & (1 << 6) != 0;
+
+        mode_interrupt_enabled || lyc_interrupt_enabled
+    }
+
+    pub fn tick(&mut self) -> bool {
+        self.mode_cycles += 1;
+
+        if self.mode_cycles < self.mode_duration() {
+            return false;
+        }
+
+        self.mode_cycles = 0;
+
+        self.advance_mode();
+        let lyc_changed = self.update_lyc_match();
+
+        self.stat_interrupt_requested(lyc_changed)
     }
 
     fn is_lcd_enabled(&self) -> bool {

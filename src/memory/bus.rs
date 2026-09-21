@@ -55,7 +55,9 @@ impl MemoryBus {
             if self.timer.tick() {
                 self.interrupt_flags |= 0x04;
             }
-            self.ppu.tick();
+            if self.ppu.tick() {
+                self.interrupt_flags |= 0x02;
+            }
         }
     }
 
