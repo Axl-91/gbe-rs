@@ -55,6 +55,18 @@ impl MemoryBus {
             if self.timer.tick() {
                 self.interrupt_flags |= 0x04;
             }
+            self.ppu.tick();
+        }
+    }
+
+    fn dma_transfer(&mut self, source: u8) {
+        self.ppu.write(DMA_ADDRESS, source);
+
+        let source_address = (source as u16) << 8;
+
+        for offset in 0..=OAM_END - OAM_START {
+            let value = self.read(source_address + offset);
+            self.ppu.write(OAM_START + offset, value);
         }
     }
 
@@ -136,7 +148,10 @@ impl MemoryBus {
 
             INTERRUPT_FLAG_ADDRESS => self.interrupt_flags = value,
 
-            PPU_REGISTERS_START..=PPU_REGISTERS_END => self.ppu.write(address, value),
+            PPU_REGISTERS_START..=PPU_REGISTERS_END => match address {
+                DMA_ADDRESS => self.dma_transfer(value),
+                _ => self.ppu.write(address, value),
+            },
 
             HRAM_START..=HRAM_END => {
                 self.hram[(address - HRAM_START) as usize] = value;

@@ -40,6 +40,8 @@ pub const TIMER_ADDRESS_END: u16 = 0xFF07;
 
 pub const INTERRUPT_FLAG_ADDRESS: u16 = 0xFF0F;
 
+pub const DMA_ADDRESS: u16 = 0xFF46;
+
 pub const PPU_REGISTERS_START: u16 = 0xFF40;
 pub const PPU_REGISTERS_END: u16 = 0xFF4B;
 

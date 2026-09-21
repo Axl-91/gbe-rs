@@ -1,3 +1,6 @@
+// TODO: Once all functions are used we can delete this
+#![allow(dead_code)]
+
 use crate::memory::map::*;
 
 const VRAM_SIZE: usize = 0x2000;
@@ -16,10 +19,30 @@ const OBP1_ADDRESS: u16 = 0xFF49;
 const WY_ADDRESS: u16 = 0xFF4A;
 const WX_ADDRESS: u16 = 0xFF4B;
 
-pub struct Ppu {
-    vram: [u8; VRAM_SIZE],
-    oam: [u8; OAM_SIZE],
+const LCDC_ENABLE: u8 = 7;
+const WINDOW_TILE_MAP: u8 = 6;
+const WINDOW_ENABLE: u8 = 5;
+const BG_WINDOW_TILE_DATA: u8 = 4;
+const BG_TILE_MAP: u8 = 3;
+const OBJ_SIZE: u8 = 2;
+const OBJ_ENABLE: u8 = 1;
+const BG_WINDOW_ENABLE: u8 = 0;
 
+const VISIBLE_LINES: u8 = 144;
+const TOTAL_LINES: u8 = 154;
+
+#[cfg(test)]
+mod tests;
+
+#[derive(Clone, Copy)]
+enum PpuMode {
+    HBlank = 0,
+    VBlank = 1,
+    OamSearch = 2,
+    Drawing = 3,
+}
+
+pub struct Ppu {
     // PPU registers
     lcdc: u8,
     stat: u8,
@@ -32,14 +55,17 @@ pub struct Ppu {
     obp1: u8,
     wy: u8,
     wx: u8,
+
+    vram: [u8; VRAM_SIZE],
+    oam: [u8; OAM_SIZE],
+
+    mode: PpuMode,
+    mode_cycles: u16,
 }
 
 impl Ppu {
     pub fn new() -> Self {
         Self {
-            vram: [0; VRAM_SIZE],
-            oam: [0; OAM_SIZE],
-
             lcdc: 0x91,
             stat: 0x85,
             scy: 0,
@@ -51,7 +77,105 @@ impl Ppu {
             obp1: 0,
             wy: 0,
             wx: 0,
+
+            vram: [0; VRAM_SIZE],
+            oam: [0; OAM_SIZE],
+
+            mode: PpuMode::OamSearch,
+            mode_cycles: 0x00,
         }
+    }
+
+    fn mode_duration(&self) -> u16 {
+        match self.mode {
+            PpuMode::HBlank => 204,
+            PpuMode::VBlank => 456,
+            PpuMode::OamSearch => 80,
+            // TODO: Mode 3 duration is variable. 172 T-cycles is the minimum duration
+            PpuMode::Drawing => 172,
+        }
+    }
+
+    pub fn tick(&mut self) {
+        self.mode_cycles += 1;
+
+        if self.mode_cycles < self.mode_duration() {
+            return;
+        }
+        self.mode_cycles = 0;
+
+        match self.mode {
+            PpuMode::HBlank => {
+                self.ly += 1;
+
+                if self.ly == VISIBLE_LINES {
+                    self.mode = PpuMode::VBlank
+                } else {
+                    self.mode = PpuMode::OamSearch
+                }
+            }
+
+            PpuMode::VBlank => {
+                self.ly += 1;
+
+                if self.ly == TOTAL_LINES {
+                    self.ly = 0;
+                    self.mode = PpuMode::OamSearch;
+                }
+            }
+
+            PpuMode::OamSearch => self.mode = PpuMode::Drawing,
+
+            PpuMode::Drawing => {
+                self.mode = PpuMode::HBlank;
+            }
+        }
+    }
+
+    fn is_lcd_enabled(&self) -> bool {
+        self.lcdc & (1 << LCDC_ENABLE) != 0
+    }
+
+    fn is_window_tile_map(&self) -> bool {
+        self.lcdc & (1 << WINDOW_TILE_MAP) != 0
+    }
+
+    fn is_window_enabled(&self) -> bool {
+        self.lcdc & (1 << WINDOW_ENABLE) != 0
+    }
+
+    fn is_bg_window_tile_data(&self) -> bool {
+        self.lcdc & (1 << BG_WINDOW_TILE_DATA) != 0
+    }
+
+    fn is_bg_tile_map(&self) -> bool {
+        self.lcdc & (1 << BG_TILE_MAP) != 0
+    }
+
+    fn is_obj_size(&self) -> bool {
+        self.lcdc & (1 << OBJ_SIZE) != 0
+    }
+
+    fn is_obj_enabled(&self) -> bool {
+        self.lcdc & (1 << OBJ_ENABLE) != 0
+    }
+
+    fn is_bg_window_enabled(&self) -> bool {
+        self.lcdc & (1 << BG_WINDOW_ENABLE) != 0
+    }
+
+    fn read_stat(&self) -> u8 {
+        let mut stat = self.stat;
+
+        // bit 2 -> ly==lyc
+        if self.ly == self.lyc {
+            stat |= 0x04;
+        }
+
+        // bit 0-1 -> PPU Mode
+        stat |= self.mode as u8;
+
+        stat | 0x80
     }
 
     pub fn read(&self, address: u16) -> u8 {
@@ -67,7 +191,7 @@ impl Ppu {
             }
 
             LCDC_ADDRESS => self.lcdc,
-            STAT_ADDRESS => self.stat,
+            STAT_ADDRESS => self.read_stat(),
             LY_ADDRESS => self.ly,
 
             SCY_ADDRESS => self.scy,
@@ -99,8 +223,11 @@ impl Ppu {
             }
 
             LCDC_ADDRESS => self.lcdc = value,
-            STAT_ADDRESS => self.stat = value,
-            LY_ADDRESS => self.ly = value,
+
+            // For stat we only take bits 3-6
+            STAT_ADDRESS => self.stat = value & 0b0111_1000,
+
+            LY_ADDRESS => self.ly = 0x00,
 
             SCY_ADDRESS => self.scy = value,
             SCX_ADDRESS => self.scx = value,
