@@ -29,6 +29,7 @@ pub const UNUSABLE_MEMORY_START: u16 = 0xFEA0;
 pub const UNUSABLE_MEMORY_END: u16 = 0xFEFF;
 
 // I/O Ranges START ->
+
 pub const JOYPAD_ADDRESS: u16 = 0xFF00;
 
 pub const SERIAL_DATA_ADDRESS: u16 = 0xFF01;
@@ -38,6 +39,10 @@ pub const TIMER_ADDRESS_START: u16 = 0xFF04;
 pub const TIMER_ADDRESS_END: u16 = 0xFF07;
 
 pub const INTERRUPT_FLAG_ADDRESS: u16 = 0xFF0F;
+
+pub const PPU_REGISTERS_START: u16 = 0xFF40;
+pub const PPU_REGISTERS_END: u16 = 0xFF4B;
+
 // I/O Ranges END <-
 
 pub const HRAM_START: u16 = 0xFF80;

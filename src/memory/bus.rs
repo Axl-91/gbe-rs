@@ -4,18 +4,21 @@
 //! such as the cartridge, VRAM, and WRAM.
 
 use super::map::*;
-use crate::{cartridge::Cartridge, joypad::Joypad, serial::Serial, timer::Timer};
+use crate::{cartridge::Cartridge, joypad::Joypad, ppu::Ppu, serial::Serial, timer::Timer};
 
 /// Value returned when reading from an address that isn't backed by any
 /// implemented memory or I/O register.
 const UNMAPPED_ADDRESS_VALUE: u8 = 0xFF;
 
+const WRAM_SIZE: usize = 0x2000;
+const HRAM_SIZE: usize = 0x7F;
+
 /// Provides access to the Game Boy memory address space.
 pub struct MemoryBus {
     cartridge: Cartridge,
-    vram: [u8; 0x2000],
-    wram: [u8; 0x2000],
-    hram: [u8; 0x7F],
+    ppu: Ppu,
+    wram: [u8; WRAM_SIZE],
+    hram: [u8; HRAM_SIZE],
     interrupt_flags: u8,
     interrupt_enable: u8,
     timer: Timer,
@@ -28,9 +31,9 @@ impl MemoryBus {
     pub fn new(cartridge: Cartridge) -> Self {
         Self {
             cartridge,
-            vram: [0; 0x2000],
-            wram: [0; 0x2000],
-            hram: [0; 0x7F],
+            ppu: Ppu::new(),
+            wram: [0; WRAM_SIZE],
+            hram: [0; HRAM_SIZE],
             interrupt_flags: 0xE1,
             interrupt_enable: 0x00,
             timer: Timer::new(),
@@ -60,10 +63,7 @@ impl MemoryBus {
         match address {
             CARTRIDGE_ROM_START..=CARTRIDGE_ROM_END => self.cartridge.read(address),
 
-            VRAM_START..=VRAM_END => {
-                let offset = (address - VRAM_START) as usize;
-                self.vram[offset]
-            }
+            VRAM_START..=VRAM_END => self.ppu.read(address),
 
             CARTRIDGE_RAM_START..=CARTRIDGE_RAM_END => self.cartridge.read(address),
 
@@ -78,9 +78,7 @@ impl MemoryBus {
                 self.wram[offset]
             }
 
-            OAM_START..=OAM_END => {
-                todo!("OAM implementation in progress...")
-            }
+            OAM_START..=OAM_END => self.ppu.read(address),
 
             UNUSABLE_MEMORY_START..=UNUSABLE_MEMORY_END => 0x00,
 
@@ -92,6 +90,8 @@ impl MemoryBus {
             TIMER_ADDRESS_START..=TIMER_ADDRESS_END => self.timer.read(address),
 
             INTERRUPT_FLAG_ADDRESS => self.interrupt_flags | 0xE0,
+
+            PPU_REGISTERS_START..=PPU_REGISTERS_END => self.ppu.read(address),
 
             HRAM_START..=HRAM_END => {
                 let offset = (address - HRAM_START) as usize;
@@ -109,9 +109,7 @@ impl MemoryBus {
         match address {
             CARTRIDGE_ROM_START..=CARTRIDGE_ROM_END => self.cartridge.write(address, value),
 
-            VRAM_START..=VRAM_END => {
-                self.vram[(address - VRAM_START) as usize] = value;
-            }
+            VRAM_START..=VRAM_END => self.ppu.write(address, value),
 
             CARTRIDGE_RAM_START..=CARTRIDGE_RAM_END => self.cartridge.write(address, value),
 
@@ -125,9 +123,7 @@ impl MemoryBus {
                 self.wram[offset] = value;
             }
 
-            OAM_START..=OAM_END => {
-                todo!("OAM implementation in progress...")
-            }
+            OAM_START..=OAM_END => self.ppu.write(address, value),
 
             UNUSABLE_MEMORY_START..=UNUSABLE_MEMORY_END => {}
 
@@ -139,6 +135,8 @@ impl MemoryBus {
             TIMER_ADDRESS_START..=TIMER_ADDRESS_END => self.timer.write(address, value),
 
             INTERRUPT_FLAG_ADDRESS => self.interrupt_flags = value,
+
+            PPU_REGISTERS_START..=PPU_REGISTERS_END => self.ppu.write(address, value),
 
             HRAM_START..=HRAM_END => {
                 self.hram[(address - HRAM_START) as usize] = value;
