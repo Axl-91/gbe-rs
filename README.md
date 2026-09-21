@@ -62,9 +62,9 @@ The emulator advances the hardware over time by executing CPU instructions and, 
 - [Game Boy: Complete Technical Reference](https://gekkio.fi/files/gb-docs/gbctr.pdf) — Gekkio's in-depth reference (PDF), the primary source for hardware quirks and cycle-accurate behavior.
 - [Game Boy Opcode Table](https://gbdev.io/gb-opcodes/optables/) — Instruction reference with opcodes, cycle counts, and flag effects.
 
-# Test Suites
+## Test Suites
 
-## Blargg
+### Blargg
 
 | Test name | Status |
 |---|---|
@@ -72,7 +72,7 @@ The emulator advances the hardware over time by executing CPU instructions and, 
 | CPU instructions tests (Integrated) | ✅ Passing |
 | Instructions Timing tests | ✅ Passing |
 
-## Mooneye
+### Mooneye
 
 | Test name | Status |
 |---|---|
