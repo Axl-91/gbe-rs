@@ -56,9 +56,11 @@ At the center is the CPU, which fetches instructions from memory, decodes them, 
 
 The emulator advances the hardware over time by executing CPU instructions and, eventually, consuming the corresponding number of cycles. This allows components such as the PPU and timer to remain synchronized with the CPU.
 
-## Instruction reference
+## References
 
-For a complete reference of the Game Boy CPU instruction set, see the [Game Boy CPU Instruction Set](https://gbdev.io/gb-opcodes/optables/).
+- [Pan Docs](https://gbdev.io/pandocs/) — The single most comprehensive technical reference for Game Boy hardware behavior, covering the CPU, memory map, PPU, timers, interrupts, and more.
+- [Game Boy: Complete Technical Reference](https://gekkio.fi/files/gb-docs/gbctr.pdf) — Gekkio's in-depth reference (PDF), the primary source for hardware quirks and cycle-accurate behavior.
+- [Game Boy Opcode Table](https://gbdev.io/gb-opcodes/optables/) — Instruction reference with opcodes, cycle counts, and flag effects.
 
 ## Project structure
 
