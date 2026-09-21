@@ -62,42 +62,6 @@ The emulator advances the hardware over time by executing CPU instructions and, 
 - [Game Boy: Complete Technical Reference](https://gekkio.fi/files/gb-docs/gbctr.pdf) — Gekkio's in-depth reference (PDF), the primary source for hardware quirks and cycle-accurate behavior.
 - [Game Boy Opcode Table](https://gbdev.io/gb-opcodes/optables/) — Instruction reference with opcodes, cycle counts, and flag effects.
 
-## Project structure
-
-```text
-gbe-rs/
-├── src/
-│   ├── cartridge/
-│   │   ├── mbc1.rs
-│   │   └── mod.rs
-│   ├── cpu/
-│   │   ├── tests/
-│   │   ├── arithmetic.rs
-│   │   ├── cb.rs
-│   │   ├── control.rs
-│   │   ├── instruction.rs
-│   │   ├── interrupt.rs
-│   │   ├── load.rs
-│   │   ├── mod.rs
-│   │   ├── registers.rs
-│   │   ├── rotation.rs
-│   │   ├── stack.rs
-│   │   └── t_cycles.rs
-│   ├── memory/
-│   │   ├── bus.rs
-│   │   ├── map.rs
-│   │   └── mod.rs
-│   ├── timer/
-│   │   ├── mod.rs
-│   │   └── tests.rs
-│   ├── lib.rs
-│   └── main.rs
-├── Cargo.lock
-├── Cargo.toml
-├── LICENSE
-└── README.md
-```
-
 # Test Suites
 
 ## Blargg
