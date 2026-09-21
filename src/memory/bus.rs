@@ -168,11 +168,14 @@ impl MemoryBus {
 
 #[cfg(test)]
 mod tests {
+    use crate::cartridge::{mbc::CartridgeMbc, mbc1::Mbc1};
+
     use super::*;
     use rand::RngExt;
 
     fn test_cartridge() -> Cartridge {
-        Cartridge::new(vec![0; ROM_BANK_SIZE * 4], RAM_BANK_SIZE)
+        let mbc = CartridgeMbc::Mbc1(Mbc1::new());
+        Cartridge::new(vec![0; ROM_BANK_SIZE * 4], RAM_BANK_SIZE, mbc)
     }
 
     mod cartridge {
@@ -205,7 +208,8 @@ mod tests {
             rom[addresses[3] as usize] = values[3];
             rom[addresses[4] as usize] = values[4];
 
-            let cartridge = Cartridge::new(rom, RAM_BANK_SIZE);
+            let mbc = CartridgeMbc::Mbc1(Mbc1::new());
+            let cartridge = Cartridge::new(rom, RAM_BANK_SIZE, mbc);
             let bus = MemoryBus::new(cartridge);
 
             assert_eq!(bus.read(addresses[0]), values[0]);

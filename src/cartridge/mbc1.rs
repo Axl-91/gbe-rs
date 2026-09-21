@@ -2,7 +2,7 @@
 //!
 //! Handles ROM and RAM bank selection for Game Boy cartridges.
 
-use crate::memory::map::ROM_BANK_SIZE;
+use crate::{cartridge::mbc::Mbc, memory::map::ROM_BANK_SIZE};
 
 // Addresses ranges for read
 const FIXED_ROM_BANK_START: u16 = 0x0000;
@@ -58,26 +58,17 @@ impl Mbc1 {
         }
     }
 
-    pub fn is_ram_enabled(&self) -> bool {
-        self.ram_enabled
-    }
-
-    pub fn get_ram_bank(&self) -> u8 {
-        match self.banking_mode {
-            BankingMode::Rom => 0,
-            BankingMode::Ram => self.bank_high,
-        }
-    }
-
     fn get_fixed_rom_bank(&self) -> u8 {
         match self.banking_mode {
             BankingMode::Rom => 0,
             BankingMode::Ram => self.bank_high << 5,
         }
     }
+}
 
+impl Mbc for Mbc1 {
     /// Translates a cartridge address into a physical ROM address.
-    pub fn read(&self, address: u16) -> usize {
+    fn read(&self, address: u16) -> usize {
         match address {
             FIXED_ROM_BANK_START..=FIXED_ROM_BANK_END => {
                 let init_bank = ROM_BANK_SIZE * self.get_fixed_rom_bank() as usize;
@@ -92,7 +83,7 @@ impl Mbc1 {
     }
 
     /// Updates the MBC1 state according to a cartridge control write.
-    pub fn write(&mut self, address: u16, value: u8) {
+    fn write(&mut self, address: u16, value: u8) {
         match address {
             RAM_ENABLE_START..=RAM_ENABLE_END => {
                 // We check for the lower 4 bits
@@ -120,6 +111,17 @@ impl Mbc1 {
             _ => {}
         }
     }
+
+    fn is_ram_enabled(&self) -> bool {
+        self.ram_enabled
+    }
+
+    fn get_ram_bank(&self) -> u8 {
+        match self.banking_mode {
+            BankingMode::Rom => 0,
+            BankingMode::Ram => self.bank_high,
+        }
+    }
 }
 
 impl Default for Mbc1 {
@@ -130,6 +132,7 @@ impl Default for Mbc1 {
 
 #[cfg(test)]
 mod tests {
+    use super::Mbc;
     use super::*;
     use rand::RngExt;
 

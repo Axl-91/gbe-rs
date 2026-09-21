@@ -1,7 +1,7 @@
 // TODO: Once all functions are used we can delete this
 #![allow(dead_code)]
 
-use crate::memory::map::*;
+use crate::memory::map::{OAM_END, OAM_START, VRAM_END, VRAM_START};
 
 const VRAM_SIZE: usize = 0x2000;
 const OAM_SIZE: usize = 0xA0;

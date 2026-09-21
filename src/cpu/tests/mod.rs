@@ -1,6 +1,8 @@
 use rand::RngExt;
 
 use crate::cartridge::Cartridge;
+use crate::cartridge::mbc::CartridgeMbc;
+use crate::cartridge::mbc1::Mbc1;
 use crate::memory::MemoryBus;
 use crate::memory::map::{ROM_BANK_SIZE, WRAM_END, WRAM_START};
 
@@ -22,7 +24,8 @@ fn create_cpu(opcode: u8, low_value: Option<u8>, high_value: Option<u8>) -> Cpu 
         rom[GAME_ENTRY_POINT as usize + 2] = value;
     }
 
-    let cartridge = Cartridge::new(rom, 0);
+    let mbc = CartridgeMbc::Mbc1(Mbc1::new());
+    let cartridge = Cartridge::new(rom, 0, mbc);
     let bus = MemoryBus::new(cartridge);
 
     Cpu::new(bus)

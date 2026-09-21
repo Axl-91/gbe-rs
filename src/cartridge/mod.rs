@@ -2,35 +2,65 @@
 //!
 //! Handles cartridge ROM and RAM access through the memory bank controller (MBC).
 
+pub mod mbc;
 pub mod mbc1;
 
 use std::fs;
 use std::io;
 use std::path::Path;
 
-use crate::memory::map::RAM_BANK_SIZE;
+use crate::cartridge::mbc::{CartridgeMbc, Mbc};
 use crate::memory::map::{
-    CARTRIDGE_RAM_END, CARTRIDGE_RAM_START, CARTRIDGE_ROM_END, CARTRIDGE_ROM_START,
+    CARTRIDGE_RAM_END, CARTRIDGE_RAM_START, CARTRIDGE_ROM_END, CARTRIDGE_ROM_START, MBC1_END,
+    MBC1_START, RAM_BANK_SIZE, ROM_ONLY,
 };
 use mbc1::Mbc1;
 
 const DISABLED_RAM_VALUE: u8 = 0xFF;
+
 const RAM_SIZE_CODE_ADDRESS: usize = 0x0149;
+const CARTRIDGE_TYPE_ADDRESS: usize = 0x0147;
 
 /// Represents a Game Boy cartridge with ROM, RAM, and a memory bank controller.
 pub struct Cartridge {
     rom: Vec<u8>,
     ram: Vec<u8>,
-    mbc: Mbc1,
+    mbc: CartridgeMbc,
 }
 
 impl Cartridge {
     /// Creates a new cartridge with the given ROM and RAM size.
-    pub fn new(rom: Vec<u8>, ram_size: usize) -> Self {
+    pub fn new(rom: Vec<u8>, ram_size: usize, mbc: CartridgeMbc) -> Self {
         Self {
             rom,
             ram: vec![0; ram_size],
-            mbc: Mbc1::new(),
+            mbc,
+        }
+    }
+
+    fn select_mbc(mbc_type: u8) -> io::Result<CartridgeMbc> {
+        let mbc = match mbc_type {
+            ROM_ONLY | MBC1_START..=MBC1_END => CartridgeMbc::Mbc1(Mbc1::new()),
+            _ => {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    format!("Unsupported cartridge type: {mbc_type:#04X}"),
+                ));
+            }
+        };
+
+        Ok(mbc)
+    }
+
+    fn select_ram_size(ram_type: u8) -> usize {
+        match ram_type {
+            0x00 => 0,
+            0x01 => RAM_BANK_SIZE / 4,
+            0x02 => RAM_BANK_SIZE,
+            0x03 => RAM_BANK_SIZE * 4,
+            0x04 => RAM_BANK_SIZE * 16,
+            0x05 => RAM_BANK_SIZE * 8,
+            _ => 0,
         }
     }
 
@@ -47,17 +77,10 @@ impl Cartridge {
         }
 
         // Header parsing
-        let ram_size = match rom[RAM_SIZE_CODE_ADDRESS] {
-            0x00 => 0,
-            0x01 => RAM_BANK_SIZE / 4,
-            0x02 => RAM_BANK_SIZE,
-            0x03 => RAM_BANK_SIZE * 4,
-            0x04 => RAM_BANK_SIZE * 16,
-            0x05 => RAM_BANK_SIZE * 8,
-            _ => 0,
-        };
+        let mbc = Self::select_mbc(rom[CARTRIDGE_TYPE_ADDRESS])?;
+        let ram_size = Self::select_ram_size(rom[RAM_SIZE_CODE_ADDRESS]);
 
-        Ok(Self::new(rom, ram_size))
+        Ok(Self::new(rom, ram_size, mbc))
     }
 
     /// Reads a byte from the cartridge ROM or RAM address space.
@@ -116,9 +139,10 @@ mod tests {
     const RAM_DISABLE_VALUE: u8 = 0x00;
 
     fn create_test_cartridge(rom: Option<Vec<u8>>, ram_size: usize) -> Cartridge {
+        let mbc = CartridgeMbc::Mbc1(Mbc1::new());
         match rom {
-            Some(rom) => Cartridge::new(rom, ram_size),
-            None => Cartridge::new(vec![0; ROM_BANK_SIZE * 4], ram_size),
+            Some(rom) => Cartridge::new(rom, ram_size, mbc),
+            None => Cartridge::new(vec![0; ROM_BANK_SIZE * 4], ram_size, mbc),
         }
     }
 
