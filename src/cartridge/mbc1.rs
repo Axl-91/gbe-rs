@@ -51,18 +51,20 @@ impl Mbc1 {
         }
     }
 
-    fn get_rom_bank(&self) -> u8 {
-        match self.banking_mode {
-            BankingMode::Rom => self.rom_bank_low | (self.bank_high << 5),
-            BankingMode::Ram => self.rom_bank_low,
-        }
-    }
+    fn get_rom_offsets(&self) -> (usize, usize) {
+        let high_bits = self.bank_high << 5;
+        let low_bits = self.rom_bank_low;
 
-    fn get_fixed_rom_bank(&self) -> u8 {
-        match self.banking_mode {
+        let fixed_offset = match self.banking_mode {
             BankingMode::Rom => 0,
-            BankingMode::Ram => self.bank_high << 5,
-        }
+            BankingMode::Ram => high_bits as usize,
+        };
+        let switchable_offset = (high_bits | low_bits) as usize;
+
+        (
+            ROM_BANK_SIZE * fixed_offset,
+            ROM_BANK_SIZE * switchable_offset,
+        )
     }
 }
 
@@ -71,12 +73,13 @@ impl Mbc for Mbc1 {
     fn read(&self, address: u16) -> usize {
         match address {
             FIXED_ROM_BANK_START..=FIXED_ROM_BANK_END => {
-                let init_bank = ROM_BANK_SIZE * self.get_fixed_rom_bank() as usize;
+                let (init_bank, _) = self.get_rom_offsets();
                 init_bank + address as usize
             }
             SWITCHABLE_ROM_BANK_START..=SWITCHABLE_ROM_BANK_END => {
+                let (_, init_address) = self.get_rom_offsets();
                 let offset = address - SWITCHABLE_ROM_BANK_START;
-                (ROM_BANK_SIZE * self.get_rom_bank() as usize) + offset as usize
+                init_address + offset as usize
             }
             _ => unreachable!("Invalid cartridge address: {address:#06X}"),
         }
@@ -364,28 +367,6 @@ mod tests {
 
     mod rom_bank {
         use super::*;
-
-        #[test]
-        fn read_rom_bank_n_ignores_high_bits_in_ram_banking_mode() {
-            let mut rng = rand::rng();
-
-            let high: u8 = rng.random_range(1..=0x03);
-            let low: u8 = rng.random_range(1..=0x1F);
-            let address: u16 =
-                rng.random_range(SWITCHABLE_ROM_BANK_START..=SWITCHABLE_ROM_BANK_END);
-
-            let mut mbc = Mbc1::new();
-
-            mbc.write(BANK_HIGH_START, high);
-            mbc.write(ROM_BANK_LOW_START, low);
-            mbc.write(BANKING_MODE_START, 1);
-
-            let offset = address - SWITCHABLE_ROM_BANK_START;
-            let expected = ROM_BANK_SIZE * low as usize + offset as usize;
-
-            assert_eq!(mbc.read(address), expected);
-        }
-
         mod low {
             use super::*;
 
