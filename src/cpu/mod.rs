@@ -191,7 +191,7 @@ impl Cpu {
     pub fn step(&mut self) -> u8 {
         let pc = self.registers.get_pc();
         info!(
-            "T-Cycles: {} | Executing: {:#02x}",
+            "T-Cycles: {} | Executing: {:#04x}",
             self.total_t_cycles,
             self.bus.read(pc)
         );
