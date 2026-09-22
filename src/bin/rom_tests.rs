@@ -47,6 +47,8 @@ fn check_verdict(log: &[u8]) -> Option<Verdict> {
 }
 
 fn main() -> io::Result<()> {
+    env_logger::init();
+
     let path = std::env::args().nth(1).expect("usage: gbe-rs <rom>");
 
     let cartridge = Cartridge::from_file(path)?;

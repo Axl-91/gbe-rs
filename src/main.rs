@@ -2,6 +2,8 @@ use gbe_rs::{Emulator, cartridge::Cartridge};
 use std::io;
 
 fn main() -> io::Result<()> {
+    env_logger::init();
+
     let path = std::env::args().nth(1).expect("usage: gbe-rs <rom>");
 
     let cartridge = Cartridge::from_file(path)?;

@@ -202,7 +202,7 @@ impl Ppu {
         let mut stat = self.stat;
 
         // bit 2 -> ly==lyc
-        if self.ly == self.lyc {
+        if self.ly_eq_lyc {
             stat |= 0x04;
         }
 

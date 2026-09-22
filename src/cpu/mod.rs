@@ -17,6 +17,7 @@ mod t_cycles;
 mod tests;
 
 use crate::{cpu::instruction::*, memory::MemoryBus};
+use log::info;
 use registers::Registers;
 
 const NON_CYCLES: u8 = 0x00;
@@ -188,6 +189,13 @@ impl Cpu {
 
     /// Executes one CPU step and returns the number of T-Cycles consumed.
     pub fn step(&mut self) -> u8 {
+        let pc = self.registers.get_pc();
+        info!(
+            "T-Cycles: {} | Executing: {:#02x}",
+            self.total_t_cycles,
+            self.bus.read(pc)
+        );
+
         let prev_ticks = self.get_total_ticks();
 
         if self.stopped {
