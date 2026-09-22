@@ -70,7 +70,7 @@ The emulator advances the hardware over time by executing CPU instructions and, 
 
 | Test name | Status |
 |---|---|
-| 11 CPU instructions tests (Isolated) | ✅ Passing |
+| CPU instructions tests (Isolated) | ✅ Passing |
 | CPU instructions tests (Integrated) | ✅ Passing |
 | Instructions Timing tests | ✅ Passing |
 
@@ -85,8 +85,7 @@ The emulator advances the hardware over time by executing CPU instructions and, 
 | POP Timing tests | ✅ Passing |
 | Interrupt tests | ✅ Passing |
 | Timing tests | ✅ Passing |
-| MBC1 (Up until 4Mb) | ✅ Passing |
-| MBC1 (bigger than 4Mb) |❌ Failing|
+| MBC1 (No Multicarts) | ✅ Passing |
 | MBC2/3| ⏳ Not tested |
 | HALT Tests | ⏳ Not tested |
 
