@@ -147,6 +147,13 @@ mod dma {
 
         bus.write(DMA_ADDRESS, dma_source);
 
+        // We need to wait 8 T-Cycles until the DMA starts
+        let starting_t_cycles = 8;
+
+        for _ in 0..starting_t_cycles {
+            bus.tick(1);
+        }
+
         let total_t_cycles = DMA_SETUP_CYCLES + DMA_TRANSFER_BYTES as u16 * DMA_TRANSFER_CYCLES;
 
         for _ in 0..total_t_cycles {

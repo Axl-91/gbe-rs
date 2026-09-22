@@ -55,19 +55,16 @@ impl MemoryBus {
     }
 
     fn dma_tick(&mut self) {
-        if self.dma.is_active() {
-            self.dma.consume_cycle();
+        self.dma.consume_cycle();
 
-            if self.dma.is_ready_to_transfer() {
-                let source_address = self.dma.source_address();
-                let index = self.dma.get_index();
+        if self.dma.can_transfer_byte() {
+            let source_address = self.dma.source_address();
+            let index = self.dma.get_index();
 
-                let value = self.read(source_address);
-                self.ppu.write(OAM_START + index as u16, value);
-
-                self.dma.tick();
-            }
+            let value = self.read(source_address);
+            self.ppu.write(OAM_START + index as u16, value);
         }
+        self.dma.tick();
     }
 
     pub fn tick(&mut self, t_cycles: u8) {
