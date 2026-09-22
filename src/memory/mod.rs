@@ -5,4 +5,7 @@
 pub mod bus;
 pub mod map;
 
+#[cfg(test)]
+mod tests;
+
 pub use bus::MemoryBus;

@@ -4,7 +4,9 @@
 //! such as the cartridge, VRAM, and WRAM.
 
 use super::map::*;
-use crate::{cartridge::Cartridge, joypad::Joypad, ppu::Ppu, serial::Serial, timer::Timer};
+use crate::{
+    cartridge::Cartridge, dma::Dma, joypad::Joypad, ppu::Ppu, serial::Serial, timer::Timer,
+};
 
 /// Value returned when reading from an address that isn't backed by any
 /// implemented memory or I/O register.
@@ -24,6 +26,7 @@ pub struct MemoryBus {
     timer: Timer,
     serial: Serial,
     joypad: Joypad,
+    dma: Dma,
 }
 
 impl MemoryBus {
@@ -39,6 +42,7 @@ impl MemoryBus {
             timer: Timer::new(),
             serial: Serial::new(),
             joypad: Joypad::new(),
+            dma: Dma::new(),
         }
     }
 
@@ -50,6 +54,22 @@ impl MemoryBus {
         self.serial.take_output()
     }
 
+    fn dma_tick(&mut self) {
+        if self.dma.is_active() {
+            self.dma.consume_cycle();
+
+            if self.dma.is_ready_to_transfer() {
+                let source_address = self.dma.source_address();
+                let index = self.dma.get_index();
+
+                let value = self.read(source_address);
+                self.ppu.write(OAM_START + index as u16, value);
+
+                self.dma.tick();
+            }
+        }
+    }
+
     pub fn tick(&mut self, t_cycles: u8) {
         for _ in 0..t_cycles {
             if self.timer.tick() {
@@ -58,17 +78,7 @@ impl MemoryBus {
             if self.ppu.tick() {
                 self.interrupt_flags |= 0x02;
             }
-        }
-    }
-
-    fn dma_transfer(&mut self, source: u8) {
-        self.ppu.write(DMA_ADDRESS, source);
-
-        let source_address = (source as u16) << 8;
-
-        for offset in 0..=OAM_END - OAM_START {
-            let value = self.read(source_address + offset);
-            self.ppu.write(OAM_START + offset, value);
+            self.dma_tick();
         }
     }
 
@@ -151,7 +161,7 @@ impl MemoryBus {
             INTERRUPT_FLAG_ADDRESS => self.interrupt_flags = value,
 
             PPU_REGISTERS_START..=PPU_REGISTERS_END => match address {
-                DMA_ADDRESS => self.dma_transfer(value),
+                DMA_ADDRESS => self.dma.start(value),
                 _ => self.ppu.write(address, value),
             },
 
@@ -162,126 +172,6 @@ impl MemoryBus {
             INTERRUPT_ENABLE_ADDRESS => self.interrupt_enable = value,
 
             _ => {}
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::cartridge::{mbc::CartridgeMbc, mbc1::Mbc1};
-
-    use super::*;
-    use rand::RngExt;
-
-    fn test_cartridge() -> Cartridge {
-        let mbc = CartridgeMbc::Mbc1(Mbc1::new());
-        Cartridge::new(vec![0; ROM_BANK_SIZE * 4], RAM_BANK_SIZE, mbc)
-    }
-
-    mod cartridge {
-        use super::*;
-
-        #[test]
-        fn read_cartridge() {
-            let mut rng = rand::rng();
-            let mut rom = vec![0; ROM_BANK_SIZE * 4];
-
-            let addresses: Vec<u16> = vec![
-                CARTRIDGE_ROM_START,
-                rng.random_range(CARTRIDGE_ROM_START..=CARTRIDGE_ROM_END),
-                rng.random_range(CARTRIDGE_ROM_START..=CARTRIDGE_ROM_END),
-                rng.random_range(CARTRIDGE_ROM_START..=CARTRIDGE_ROM_END),
-                CARTRIDGE_ROM_END,
-            ];
-
-            let values: Vec<u8> = vec![
-                rng.random(),
-                rng.random(),
-                rng.random(),
-                rng.random(),
-                rng.random(),
-            ];
-
-            rom[addresses[0] as usize] = values[0];
-            rom[addresses[1] as usize] = values[1];
-            rom[addresses[2] as usize] = values[2];
-            rom[addresses[3] as usize] = values[3];
-            rom[addresses[4] as usize] = values[4];
-
-            let mbc = CartridgeMbc::Mbc1(Mbc1::new());
-            let cartridge = Cartridge::new(rom, RAM_BANK_SIZE, mbc);
-            let bus = MemoryBus::new(cartridge);
-
-            assert_eq!(bus.read(addresses[0]), values[0]);
-            assert_eq!(bus.read(addresses[1]), values[1]);
-            assert_eq!(bus.read(addresses[2]), values[2]);
-            assert_eq!(bus.read(addresses[3]), values[3]);
-            assert_eq!(bus.read(addresses[4]), values[4]);
-        }
-    }
-    mod vram {
-        use super::*;
-
-        #[test]
-        fn read_vram() {
-            let cartridge = test_cartridge();
-            let bus = MemoryBus::new(cartridge);
-
-            assert_eq!(bus.read(VRAM_START), 0);
-            assert_eq!(bus.read(VRAM_END), 0);
-        }
-
-        #[test]
-        fn write_and_read_vram() {
-            let mut rng = rand::rng();
-
-            let address: u16 = rng.random_range(VRAM_START..=VRAM_END);
-            let value: u8 = rng.random();
-
-            let cartridge = test_cartridge();
-            let mut bus = MemoryBus::new(cartridge);
-
-            bus.write(address, value);
-
-            assert_eq!(bus.read(address), value);
-        }
-    }
-
-    mod wram {
-        use super::*;
-        #[test]
-        fn write_and_read_wram() {
-            let mut rng = rand::rng();
-
-            let address: u16 = rng.random_range(WRAM_START..=WRAM_END);
-            let value: u8 = rng.random();
-
-            let cartridge = test_cartridge();
-            let mut bus = MemoryBus::new(cartridge);
-
-            bus.write(address, value);
-
-            assert_eq!(bus.read(address), value);
-        }
-
-        #[test]
-        fn vram_and_wram_are_independent() {
-            let mut rng = rand::rng();
-
-            let vram_address: u16 = rng.random_range(VRAM_START..=VRAM_END);
-            let wram_address: u16 = rng.random_range(WRAM_START..=WRAM_END);
-
-            let vram_value: u8 = rng.random();
-            let wram_value: u8 = rng.random();
-
-            let cartridge = test_cartridge();
-            let mut bus = MemoryBus::new(cartridge);
-
-            bus.write(vram_address, vram_value);
-            bus.write(wram_address, wram_value);
-
-            assert_eq!(bus.read(vram_address), vram_value);
-            assert_eq!(bus.read(wram_address), wram_value);
         }
     }
 }
