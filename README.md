@@ -86,7 +86,8 @@ The emulator advances the hardware over time by executing CPU instructions and, 
 | Interrupt tests | ✅ Passing |
 | Timing tests | ✅ Passing |
 | MBC1 (No Multicarts) | ✅ Passing |
-| MBC2/3| ⏳ Not tested |
+| MBC2/3 | ⏳ Not tested |
+| OAM DMA tests | ✅ Passing |
 | HALT Tests | ⏳ Not tested |
 
 ---------------------------------------

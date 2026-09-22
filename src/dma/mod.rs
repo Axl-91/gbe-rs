@@ -51,7 +51,7 @@ impl Dma {
         matches!(self.state, DmaState::Starting)
     }
 
-    fn is_transferring(&self) -> bool {
+    pub fn is_transferring(&self) -> bool {
         matches!(self.state, DmaState::Transferring { .. })
     }
 

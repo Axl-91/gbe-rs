@@ -99,7 +99,14 @@ impl MemoryBus {
                 self.wram[offset]
             }
 
-            OAM_START..=OAM_END => self.ppu.read(address),
+            OAM_START..=OAM_END => {
+                // While DMA is transfering OAM is not accesible
+                if self.dma.is_transferring() {
+                    0xFF
+                } else {
+                    self.ppu.read(address)
+                }
+            }
 
             UNUSABLE_MEMORY_START..=UNUSABLE_MEMORY_END => 0x00,
 
