@@ -70,10 +70,10 @@ impl Cpu {
     }
 
     fn tick_internal(&mut self, m_cycles: u8) {
-        let total_t_cycles = TICK_CYCLES * m_cycles;
-        self.total_t_cycles = self.total_t_cycles.wrapping_add(total_t_cycles as u64);
+        let amount_t_cycles = TICK_CYCLES * m_cycles;
+        self.total_t_cycles = self.total_t_cycles.wrapping_add(amount_t_cycles as u64);
 
-        self.bus.tick(total_t_cycles);
+        self.bus.tick(amount_t_cycles);
     }
 
     pub fn get_total_ticks(&self) -> u64 {
