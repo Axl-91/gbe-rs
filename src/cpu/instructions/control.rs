@@ -2,10 +2,7 @@
 //!
 //! Implements jumps, relative jumps, calls, returns, and restart instructions.
 
-use crate::cpu::{
-    Cpu,
-    instruction::{Condition, ControlInstruction},
-};
+use crate::cpu::{Condition, ControlInstruction, Cpu};
 
 impl Cpu {
     fn should_i_jump(&self, condition: Option<Condition>) -> bool {

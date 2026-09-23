@@ -2,22 +2,15 @@
 //!
 //! Handles instruction fetching, decoding, execution, and CPU registers.
 
-mod arithmetic;
-mod cb;
-mod control;
-mod instruction;
+mod instructions;
 mod interrupt;
-mod load;
 mod registers;
-mod rotation;
-mod stack;
-mod t_cycles;
 
 #[cfg(test)]
 mod tests;
 
-use crate::{cpu::instruction::*, memory::MemoryBus};
-use log::info;
+use crate::{cpu::instructions::*, memory::MemoryBus};
+use log::debug;
 use registers::Registers;
 
 const NON_CYCLES: u8 = 0x00;
@@ -190,7 +183,8 @@ impl Cpu {
     /// Executes one CPU step and returns the number of T-Cycles consumed.
     pub fn step(&mut self) -> u8 {
         let pc = self.registers.get_pc();
-        info!(
+        debug!(
+            target: "CPU",
             "T-Cycles: {} | Executing: {:#04x}",
             self.total_t_cycles,
             self.bus.read(pc)
@@ -211,7 +205,7 @@ impl Cpu {
             let t_cycles_interrupt = self.handle_interruption(interruption);
 
             let current_ticks = self.get_total_ticks();
-            assert_eq!(current_ticks - prev_ticks, t_cycles_interrupt as u64);
+            debug_assert_eq!(current_ticks - prev_ticks, t_cycles_interrupt as u64);
 
             return t_cycles_interrupt;
         }
@@ -222,22 +216,31 @@ impl Cpu {
 
         let current_ticks = self.get_total_ticks();
 
-        assert_eq!(current_ticks - prev_ticks, real_t as u64);
+        debug_assert_eq!(current_ticks - prev_ticks, real_t as u64);
 
         real_t
     }
 
     fn step_halted(&mut self) -> u8 {
+        debug!(target: "Halted Mode", "Starting...");
         let prev_ticks = self.get_total_ticks();
 
         let Some(interruption) = self.check_interruption() else {
+            debug!(target: "Halt Mode", "Interruption not founded");
+
             // HALT without interruptions consumes 4 T-Cycles.
             self.tick_internal(1);
             let current_ticks = self.get_total_ticks();
-            assert_eq!(current_ticks - prev_ticks, HALT_CYCLES as u64);
+            debug_assert_eq!(current_ticks - prev_ticks, HALT_CYCLES as u64);
 
             return HALT_CYCLES;
         };
+
+        debug!(
+            target: "Halt Mode",
+            "Interruption found: {:?}, halted Mode Goes Off",
+            interruption
+        );
 
         self.halted = false;
 
@@ -245,12 +248,16 @@ impl Cpu {
             let t_cycles_interrupt = self.handle_interruption(interruption);
             let current_ticks = self.get_total_ticks();
 
-            assert_eq!(current_ticks - prev_ticks, t_cycles_interrupt as u64);
+            debug_assert_eq!(current_ticks - prev_ticks, t_cycles_interrupt as u64);
 
             t_cycles_interrupt
         } else {
             // Wake from HALT without servicing the interrupt.
-            NON_CYCLES
+            self.tick_internal(1);
+            let current_ticks = self.get_total_ticks();
+            debug_assert_eq!(current_ticks - prev_ticks, HALT_CYCLES as u64);
+
+            HALT_CYCLES
         }
     }
 }

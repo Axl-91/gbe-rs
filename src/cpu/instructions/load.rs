@@ -2,7 +2,7 @@
 //!
 //! Implements instructions for transferring data between registers and memory.
 
-use crate::cpu::{Cpu, instruction::LoadInstruction};
+use crate::cpu::{Cpu, LoadInstruction};
 
 impl Cpu {
     /// Executes a CPU load instruction.

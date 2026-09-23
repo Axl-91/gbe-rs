@@ -1,4 +1,5 @@
 use gbe_rs::{Emulator, cartridge::Cartridge};
+use log::info;
 use std::io;
 
 fn main() -> io::Result<()> {
@@ -8,6 +9,8 @@ fn main() -> io::Result<()> {
 
     let cartridge = Cartridge::from_file(path)?;
     let mut emulator = Emulator::new(cartridge);
+
+    info!("Main emulator started");
 
     loop {
         emulator.step();

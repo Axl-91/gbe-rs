@@ -1,4 +1,4 @@
-use crate::cpu::{Cpu, instruction::CbInstruction};
+use crate::cpu::{CbInstruction, Cpu};
 
 impl Cpu {
     /// Executes a CB-prefixed instruction.

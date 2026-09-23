@@ -1,5 +1,6 @@
 use gbe_rs::Emulator;
 use gbe_rs::cartridge::Cartridge;
+use log::info;
 use std::io::{self, Write};
 
 /// Bytes sent by a mooneye test ROM on success (Fibonacci 3/5/8/13/21/34).
@@ -53,6 +54,8 @@ fn main() -> io::Result<()> {
 
     let cartridge = Cartridge::from_file(path)?;
     let mut emulator = Emulator::new(cartridge);
+
+    info!("Rom tests emulator started");
 
     let mut serial_log: Vec<u8> = Vec::new();
     let mut stdout = io::stdout();

@@ -2,10 +2,7 @@
 //!
 //! Implements accumulator rotation operations and their affected flags.
 
-use crate::cpu::{
-    Cpu,
-    instruction::{CbRotation, RotationInstruction},
-};
+use crate::cpu::{CbRotation, Cpu, RotationInstruction};
 
 impl Cpu {
     fn set_rotation_flags(&mut self, is_zero: bool, carry: bool) {

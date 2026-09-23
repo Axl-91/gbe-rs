@@ -2,10 +2,7 @@
 //!
 //! Implements stack instructions and provides stack manipulation operations.
 
-use crate::cpu::{
-    Cpu,
-    instruction::{StackInstruction, StackRegister},
-};
+use crate::cpu::{Cpu, StackInstruction, StackRegister};
 
 impl Cpu {
     fn get_stack_register(&self, register: &StackRegister) -> u16 {

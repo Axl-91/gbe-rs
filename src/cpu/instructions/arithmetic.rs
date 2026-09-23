@@ -2,7 +2,7 @@
 //!
 //! Implements arithmetic operations, flag manipulation, and logical operations.
 
-use crate::cpu::{Cpu, instruction::ArithmeticInstruction};
+use crate::cpu::{Cpu, instructions::ArithmeticInstruction};
 
 impl Cpu {
     fn increment_8bit(&mut self, register: u8) -> u8 {

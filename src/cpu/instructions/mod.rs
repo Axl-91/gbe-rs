@@ -2,6 +2,14 @@
 //!
 //! Defines the instruction types used to represent decoded CPU operations.
 
+mod arithmetic;
+mod cb;
+mod control;
+mod load;
+mod rotation;
+mod stack;
+mod t_cycles;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Register8 {
     A,

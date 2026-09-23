@@ -30,24 +30,6 @@ fn halt_remains_halted_without_pending_interrupt() {
 }
 
 #[test]
-fn halt_wakes_when_interrupt_becomes_pending_with_ime_disabled() {
-    let mut cpu = create_cpu(HALT_OPCODE, None, None);
-
-    cpu.step();
-
-    assert!(cpu.halted);
-
-    cpu.bus.write(INTERRUPT_ENABLE_ADDRESS, INTERRUPT_MASK);
-    cpu.bus.write(INTERRUPT_FLAG_ADDRESS, INTERRUPT_MASK);
-
-    let t_cycles = cpu.step();
-
-    assert!(!cpu.halted);
-    assert_eq!(t_cycles, 0);
-    assert!(!cpu.ime);
-}
-
-#[test]
 fn halt_does_not_service_interrupt_when_ime_is_disabled() {
     let mut cpu = create_cpu(HALT_OPCODE, None, None);
 

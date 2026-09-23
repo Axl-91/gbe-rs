@@ -1,7 +1,4 @@
-use crate::cpu::instruction::{
-    ArithmeticInstruction, ControlInstruction, LoadInstruction, RotationInstruction,
-    StackInstruction,
-};
+use super::*;
 
 impl LoadInstruction {
     pub(crate) fn t_cycles(&self) -> u8 {

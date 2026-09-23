@@ -1,3 +1,10 @@
+//! Emulation of the Game Boy's PPU (Picture Processing Unit).
+//!
+//! This module models the PPU's memory (VRAM/OAM), its memory-mapped I/O
+//! registers (LCDC, STAT, SCY/SCX, LY/LYC, BGP/OBP0/OBP1, WY/WX), and the
+//! per-scanline mode state machine (`OamSearch` -> `Drawing` -> `HBlank`,
+//! repeating for each visible line, then `VBlank` for the remaining
+
 // TODO: Once all functions are used we can delete this
 #![allow(dead_code)]
 
@@ -28,12 +35,20 @@ const OBJ_SIZE: u8 = 2;
 const OBJ_ENABLE: u8 = 1;
 const BG_WINDOW_ENABLE: u8 = 0;
 
+/// Number of visible scanlines (0..VISIBLE_LINES-1 are drawn to the screen).
 const VISIBLE_LINES: u8 = 144;
+
+/// Total number of scanlines per frame, including the VBlank period.
 const TOTAL_LINES: u8 = 154;
 
 #[cfg(test)]
 mod tests;
 
+/// The four PPU rendering modes, as reported in the STAT register.
+///
+/// Each frame cycles through, per line: `OamSearch` -> `Drawing` ->
+/// `HBlank`, repeated for every visible line, followed by a single
+/// `VBlank` mode that lasts for the remaining (non-visible) lines.
 #[derive(Clone, Copy)]
 enum PpuMode {
     HBlank = 0,
@@ -42,6 +57,7 @@ enum PpuMode {
     Drawing = 3,
 }
 
+/// Emulated Game Boy PPU: registers, VRAM/OAM, and mode timing.
 pub struct Ppu {
     // PPU registers
     lcdc: u8,
@@ -100,6 +116,16 @@ impl Ppu {
         }
     }
 
+    /// Advances the PPU to its next mode, updating `ly` as needed.
+    ///
+    /// - After `HBlank`, `ly` is incremented; if it reaches
+    ///   [`VISIBLE_LINES`], the PPU enters `VBlank`, otherwise it
+    ///   restarts the line with `OamSearch`.
+    /// - After `VBlank`, `ly` is incremented; once it reaches
+    ///   [`TOTAL_LINES`], `ly` wraps back to 0 and a new frame begins
+    ///   with `OamSearch`.
+    /// - `OamSearch` always transitions to `Drawing`.
+    /// - `Drawing` always transitions to `HBlank`.
     pub fn advance_mode(&mut self) {
         match self.mode {
             PpuMode::HBlank => {
@@ -151,6 +177,16 @@ impl Ppu {
         mode_interrupt_enabled || lyc_interrupt_enabled
     }
 
+    /// Advances the PPU by one T-cycle.
+    ///
+    /// Increments the cycle counter for the current mode; once it
+    /// reaches [`Ppu::mode_duration`], the counter resets, the PPU
+    /// advances to its next mode ([`Ppu::advance_mode`]), and the LYC
+    /// match flag is refreshed ([`Ppu::update_lyc_match`]).
+    ///
+    /// Returns `true` if a STAT interrupt should be requested as a
+    /// result of this cycle's mode/LYC transition, `false` otherwise
+    /// (including when no mode transition occurred this cycle).
     pub fn tick(&mut self) -> bool {
         self.mode_cycles += 1;
 
