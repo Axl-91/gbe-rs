@@ -83,12 +83,13 @@ The emulator advances the hardware over time by executing CPU instructions and, 
 | Boot DIV test | ✅ Passing |
 | DAA instruction tests | ✅ Passing |
 | POP Timing tests | ✅ Passing |
+| PUSH Timing tests | ❌ Failing |
 | Interrupt tests | ✅ Passing |
 | Timing tests | ✅ Passing |
 | MBC1 (No Multicarts) | ✅ Passing |
 | MBC2/3 | ⏳ Not tested |
 | OAM DMA tests | ✅ Passing |
-| HALT Tests | ⏳ Not tested |
+| HALT Tests | ✅ Passing |
 
 ---------------------------------------
 <div align="center">
