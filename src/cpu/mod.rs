@@ -222,7 +222,7 @@ impl Cpu {
     }
 
     fn step_halted(&mut self) -> u8 {
-        debug!(target: "Halted Mode", "Starting...");
+        debug!(target: "Halt Mode", "Starting...");
         let prev_ticks = self.get_total_ticks();
 
         let Some(interruption) = self.check_interruption() else {
@@ -252,12 +252,7 @@ impl Cpu {
 
             t_cycles_interrupt
         } else {
-            // Wake from HALT without servicing the interrupt.
-            self.tick_internal(1);
-            let current_ticks = self.get_total_ticks();
-            debug_assert_eq!(current_ticks - prev_ticks, HALT_CYCLES as u64);
-
-            HALT_CYCLES
+            NON_CYCLES
         }
     }
 }

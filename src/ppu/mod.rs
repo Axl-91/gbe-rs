@@ -44,6 +44,12 @@ const TOTAL_LINES: u8 = 154;
 #[cfg(test)]
 mod tests;
 
+#[derive(Default)]
+pub struct PpuInterruptions {
+    pub vblank: bool,
+    pub stat: bool,
+}
+
 /// The four PPU rendering modes, as reported in the STAT register.
 ///
 /// Each frame cycles through, per line: `OamSearch` -> `Drawing` ->
@@ -187,11 +193,13 @@ impl Ppu {
     /// Returns `true` if a STAT interrupt should be requested as a
     /// result of this cycle's mode/LYC transition, `false` otherwise
     /// (including when no mode transition occurred this cycle).
-    pub fn tick(&mut self) -> bool {
+    pub fn tick(&mut self) -> PpuInterruptions {
+        let mut ppu_interruptions = PpuInterruptions::default();
+
         self.mode_cycles += 1;
 
         if self.mode_cycles < self.mode_duration() {
-            return false;
+            return ppu_interruptions;
         }
 
         self.mode_cycles = 0;
@@ -199,7 +207,13 @@ impl Ppu {
         self.advance_mode();
         let lyc_changed = self.update_lyc_match();
 
-        self.stat_interrupt_requested(lyc_changed)
+        if self.stat_interrupt_requested(lyc_changed) {
+            ppu_interruptions.stat = true;
+        }
+        if self.ly == VISIBLE_LINES {
+            ppu_interruptions.vblank = true
+        }
+        ppu_interruptions
     }
 
     fn is_lcd_enabled(&self) -> bool {

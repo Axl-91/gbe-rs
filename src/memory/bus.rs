@@ -15,6 +15,9 @@ const UNMAPPED_ADDRESS_VALUE: u8 = 0xFF;
 const WRAM_SIZE: usize = 0x2000;
 const HRAM_SIZE: usize = 0x7F;
 
+const VBLANK_INTERRUPT: u8 = 0x01;
+const STAT_INTERRUPT: u8 = 0x02;
+
 /// Provides access to the Game Boy memory address space.
 pub struct MemoryBus {
     cartridge: Cartridge,
@@ -54,6 +57,16 @@ impl MemoryBus {
         self.serial.take_output()
     }
 
+    fn ppu_tick(&mut self) {
+        let ppu_interruptions = self.ppu.tick();
+        if ppu_interruptions.vblank {
+            self.interrupt_flags |= VBLANK_INTERRUPT;
+        }
+        if ppu_interruptions.stat {
+            self.interrupt_flags |= STAT_INTERRUPT;
+        }
+    }
+
     fn dma_tick(&mut self) {
         self.dma.consume_cycle();
 
@@ -72,9 +85,7 @@ impl MemoryBus {
             if self.timer.tick() {
                 self.interrupt_flags |= 0x04;
             }
-            if self.ppu.tick() {
-                self.interrupt_flags |= 0x02;
-            }
+            self.ppu_tick();
             self.dma_tick();
         }
     }

@@ -65,8 +65,10 @@ impl Cpu {
                 }
             }
             ControlInstruction::Ret(None) => {
-                self.tick_internal(1);
                 let new_pc = self.pop_from_sp();
+
+                self.tick_internal(1);
+
                 self.registers.set_pc(new_pc);
                 instruction.t_cycles()
             }
@@ -88,6 +90,7 @@ impl Cpu {
                 let pc = self.registers.get_pc();
 
                 self.tick_internal(1);
+
                 self.push_into_sp(pc);
                 self.registers.set_pc(code as u16);
 
