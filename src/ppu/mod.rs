@@ -85,6 +85,7 @@ pub struct Ppu {
     mode_cycles: u16,
 
     ly_eq_lyc: bool,
+    stat_line: bool,
 }
 
 impl Ppu {
@@ -109,6 +110,7 @@ impl Ppu {
             mode_cycles: 0x00,
 
             ly_eq_lyc: false,
+            stat_line: false,
         }
     }
 
@@ -161,26 +163,40 @@ impl Ppu {
         }
     }
 
-    fn update_lyc_match(&mut self) -> bool {
-        let previous_eq = self.ly_eq_lyc;
-        self.ly_eq_lyc = self.ly == self.lyc;
-
-        let value_was_changed = self.ly_eq_lyc != previous_eq;
-
-        value_was_changed && self.ly_eq_lyc
+    /// Recalculates the combined STAT signal (`stat_line`) and returns
+    /// `true` only on its rising edge (no condition met -> at least one
+    /// met), which is when a STAT interrupt should be requested.
+    ///
+    /// Implements "STAT IRQ Blocking": while `stat_line` stays `true`,
+    /// no new edge is detected, even if other conditions activate meanwhile.
+    /// It can only rise again after falling back to `false` first.
+    fn update_stat_line(&mut self) -> bool {
+        let new_line = self.compute_stat_line();
+        let rising_edge = new_line && !self.stat_line;
+        self.stat_line = new_line;
+        rising_edge
     }
 
-    fn stat_interrupt_requested(&self, lyc_changed: bool) -> bool {
-        let mode_interrupt_enabled = match self.mode {
+    // Computes the current state of the combined STAT signal, without
+    /// mutating any state.
+    ///
+    /// Returns `true` if the LCD is enabled and at least one enabled STAT
+    /// condition currently holds
+    fn compute_stat_line(&self) -> bool {
+        if !self.is_lcd_enabled() {
+            return false;
+        }
+
+        let mode_condition = match self.mode {
             PpuMode::HBlank => self.stat & (1 << 3) != 0,
             PpuMode::VBlank => self.stat & (1 << 4) != 0,
             PpuMode::OamSearch => self.stat & (1 << 5) != 0,
             PpuMode::Drawing => false,
         };
 
-        let lyc_interrupt_enabled = lyc_changed && self.stat & (1 << 6) != 0;
+        let lyc_condition = self.ly_eq_lyc && self.stat & (1 << 6) != 0;
 
-        mode_interrupt_enabled || lyc_interrupt_enabled
+        mode_condition || lyc_condition
     }
 
     /// Advances the PPU by one T-cycle.
@@ -209,9 +225,9 @@ impl Ppu {
         self.mode_cycles = 0;
 
         self.advance_mode();
-        let lyc_changed = self.update_lyc_match();
+        self.ly_eq_lyc = self.ly == self.lyc;
 
-        if self.stat_interrupt_requested(lyc_changed) {
+        if self.update_stat_line() {
             ppu_interruptions.stat = true;
         }
         if self.ly == VISIBLE_LINES {
@@ -325,7 +341,7 @@ impl Ppu {
         self.oam[offset] = value
     }
 
-    pub fn write(&mut self, address: u16, value: u8) {
+    pub fn write(&mut self, address: u16, value: u8) -> bool {
         match address {
             VRAM_START..=VRAM_END => {
                 if self.is_vram_accessible() {
@@ -342,22 +358,37 @@ impl Ppu {
             }
 
             LCDC_ADDRESS => {
+                let was_off = !self.is_lcd_enabled();
                 self.lcdc = value;
                 if !self.is_lcd_enabled() {
                     self.mode = PpuMode::OamSearch;
                     self.ly = 0;
                     self.mode_cycles = 0;
                 }
+                if was_off && self.is_lcd_enabled() {
+                    self.mode = PpuMode::HBlank;
+                    self.ly_eq_lyc = self.ly == self.lyc;
+                    return self.update_stat_line();
+                }
             }
 
             // For stat we only take bits 3-6
-            STAT_ADDRESS => self.stat = value & 0b0111_1000,
+            STAT_ADDRESS => {
+                self.stat = value & 0b0111_1000;
+                return self.update_stat_line();
+            }
 
             LY_ADDRESS => self.ly = 0x00,
 
             SCY_ADDRESS => self.scy = value,
             SCX_ADDRESS => self.scx = value,
-            LYC_ADDRESS => self.lyc = value,
+            LYC_ADDRESS => {
+                self.lyc = value;
+                if self.is_lcd_enabled() {
+                    self.ly_eq_lyc = self.ly == self.lyc;
+                    return self.update_stat_line();
+                }
+            }
             BGP_ADDRESS => self.bgp = value,
             OBP0_ADDRESS => self.obp0 = value,
             OBP1_ADDRESS => self.obp1 = value,
@@ -370,6 +401,7 @@ impl Ppu {
 
             _ => unreachable!("Invalid PPU address: {address:#06X}"),
         }
+        false
     }
 }
 

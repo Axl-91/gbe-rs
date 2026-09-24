@@ -105,22 +105,19 @@ fn last_vblank_line_returns_to_first_line() {
     assert!(matches!(ppu.mode, PpuMode::OamSearch));
 }
 
+// --- A partir de acá, tests reescritos para stat_line / update_stat_line ---
+
 #[test]
-fn lyc_match_is_detected_only_when_entering_match() {
+fn stat_line_is_false_when_lcd_disabled_regardless_of_conditions() {
     let mut ppu = Ppu::new();
 
-    ppu.lyc = ppu.ly;
+    ppu.lcdc &= !(1 << LCDC_ENABLE); // LCD apagado
+    ppu.mode = PpuMode::HBlank;
+    ppu.stat |= 1 << 3; // HBlank-interrupt habilitado
+    ppu.ly_eq_lyc = true;
+    ppu.stat |= 1 << 6; // LYC-interrupt habilitado
 
-    assert!(ppu.update_lyc_match());
-    assert!(!ppu.update_lyc_match());
-
-    ppu.lyc = ppu.ly.wrapping_add(1);
-
-    assert!(!ppu.update_lyc_match());
-
-    ppu.lyc = ppu.ly;
-
-    assert!(ppu.update_lyc_match());
+    assert!(!ppu.compute_stat_line());
 }
 
 #[test]
@@ -130,7 +127,7 @@ fn hblank_stat_interrupt_is_requested_when_enabled() {
     ppu.mode = PpuMode::HBlank;
     ppu.stat |= 1 << 3;
 
-    assert!(ppu.stat_interrupt_requested(false));
+    assert!(ppu.update_stat_line());
 }
 
 #[test]
@@ -139,7 +136,7 @@ fn hblank_stat_interrupt_is_not_requested_when_disabled() {
 
     ppu.mode = PpuMode::HBlank;
 
-    assert!(!ppu.stat_interrupt_requested(false));
+    assert!(!ppu.update_stat_line());
 }
 
 #[test]
@@ -149,7 +146,7 @@ fn vblank_stat_interrupt_is_requested_when_enabled() {
     ppu.mode = PpuMode::VBlank;
     ppu.stat |= 1 << 4;
 
-    assert!(ppu.stat_interrupt_requested(false));
+    assert!(ppu.update_stat_line());
 }
 
 #[test]
@@ -158,7 +155,7 @@ fn vblank_stat_interrupt_is_not_requested_when_disabled() {
 
     ppu.mode = PpuMode::VBlank;
 
-    assert!(!ppu.stat_interrupt_requested(false));
+    assert!(!ppu.update_stat_line());
 }
 
 #[test]
@@ -168,7 +165,7 @@ fn oam_search_stat_interrupt_is_requested_when_enabled() {
     ppu.mode = PpuMode::OamSearch;
     ppu.stat |= 1 << 5;
 
-    assert!(ppu.stat_interrupt_requested(false));
+    assert!(ppu.update_stat_line());
 }
 
 #[test]
@@ -177,7 +174,7 @@ fn oam_search_stat_interrupt_is_not_requested_when_disabled() {
 
     ppu.mode = PpuMode::OamSearch;
 
-    assert!(!ppu.stat_interrupt_requested(false));
+    assert!(!ppu.update_stat_line());
 }
 
 #[test]
@@ -189,7 +186,7 @@ fn drawing_does_not_request_stat_interrupt() {
     ppu.stat |= 1 << 4;
     ppu.stat |= 1 << 5;
 
-    assert!(!ppu.stat_interrupt_requested(false));
+    assert!(!ppu.update_stat_line());
 }
 
 #[test]
@@ -197,33 +194,72 @@ fn lyc_stat_interrupt_is_requested_when_enabled() {
     let mut ppu = Ppu::new();
 
     ppu.stat |= 1 << 6;
+    ppu.ly_eq_lyc = true;
 
-    assert!(ppu.stat_interrupt_requested(true));
+    assert!(ppu.update_stat_line());
 }
 
 #[test]
 fn lyc_stat_interrupt_is_not_requested_when_disabled() {
-    let ppu = Ppu::new();
+    let mut ppu = Ppu::new();
 
-    assert!(!ppu.stat_interrupt_requested(true));
+    ppu.ly_eq_lyc = true;
+
+    assert!(!ppu.update_stat_line());
 }
 
 #[test]
-fn lyc_stat_interrupt_is_not_requested_without_new_match() {
+fn lyc_stat_interrupt_is_not_requested_without_a_match() {
     let mut ppu = Ppu::new();
 
     ppu.stat |= 1 << 6;
+    ppu.ly_eq_lyc = false;
 
-    assert!(!ppu.stat_interrupt_requested(false));
+    assert!(!ppu.update_stat_line());
+}
+
+#[test]
+fn stat_line_does_not_rise_again_while_condition_stays_true() {
+    // Es el "STAT IRQ Blocking": una vez arriba, no vuelve a subir
+    // hasta que la señal combinada caiga a false primero.
+    let mut ppu = Ppu::new();
+
+    ppu.stat |= 1 << 6;
+    ppu.ly_eq_lyc = true;
+
+    assert!(ppu.update_stat_line()); // primer flanco: sube
+    assert!(!ppu.update_stat_line()); // sigue en true: no hay flanco nuevo
+    assert!(!ppu.update_stat_line()); // idem, por más veces que se llame
+}
+
+#[test]
+fn stat_line_rises_again_after_falling() {
+    let mut ppu = Ppu::new();
+
+    ppu.stat |= 1 << 6;
+    ppu.ly_eq_lyc = true;
+
+    assert!(ppu.update_stat_line()); // sube
+    assert!(!ppu.update_stat_line()); // bloqueado
+
+    ppu.ly_eq_lyc = false;
+    assert!(!ppu.update_stat_line()); // cae, pero cae no dispara nada
+
+    ppu.ly_eq_lyc = true;
+    assert!(ppu.update_stat_line()); // vuelve a subir: nuevo flanco
 }
 
 #[test]
 fn mode_and_lyc_stat_interrupts_share_the_same_request() {
+    // Dos condiciones activas a la vez siguen contando como un solo
+    // flanco, no dos interrupts independientes.
     let mut ppu = Ppu::new();
 
     ppu.mode = PpuMode::HBlank;
     ppu.stat |= 1 << 3;
     ppu.stat |= 1 << 6;
+    ppu.ly_eq_lyc = true;
 
-    assert!(ppu.stat_interrupt_requested(true));
+    assert!(ppu.update_stat_line()); // un único flanco
+    assert!(!ppu.update_stat_line()); // sigue bloqueado, aunque ambas condiciones sigan activas
 }

@@ -148,7 +148,9 @@ impl MemoryBus {
         match address {
             CARTRIDGE_ROM_START..=CARTRIDGE_ROM_END => self.cartridge.write(address, value),
 
-            VRAM_START..=VRAM_END => self.ppu.write(address, value),
+            VRAM_START..=VRAM_END => {
+                self.ppu.write(address, value);
+            }
 
             CARTRIDGE_RAM_START..=CARTRIDGE_RAM_END => self.cartridge.write(address, value),
 
@@ -165,7 +167,7 @@ impl MemoryBus {
             OAM_START..=OAM_END => {
                 // While DMA is transfering OAM is not accesible
                 if !self.dma.is_transferring() {
-                    self.ppu.write(address, value)
+                    self.ppu.write(address, value);
                 }
             }
 
@@ -182,7 +184,12 @@ impl MemoryBus {
 
             PPU_REGISTERS_START..=PPU_REGISTERS_END => match address {
                 DMA_ADDRESS => self.dma.start(value),
-                _ => self.ppu.write(address, value),
+                _ => {
+                    // Some writes on PPU can result in an interruption
+                    if self.ppu.write(address, value) {
+                        self.interrupt_flags |= STAT_INTERRUPT;
+                    }
+                }
             },
 
             HRAM_START..=HRAM_END => {
