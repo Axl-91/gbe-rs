@@ -177,6 +177,17 @@ impl Ppu {
         rising_edge
     }
 
+    /// Recalculates the STAT signal after a register write and returns
+    /// whether that write triggered a new STAT interrupt request.
+    ///
+    /// Must be called once right after any write that could affect
+    /// `stat_line` (STAT, LYC, LCDC). Calling it again without an
+    /// intervening state change will return `false`, since the edge
+    /// was already consumed.
+    pub fn has_interruptions(&mut self) -> bool {
+        self.is_lcd_enabled() && self.update_stat_line()
+    }
+
     // Computes the current state of the combined STAT signal, without
     /// mutating any state.
     ///
@@ -276,9 +287,8 @@ impl Ppu {
             stat |= 0x04;
         }
         // bit 0-1 -> PPU Mode
-        if self.is_lcd_enabled() {
-            stat |= self.mode as u8;
-        }
+        stat |= self.mode as u8;
+
         // Bit 7 is always 1
         stat | 0b1000_0000
     }
@@ -341,7 +351,7 @@ impl Ppu {
         self.oam[offset] = value
     }
 
-    pub fn write(&mut self, address: u16, value: u8) -> bool {
+    pub fn write(&mut self, address: u16, value: u8) {
         match address {
             VRAM_START..=VRAM_END => {
                 if self.is_vram_accessible() {
@@ -361,21 +371,18 @@ impl Ppu {
                 let was_off = !self.is_lcd_enabled();
                 self.lcdc = value;
                 if !self.is_lcd_enabled() {
-                    self.mode = PpuMode::OamSearch;
+                    self.mode = PpuMode::HBlank;
                     self.ly = 0;
                     self.mode_cycles = 0;
                 }
                 if was_off && self.is_lcd_enabled() {
-                    self.mode = PpuMode::HBlank;
                     self.ly_eq_lyc = self.ly == self.lyc;
-                    return self.update_stat_line();
                 }
             }
 
             // For stat we only take bits 3-6
             STAT_ADDRESS => {
                 self.stat = value & 0b0111_1000;
-                return self.update_stat_line();
             }
 
             LY_ADDRESS => self.ly = 0x00,
@@ -386,7 +393,6 @@ impl Ppu {
                 self.lyc = value;
                 if self.is_lcd_enabled() {
                     self.ly_eq_lyc = self.ly == self.lyc;
-                    return self.update_stat_line();
                 }
             }
             BGP_ADDRESS => self.bgp = value,
@@ -401,7 +407,6 @@ impl Ppu {
 
             _ => unreachable!("Invalid PPU address: {address:#06X}"),
         }
-        false
     }
 }
 
