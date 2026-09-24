@@ -75,7 +75,7 @@ impl MemoryBus {
             let index = self.dma.get_index();
 
             let value = self.read(source_address);
-            self.ppu.write(OAM_START + index as u16, value);
+            self.ppu.dma_write_oam(OAM_START + index as u16, value);
         }
         self.dma.tick();
     }

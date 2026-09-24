@@ -196,6 +196,10 @@ impl Ppu {
     pub fn tick(&mut self) -> PpuInterruptions {
         let mut ppu_interruptions = PpuInterruptions::default();
 
+        if !self.is_lcd_enabled() {
+            return ppu_interruptions;
+        }
+
         self.mode_cycles += 1;
 
         if self.mode_cycles < self.mode_duration() {
@@ -262,16 +266,35 @@ impl Ppu {
         stat | 0x80
     }
 
+    fn is_oam_accessible(&self) -> bool {
+        matches!(self.mode, PpuMode::HBlank | PpuMode::VBlank)
+    }
+
+    fn is_vram_accessible(&self) -> bool {
+        matches!(
+            self.mode,
+            PpuMode::HBlank | PpuMode::VBlank | PpuMode::OamSearch
+        )
+    }
+
     pub fn read(&self, address: u16) -> u8 {
         match address {
             VRAM_START..=VRAM_END => {
-                let offset = (address - VRAM_START) as usize;
-                self.vram[offset]
+                if self.is_vram_accessible() {
+                    let offset = (address - VRAM_START) as usize;
+                    self.vram[offset]
+                } else {
+                    0xFF
+                }
             }
 
             OAM_START..=OAM_END => {
-                let offset = (address - OAM_START) as usize;
-                self.oam[offset]
+                if self.is_oam_accessible() {
+                    let offset = (address - OAM_START) as usize;
+                    self.oam[offset]
+                } else {
+                    0xFF
+                }
             }
 
             LCDC_ADDRESS => self.lcdc,
@@ -294,16 +317,26 @@ impl Ppu {
         }
     }
 
+    // This function is for OAM DMA transfer which should not have any restriction
+    pub fn dma_write_oam(&mut self, address: u16, value: u8) {
+        let offset = (address - OAM_START) as usize;
+        self.oam[offset] = value
+    }
+
     pub fn write(&mut self, address: u16, value: u8) {
         match address {
             VRAM_START..=VRAM_END => {
-                let offset = (address - VRAM_START) as usize;
-                self.vram[offset] = value
+                if self.is_vram_accessible() {
+                    let offset = (address - VRAM_START) as usize;
+                    self.vram[offset] = value
+                }
             }
 
             OAM_START..=OAM_END => {
-                let offset = (address - OAM_START) as usize;
-                self.oam[offset] = value
+                if self.is_oam_accessible() {
+                    let offset = (address - OAM_START) as usize;
+                    self.oam[offset] = value
+                }
             }
 
             LCDC_ADDRESS => self.lcdc = value,
