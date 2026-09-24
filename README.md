@@ -85,11 +85,12 @@ The emulator advances the hardware over time by executing CPU instructions and, 
 | POP Timing tests | ✅ Passing |
 | PUSH Timing tests | ✅ Passing |
 | Interrupt tests | ✅ Passing |
-| Timing tests | ✅ Passing |
+| Timer tests | ✅ Passing |
 | MBC1 (No Multicarts) | ✅ Passing |
-| MBC2/3 | ⏳ Not tested |
+| MBC2/3 | Not tested |
 | OAM DMA tests | ✅ Passing |
 | HALT Tests | ✅ Passing |
+| PPU Tests | ⏳ In progress... |
 
 ---------------------------------------
 <div align="center">
