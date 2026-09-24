@@ -267,14 +267,15 @@ impl Ppu {
     }
 
     fn is_oam_accessible(&self) -> bool {
-        matches!(self.mode, PpuMode::HBlank | PpuMode::VBlank)
+        !self.is_lcd_enabled() || matches!(self.mode, PpuMode::HBlank | PpuMode::VBlank)
     }
 
     fn is_vram_accessible(&self) -> bool {
-        matches!(
-            self.mode,
-            PpuMode::HBlank | PpuMode::VBlank | PpuMode::OamSearch
-        )
+        !self.is_lcd_enabled()
+            || matches!(
+                self.mode,
+                PpuMode::HBlank | PpuMode::VBlank | PpuMode::OamSearch
+            )
     }
 
     pub fn read(&self, address: u16) -> u8 {
@@ -339,7 +340,13 @@ impl Ppu {
                 }
             }
 
-            LCDC_ADDRESS => self.lcdc = value,
+            LCDC_ADDRESS => {
+                self.lcdc = value;
+                if !self.is_lcd_enabled() {
+                    self.ly = 0;
+                    self.mode_cycles = 0;
+                }
+            }
 
             // For stat we only take bits 3-6
             STAT_ADDRESS => self.stat = value & 0b0111_1000,

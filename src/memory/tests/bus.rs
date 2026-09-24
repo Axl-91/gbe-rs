@@ -132,6 +132,7 @@ mod dma {
     fn dma_transfers_wram_to_oam() {
         let mut rng = rand::rng();
         let mut bus = create_bus();
+        bus.write(0xFF40, 0);
 
         let mut source_data = [0; DMA_TRANSFER_BYTES];
 
