@@ -259,11 +259,12 @@ impl Ppu {
         if self.ly_eq_lyc {
             stat |= 0x04;
         }
-
         // bit 0-1 -> PPU Mode
-        stat |= self.mode as u8;
-
-        stat | 0x80
+        if self.is_lcd_enabled() {
+            stat |= self.mode as u8;
+        }
+        // Bit 7 is always 1
+        stat | 0b1000_0000
     }
 
     fn is_oam_accessible(&self) -> bool {
@@ -343,6 +344,7 @@ impl Ppu {
             LCDC_ADDRESS => {
                 self.lcdc = value;
                 if !self.is_lcd_enabled() {
+                    self.mode = PpuMode::OamSearch;
                     self.ly = 0;
                     self.mode_cycles = 0;
                 }
