@@ -1,4 +1,5 @@
 use super::*;
+const LCDC_ENABLE: u8 = 7;
 
 #[test]
 fn ppu_starts_in_oam_search() {
