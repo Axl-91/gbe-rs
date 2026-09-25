@@ -43,20 +43,26 @@ The goal of this project is to build a simple and accurate emulator for the orig
 - [x] Timer
 - [x] Interrupts
 - [ ] PPU
+  - [x] Memory
+  - [x] Registers
+  - [x] Timing
+  - [ ] Rendering
 - [ ] Input
 
 ### Frontend
 - [ ] Frontend
 
-## Emulator logic
+## Emulator architecture
 
-The emulator works by reproducing the main hardware components of the Game Boy and allowing them to interact with each other.
+The emulator reproduces the main hardware components of the Game Boy and allows them to interact through a shared memory bus and a cycle-based execution model.
 
-At the center is the CPU, which fetches instructions from memory, decodes them, and executes them. Memory access is handled through a memory bus, which routes reads and writes to the appropriate hardware component.
+At the center is the CPU, which fetches instructions from memory, decodes them, and executes them. Memory access is handled through the memory bus, which routes reads and writes to the appropriate hardware component, such as the cartridge, RAM, PPU, timer, serial interface, or joypad.
 
 <img width="1408" alt="gbe_logic" src="https://github.com/Axl-91/gbe-rs/blob/main/assets/diagram.jpg" />
 
-The emulator advances the hardware over time by executing CPU instructions and, eventually, consuming the corresponding number of cycles. This allows components such as the PPU and timer to remain synchronized with the CPU.
+The emulator advances the hardware over time using the CPU's clock cycles. Each executed instruction consumes a specific number of cycles, and the corresponding hardware components are advanced accordingly. This keeps components such as the PPU, timer, DMA controller, and serial interface synchronized with the CPU.
+
+Hardware components are responsible for their own internal state and timing, while the emulator coordinates their execution and the communication between them. This approach keeps the different parts of the emulator modular while allowing them to behave as a single system.
 
 ## References
 
