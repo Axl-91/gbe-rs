@@ -27,6 +27,11 @@ impl Ppu {
             )
     }
 
+    pub(super) fn read_vram(&self, address: u16) -> u8 {
+        let offset = (address - VRAM_START) as usize;
+        self.vram[offset]
+    }
+
     pub fn read(&self, address: u16) -> u8 {
         match address {
             VRAM_START..=VRAM_END => {

@@ -18,7 +18,7 @@ impl Ppu {
     ///
     /// Returns `true` if the LCD is enabled and at least one enabled STAT
     /// condition currently holds
-    pub(crate) fn compute_stat_line(&self) -> bool {
+    pub(super) fn compute_stat_line(&self) -> bool {
         if !self.is_lcd_enabled() {
             return false;
         }
@@ -42,7 +42,7 @@ impl Ppu {
     /// Implements "STAT IRQ Blocking": while `stat_line` stays `true`,
     /// no new edge is detected, even if other conditions activate meanwhile.
     /// It can only rise again after falling back to `false` first.
-    pub(crate) fn update_stat_line(&mut self) -> bool {
+    pub(super) fn update_stat_line(&mut self) -> bool {
         let new_line = self.compute_stat_line();
         let rising_edge = new_line && !self.stat_line;
         self.stat_line = new_line;
@@ -60,39 +60,39 @@ impl Ppu {
         self.is_lcd_enabled() && self.update_stat_line()
     }
 
-    pub(crate) fn is_lcd_enabled(&self) -> bool {
+    pub(super) fn is_lcd_enabled(&self) -> bool {
         self.lcdc & (1 << LCDC_ENABLE) != 0
     }
 
-    pub(crate) fn is_window_tile_map(&self) -> bool {
+    pub(super) fn is_window_tile_map(&self) -> bool {
         self.lcdc & (1 << WINDOW_TILE_MAP) != 0
     }
 
-    pub(crate) fn is_window_enabled(&self) -> bool {
+    pub(super) fn is_window_enabled(&self) -> bool {
         self.lcdc & (1 << WINDOW_ENABLE) != 0
     }
 
-    pub(crate) fn is_bg_window_tile_data(&self) -> bool {
+    pub(super) fn is_bg_window_tile_data(&self) -> bool {
         self.lcdc & (1 << BG_WINDOW_TILE_DATA) != 0
     }
 
-    pub(crate) fn is_bg_tile_map(&self) -> bool {
+    pub(super) fn is_bg_tile_map(&self) -> bool {
         self.lcdc & (1 << BG_TILE_MAP) != 0
     }
 
-    pub(crate) fn is_obj_size(&self) -> bool {
+    pub(super) fn is_obj_size(&self) -> bool {
         self.lcdc & (1 << OBJ_SIZE) != 0
     }
 
-    pub(crate) fn is_obj_enabled(&self) -> bool {
+    pub(super) fn is_obj_enabled(&self) -> bool {
         self.lcdc & (1 << OBJ_ENABLE) != 0
     }
 
-    pub(crate) fn is_bg_window_enabled(&self) -> bool {
+    pub(super) fn is_bg_window_enabled(&self) -> bool {
         self.lcdc & (1 << BG_WINDOW_ENABLE) != 0
     }
 
-    pub(crate) fn read_stat(&self) -> u8 {
+    pub(super) fn read_stat(&self) -> u8 {
         let mut stat = self.stat;
 
         // bit 2 -> ly==lyc

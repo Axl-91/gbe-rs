@@ -1,18 +1,177 @@
-// use crate::{memory::map::VRAM_START, ppu::Ppu};
+use crate::{memory::map::VRAM_START, ppu::Ppu};
 
-// const TILE_DATA_SIGNED_START: u16 = 0x9000;
-// const TILE_SIZE_BYTES: u16 = 16;
+const TILE_DATA_SIGNED_START: u16 = 0x9000;
+const BG_TILE_MAP_START: u16 = 0x9800;
+const BG_TILE_MAP_ALT_START: u16 = 0x9C00;
 
-// impl Ppu {
-//     fn tile_data_address(&self, tile_index: u8) -> u16 {
-//         if self.is_bg_window_tile_data() {
-//             let offset = tile_index as u16 * TILE_SIZE_BYTES;
-//             VRAM_START + offset
-//         } else {
-//             let signed_index = tile_index as i8 as i16;
-//             let offset = signed_index * TILE_SIZE_BYTES as i16;
+const TILE_SIZE: u8 = 8;
+const TILES_PER_ROW: u8 = 32;
+const TILE_SIZE_BYTES: u16 = 16;
+const TILE_MAP_SIZE: u16 = 0x400;
 
-//             (TILE_DATA_SIGNED_START as i16 + offset) as u16
-//         }
-//     }
-// }
+#[derive(Clone, Copy)]
+enum FetcherStep {
+    TileNumber,
+    TileDataLow,
+    TileDataHigh,
+    Push,
+}
+
+pub(super) enum FetcherRequest {
+    ReadVram(u16),
+}
+
+#[derive(Default)]
+struct FetcherContext {
+    tile_map_address: u16,
+    row: u8,
+    tile_data_unsigned: bool,
+}
+
+pub struct Fetcher {
+    step: FetcherStep,
+    cycles: u8,
+
+    x: u8,
+
+    tile_number: u8,
+    tile_data_low: u8,
+    tile_data_high: u8,
+
+    context: FetcherContext,
+}
+
+impl Fetcher {
+    pub fn new() -> Self {
+        Self {
+            step: FetcherStep::TileNumber,
+            cycles: 0,
+
+            x: 0,
+
+            tile_number: 0,
+            tile_data_low: 0,
+            tile_data_high: 0,
+
+            context: FetcherContext::default(),
+        }
+    }
+
+    pub(super) fn add_context(&mut self, tile_map_address: u16, row: u8, tile_data_unsigned: bool) {
+        self.context = FetcherContext {
+            tile_map_address,
+            row,
+            tile_data_unsigned,
+        };
+    }
+
+    fn tile_data_address(&self, tile_index: u8) -> u16 {
+        if self.context.tile_data_unsigned {
+            let offset = tile_index as u16 * TILE_SIZE_BYTES;
+            VRAM_START + offset
+        } else {
+            let signed_index = tile_index as i8 as i16;
+            let offset = signed_index * TILE_SIZE_BYTES as i16;
+
+            (TILE_DATA_SIGNED_START as i16 + offset) as u16
+        }
+    }
+
+    pub(super) fn tick(&mut self) -> Option<FetcherRequest> {
+        self.cycles += 1;
+
+        if self.cycles < 2 {
+            return None;
+        }
+
+        self.cycles = 0;
+
+        match self.step {
+            FetcherStep::TileNumber => {
+                Some(FetcherRequest::ReadVram(self.context.tile_map_address))
+            }
+
+            FetcherStep::TileDataLow => {
+                let tile_address = self.tile_data_address(self.tile_number);
+
+                let row_offset = self.context.row as u16 * 2;
+
+                Some(FetcherRequest::ReadVram(tile_address + row_offset))
+            }
+
+            FetcherStep::TileDataHigh => {
+                let tile_address = self.tile_data_address(self.tile_number);
+
+                let row_offset = self.context.row as u16 * 2;
+
+                Some(FetcherRequest::ReadVram(tile_address + row_offset + 1))
+            }
+
+            FetcherStep::Push => {
+                self.step = FetcherStep::TileNumber;
+                self.x = (self.x + 1) % TILES_PER_ROW;
+
+                None
+            }
+        }
+    }
+
+    pub(super) fn receive(&mut self, value: u8) {
+        match self.step {
+            FetcherStep::TileNumber => {
+                self.tile_number = value;
+                self.step = FetcherStep::TileDataLow;
+            }
+
+            FetcherStep::TileDataLow => {
+                self.tile_data_low = value;
+                self.step = FetcherStep::TileDataHigh;
+            }
+
+            FetcherStep::TileDataHigh => {
+                self.tile_data_high = value;
+                self.step = FetcherStep::Push;
+            }
+
+            FetcherStep::Push => {}
+        }
+    }
+}
+
+impl Ppu {
+    fn bg_tile_map_address(&self) -> u16 {
+        if self.is_bg_tile_map() {
+            BG_TILE_MAP_ALT_START
+        } else {
+            BG_TILE_MAP_START
+        }
+    }
+
+    fn bg_tile_map_offset(&self) -> u16 {
+        let y = self.ly.wrapping_add(self.scy);
+        let y_offset = TILES_PER_ROW as u16 * (y / TILE_SIZE) as u16;
+        let mut x_offset = self.fetcher.x + self.scx / TILE_SIZE;
+
+        // We keep the X offset between the 32 tiles
+        x_offset &= TILES_PER_ROW - 1;
+
+        let tile_map_offset = y_offset + x_offset as u16;
+
+        // We keep the offset between the tile map values
+        tile_map_offset & (TILE_MAP_SIZE - 1)
+    }
+
+    fn bg_tile_row(&self) -> u8 {
+        self.ly.wrapping_add(self.scy) % TILE_SIZE
+    }
+
+    pub(super) fn add_fetcher_context(&mut self) {
+        let tile_map_address = self.bg_tile_map_address() + self.bg_tile_map_offset();
+
+        let row = self.bg_tile_row();
+        let tile_data_unsigned = self.is_bg_window_tile_data();
+
+        self.fetcher
+            .add_context(tile_map_address, row, tile_data_unsigned);
+    }
+}

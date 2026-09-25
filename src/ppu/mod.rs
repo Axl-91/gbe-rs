@@ -5,6 +5,8 @@
 //! per-scanline mode state machine (`OamSearch` -> `Drawing` -> `HBlank`,
 //! repeating for each visible line, then `VBlank` for the remaining
 
+use crate::ppu::fetcher::{Fetcher, FetcherRequest};
+
 const VRAM_SIZE: usize = 0x2000;
 const OAM_SIZE: usize = 0xA0;
 
@@ -63,6 +65,8 @@ pub struct Ppu {
 
     ly_eq_lyc: bool,
     stat_line: bool,
+
+    fetcher: Fetcher,
 }
 
 impl Ppu {
@@ -88,6 +92,8 @@ impl Ppu {
 
             ly_eq_lyc: false,
             stat_line: false,
+
+            fetcher: Fetcher::new(),
         }
     }
 
@@ -140,6 +146,15 @@ impl Ppu {
         }
     }
 
+    fn advance_request(&mut self) {
+        self.add_fetcher_context();
+
+        if let Some(FetcherRequest::ReadVram(address)) = self.fetcher.tick() {
+            let value = self.read_vram(address);
+            self.fetcher.receive(value);
+        }
+    }
+
     /// Advances the PPU by one T-cycle.
     ///
     /// Increments the cycle counter for the current mode. Once it reaches
@@ -158,6 +173,13 @@ impl Ppu {
 
         self.mode_cycles += 1;
 
+        match self.mode {
+            PpuMode::OamSearch => {}
+            PpuMode::Drawing => self.advance_request(),
+            PpuMode::HBlank => {}
+            PpuMode::VBlank => {}
+        }
+
         if self.mode_cycles < self.mode_duration() {
             return ppu_interruptions;
         }
@@ -165,13 +187,6 @@ impl Ppu {
         self.mode_cycles = 0;
 
         self.advance_mode();
-
-        match self.mode {
-            PpuMode::OamSearch => {}
-            PpuMode::Drawing => {}
-            PpuMode::HBlank => {}
-            PpuMode::VBlank => {}
-        }
 
         self.ly_eq_lyc = self.ly == self.lyc;
 
