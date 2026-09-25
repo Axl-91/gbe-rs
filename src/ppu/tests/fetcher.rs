@@ -1,8 +1,17 @@
 use crate::ppu::fetcher::{Fetcher, FetcherRequest};
 
+const STARTUP_DELAY: u8 = 6;
+
+fn complete_start_up_phase(fetcher: &mut Fetcher) {
+    for _ in 0..STARTUP_DELAY {
+        fetcher.tick();
+    }
+}
+
 #[test]
 fn fetcher_requests_tile_number_first() {
     let mut fetcher = Fetcher::new();
+    complete_start_up_phase(&mut fetcher);
 
     let address = crate::memory::map::VRAM_START;
     let row = 0;
@@ -22,6 +31,7 @@ fn fetcher_requests_tile_number_first() {
 #[test]
 fn fetcher_requests_tile_data_low_after_tile_number() {
     let mut fetcher = Fetcher::new();
+    complete_start_up_phase(&mut fetcher);
 
     let tile_map_address = crate::memory::map::VRAM_START;
     let tile_number = 0;
@@ -45,6 +55,7 @@ fn fetcher_requests_tile_data_low_after_tile_number() {
 #[test]
 fn fetcher_requests_tile_data_high_after_low() {
     let mut fetcher = Fetcher::new();
+    complete_start_up_phase(&mut fetcher);
 
     let tile_map_address = crate::memory::map::VRAM_START;
     let tile_number = 0;
@@ -71,6 +82,7 @@ fn fetcher_requests_tile_data_high_after_low() {
 #[test]
 fn fetcher_pushes_received_tile_data() {
     let mut fetcher = Fetcher::new();
+    complete_start_up_phase(&mut fetcher);
 
     let tile_map_address = crate::memory::map::VRAM_START;
     let tile_number = 0;

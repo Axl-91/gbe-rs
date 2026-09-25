@@ -152,25 +152,31 @@ impl Ppu {
 
             PpuMode::OamSearch => self.mode = PpuMode::Drawing,
 
-            PpuMode::Drawing => {
-                self.mode = PpuMode::HBlank;
-            }
+            PpuMode::Drawing => self.mode = PpuMode::HBlank,
         }
     }
 
-    fn advance_request(&mut self) {
+    fn push_into_fifo(&mut self, low: u8, high: u8) {
+        if self.fifo.can_push_tile() {
+            self.fifo.push_tile(low, high);
+            self.fetcher.complete_push();
+        }
+    }
+
+    fn tick_fetcher(&mut self) {
         self.add_fetcher_context();
         let request = self.fetcher.tick();
 
         match request {
             Some(FetcherRequest::ReadVram(address)) => {
                 let value = self.read_vram(address);
-                self.fetcher.receive(value);
+                let request = self.fetcher.receive(value);
+
+                if let Some(FetcherRequest::Push { low, high }) = request {
+                    self.push_into_fifo(low, high);
+                }
             }
-            Some(FetcherRequest::Push { low, high }) if self.fifo.can_push_tile() => {
-                self.fifo.push_tile(low, high);
-                self.fetcher.complete_push();
-            }
+            Some(FetcherRequest::Push { low, high }) => self.push_into_fifo(low, high),
             _ => {}
         }
 
@@ -199,7 +205,7 @@ impl Ppu {
 
         match self.mode {
             PpuMode::OamSearch => {}
-            PpuMode::Drawing => self.advance_request(),
+            PpuMode::Drawing => self.tick_fetcher(),
             PpuMode::HBlank => {}
             PpuMode::VBlank => {}
         }
