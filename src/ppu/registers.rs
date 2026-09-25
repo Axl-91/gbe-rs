@@ -100,6 +100,7 @@ impl Ppu {
             stat |= 0x04;
         }
         // bit 0-1 -> PPU Mode
+        stat &= !0b11;
         stat |= self.mode as u8;
 
         // Bit 7 is always 1

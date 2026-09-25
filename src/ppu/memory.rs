@@ -1,18 +1,18 @@
 use crate::memory::map::{OAM_END, OAM_START, VRAM_END, VRAM_START};
 use crate::ppu::{Ppu, PpuMode};
 
-const LCDC_ADDRESS: u16 = 0xFF40;
-const STAT_ADDRESS: u16 = 0xFF41;
-const SCY_ADDRESS: u16 = 0xFF42;
-const SCX_ADDRESS: u16 = 0xFF43;
-const LY_ADDRESS: u16 = 0xFF44;
-const LYC_ADDRESS: u16 = 0xFF45;
-const DMA_ADDRESS: u16 = 0xFF46;
-const BGP_ADDRESS: u16 = 0xFF47;
-const OBP0_ADDRESS: u16 = 0xFF48;
-const OBP1_ADDRESS: u16 = 0xFF49;
-const WY_ADDRESS: u16 = 0xFF4A;
-const WX_ADDRESS: u16 = 0xFF4B;
+pub(super) const LCDC_ADDRESS: u16 = 0xFF40;
+pub(super) const STAT_ADDRESS: u16 = 0xFF41;
+pub(super) const SCY_ADDRESS: u16 = 0xFF42;
+pub(super) const SCX_ADDRESS: u16 = 0xFF43;
+pub(super) const LY_ADDRESS: u16 = 0xFF44;
+pub(super) const LYC_ADDRESS: u16 = 0xFF45;
+pub(super) const DMA_ADDRESS: u16 = 0xFF46;
+pub(super) const BGP_ADDRESS: u16 = 0xFF47;
+pub(super) const OBP0_ADDRESS: u16 = 0xFF48;
+pub(super) const OBP1_ADDRESS: u16 = 0xFF49;
+pub(super) const WY_ADDRESS: u16 = 0xFF4A;
+pub(super) const WX_ADDRESS: u16 = 0xFF4B;
 
 impl Ppu {
     fn is_oam_accessible(&self) -> bool {
@@ -27,6 +27,7 @@ impl Ppu {
             )
     }
 
+    // Read VRAM without restrictions, used for Pixel Fetcher
     pub(super) fn read_vram(&self, address: u16) -> u8 {
         let offset = (address - VRAM_START) as usize;
         self.vram[offset]

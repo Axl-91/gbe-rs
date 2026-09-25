@@ -5,7 +5,10 @@
 //! per-scanline mode state machine (`OamSearch` -> `Drawing` -> `HBlank`,
 //! repeating for each visible line, then `VBlank` for the remaining
 
-use crate::ppu::fetcher::{Fetcher, FetcherRequest};
+use crate::ppu::{
+    fetcher::{Fetcher, FetcherRequest},
+    fifo::PixelFifo,
+};
 
 const VRAM_SIZE: usize = 0x2000;
 const OAM_SIZE: usize = 0xA0;
@@ -16,7 +19,10 @@ const VISIBLE_LINES: u8 = 144;
 /// Total number of scanlines per frame, including the VBlank period.
 const TOTAL_LINES: u8 = 154;
 
+const SCREEN_WIDTH: u8 = 160;
+
 mod fetcher;
+mod fifo;
 mod memory;
 mod registers;
 
@@ -34,7 +40,7 @@ pub struct PpuInterruptions {
 /// Each frame cycles through, per line: `OamSearch` -> `Drawing` ->
 /// `HBlank`, repeated for every visible line, followed by a single
 /// `VBlank` mode that lasts for the remaining (non-visible) lines.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 enum PpuMode {
     HBlank = 0,
     VBlank = 1,
@@ -67,6 +73,9 @@ pub struct Ppu {
     stat_line: bool,
 
     fetcher: Fetcher,
+    fifo: PixelFifo,
+
+    drawing_x: u8,
 }
 
 impl Ppu {
@@ -94,6 +103,9 @@ impl Ppu {
             stat_line: false,
 
             fetcher: Fetcher::new(),
+            fifo: PixelFifo::new(),
+
+            drawing_x: 0,
         }
     }
 
@@ -148,10 +160,22 @@ impl Ppu {
 
     fn advance_request(&mut self) {
         self.add_fetcher_context();
+        let request = self.fetcher.tick();
 
-        if let Some(FetcherRequest::ReadVram(address)) = self.fetcher.tick() {
-            let value = self.read_vram(address);
-            self.fetcher.receive(value);
+        match request {
+            Some(FetcherRequest::ReadVram(address)) => {
+                let value = self.read_vram(address);
+                self.fetcher.receive(value);
+            }
+            Some(FetcherRequest::Push { low, high }) if self.fifo.can_push_tile() => {
+                self.fifo.push_tile(low, high);
+                self.fetcher.complete_push();
+            }
+            _ => {}
+        }
+
+        if self.drawing_x < SCREEN_WIDTH && self.fifo.pop().is_some() {
+            self.drawing_x += 1;
         }
     }
 
