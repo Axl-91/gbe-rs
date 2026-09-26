@@ -92,7 +92,7 @@ fn decode_fail_round(round: u8) -> (u8, u8, u16) {
 
     let pass = round / 8;
     let read_idx = round % 8;
-    let t_cycles = (OFFSETS_M[read_idx as usize] + pass as u16) * 4;
+    let t_cycles = (OFFSETS_M[read_idx as usize] + pass as u16) * 4 + 8;
 
     (pass, read_idx, t_cycles)
 }

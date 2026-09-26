@@ -24,8 +24,8 @@ const SCREEN_WIDTH: u8 = 160;
 const SCANLINE_CYCLES: u16 = 456;
 const OAM_SEARCH_CYCLES: u16 = 80;
 
-const LCD_ON_LINE0_FAKE_MODE0_CYCLES: u16 = 78;
-const LCD_ON_LINE0_HBLANK_SHORTENING: u16 = 4;
+const LCD_FAKE_MODE_CYCLES: u16 = 78;
+const LCD_HBLANK_SHORTENING: u16 = 4;
 
 mod fetcher;
 mod fifo;
@@ -85,7 +85,10 @@ pub struct Ppu {
     scx_discard: u8,
     hblank_duration: u16,
 
-    lcd_just_enabled: bool,
+    lcd_switched_on: bool,
+
+    prev_mode: PpuMode,
+    prev_ly_eq_lyc: bool,
 }
 
 impl Ppu {
@@ -119,7 +122,10 @@ impl Ppu {
             scx_discard: 0,
             hblank_duration: 0,
 
-            lcd_just_enabled: false,
+            lcd_switched_on: false,
+
+            prev_mode: PpuMode::OamSearch,
+            prev_ly_eq_lyc: false,
         }
     }
 
@@ -127,8 +133,8 @@ impl Ppu {
         match self.mode {
             PpuMode::VBlank => SCANLINE_CYCLES,
             PpuMode::OamSearch => {
-                if self.lcd_just_enabled && self.ly == 0 {
-                    LCD_ON_LINE0_FAKE_MODE0_CYCLES
+                if self.lcd_switched_on {
+                    LCD_FAKE_MODE_CYCLES
                 } else {
                     OAM_SEARCH_CYCLES
                 }
@@ -151,7 +157,6 @@ impl Ppu {
         match self.mode {
             PpuMode::HBlank => {
                 self.ly += 1;
-                self.ly_eq_lyc = self.ly == self.lyc;
 
                 if self.ly == VISIBLE_LINES {
                     self.mode = PpuMode::VBlank
@@ -162,7 +167,6 @@ impl Ppu {
 
             PpuMode::VBlank => {
                 self.ly += 1;
-                self.ly_eq_lyc = self.ly == self.lyc;
 
                 if self.ly == TOTAL_LINES {
                     self.ly = 0;
@@ -222,6 +226,39 @@ impl Ppu {
         let _ = self.consume_pixel();
     }
 
+    fn calculate_hblank_duration(&mut self) {
+        let oam_phase_len = if self.lcd_switched_on {
+            LCD_FAKE_MODE_CYCLES
+        } else {
+            OAM_SEARCH_CYCLES
+        };
+        let mut duration = SCANLINE_CYCLES - oam_phase_len - self.mode_cycles;
+
+        if self.lcd_switched_on {
+            duration -= LCD_HBLANK_SHORTENING;
+            self.lcd_switched_on = false;
+        }
+
+        self.hblank_duration = duration;
+    }
+
+    fn can_advance_mode(&mut self) -> bool {
+        match self.mode {
+            PpuMode::OamSearch => self.mode_cycles == self.mode_duration(),
+            PpuMode::Drawing => {
+                self.tick_fetcher();
+
+                if self.drawing_x == SCREEN_WIDTH {
+                    self.calculate_hblank_duration();
+                    return true;
+                }
+                false
+            }
+            PpuMode::HBlank => self.mode_cycles == self.hblank_duration,
+            PpuMode::VBlank => self.mode_cycles == self.mode_duration(),
+        }
+    }
+
     /// Advances the PPU by one T-cycle.
     ///
     /// Increments the cycle counter for the current mode. Once it reaches
@@ -233,48 +270,18 @@ impl Ppu {
     /// Returns the interrupts generated during this T-cycle.
     pub fn tick(&mut self) -> PpuInterruptions {
         let mut ppu_interruptions = PpuInterruptions::default();
-        let mut can_advance_mode = false;
 
         if !self.is_lcd_enabled() {
             return ppu_interruptions;
         }
+        let visible_before_tick = self.visible_mode();
+        let ly_eq_lyc_before_tick = self.ly_eq_lyc;
 
         self.mode_cycles += 1;
 
-        match self.mode {
-            PpuMode::OamSearch => {
-                can_advance_mode = self.mode_cycles == self.mode_duration();
-            }
-            PpuMode::Drawing => {
-                self.tick_fetcher();
-
-                if self.drawing_x == SCREEN_WIDTH {
-                    let oam_phase_len = if self.lcd_just_enabled && self.ly == 0 {
-                        LCD_ON_LINE0_FAKE_MODE0_CYCLES
-                    } else {
-                        OAM_SEARCH_CYCLES
-                    };
-                    let mut duration = SCANLINE_CYCLES - oam_phase_len - self.mode_cycles;
-
-                    if self.lcd_just_enabled && self.ly == 0 {
-                        duration -= LCD_ON_LINE0_HBLANK_SHORTENING;
-                        self.lcd_just_enabled = false;
-                    }
-
-                    self.hblank_duration = duration;
-                    can_advance_mode = true;
-                }
-            }
-
-            PpuMode::HBlank => {
-                can_advance_mode = self.mode_cycles == self.hblank_duration;
-            }
-            PpuMode::VBlank => {
-                can_advance_mode = self.mode_cycles == self.mode_duration();
-            }
-        }
-
-        if !can_advance_mode {
+        if !self.can_advance_mode() {
+            self.prev_mode = visible_before_tick;
+            self.prev_ly_eq_lyc = ly_eq_lyc_before_tick;
             return ppu_interruptions;
         }
 
@@ -289,6 +296,10 @@ impl Ppu {
         if self.ly == VISIBLE_LINES {
             ppu_interruptions.vblank = true
         }
+
+        self.prev_mode = visible_before_tick;
+        self.prev_ly_eq_lyc = ly_eq_lyc_before_tick;
+
         ppu_interruptions
     }
 }

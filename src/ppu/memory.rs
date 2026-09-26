@@ -16,15 +16,27 @@ pub(super) const WX_ADDRESS: u16 = 0xFF4B;
 
 impl Ppu {
     fn is_oam_accessible(&self) -> bool {
-        !self.is_lcd_enabled() || matches!(self.visible_mode(), PpuMode::HBlank | PpuMode::VBlank)
+        if !self.is_lcd_enabled() {
+            return true;
+        }
+        let now_ok = matches!(self.visible_mode(), PpuMode::HBlank | PpuMode::VBlank);
+        let lag_ok = matches!(self.prev_mode, PpuMode::HBlank | PpuMode::VBlank);
+        now_ok && lag_ok
     }
 
     fn is_vram_accessible(&self) -> bool {
-        !self.is_lcd_enabled()
-            || matches!(
-                self.visible_mode(),
-                PpuMode::HBlank | PpuMode::VBlank | PpuMode::OamSearch
-            )
+        if !self.is_lcd_enabled() {
+            return true;
+        }
+        let now_ok = matches!(
+            self.visible_mode(),
+            PpuMode::HBlank | PpuMode::VBlank | PpuMode::OamSearch
+        );
+        let lag_ok = matches!(
+            self.prev_mode,
+            PpuMode::HBlank | PpuMode::VBlank | PpuMode::OamSearch
+        );
+        now_ok && lag_ok
     }
 
     // Read VRAM without restrictions, used for Pixel Fetcher
@@ -103,13 +115,15 @@ impl Ppu {
                     self.mode = PpuMode::HBlank;
                     self.ly = 0;
                     self.mode_cycles = 0;
-                    self.lcd_just_enabled = false;
+                    self.lcd_switched_on = false;
+                    self.prev_mode = PpuMode::HBlank;
+                    self.prev_ly_eq_lyc = self.ly == self.lyc;
                 } else if was_off {
                     self.ly = 0;
                     self.mode = PpuMode::OamSearch;
                     self.mode_cycles = 0;
                     self.ly_eq_lyc = self.ly == self.lyc;
-                    self.lcd_just_enabled = true;
+                    self.lcd_switched_on = true;
                 }
             }
 

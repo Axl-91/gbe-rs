@@ -1,6 +1,6 @@
 use crate::ppu::fetcher::{Fetcher, FetcherRequest};
 
-const STARTUP_DELAY: u8 = 6;
+const STARTUP_DELAY: u8 = 7;
 
 fn complete_start_up_phase(fetcher: &mut Fetcher) {
     for _ in 0..STARTUP_DELAY {

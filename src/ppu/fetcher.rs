@@ -101,7 +101,7 @@ impl Fetcher {
     /// Returns the number of T-cycles required by the current fetch step.
     fn step_cycles(&self) -> u8 {
         match self.step {
-            FetcherStep::StartUp => 6,
+            FetcherStep::StartUp => 7,
             FetcherStep::TileNumber => 2,
             FetcherStep::TileDataLow => 2,
             FetcherStep::TileDataHigh => 2,
