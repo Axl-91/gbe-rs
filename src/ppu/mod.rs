@@ -175,6 +175,18 @@ impl Ppu {
         }
     }
 
+    fn consume_pixel(&mut self) -> Option<u8> {
+        let pixel = self.fifo.pop()?;
+
+        if self.scx_discard > 0 {
+            self.scx_discard -= 1;
+        } else if self.drawing_x < SCREEN_WIDTH {
+            self.drawing_x += 1;
+        }
+
+        Some(pixel)
+    }
+
     fn tick_fetcher(&mut self) {
         self.add_fetcher_context();
         let request = self.fetcher.tick();
@@ -199,6 +211,8 @@ impl Ppu {
                 self.drawing_x += 1;
             }
         }
+
+        let _ = self.consume_pixel();
     }
 
     /// Advances the PPU by one T-cycle.
