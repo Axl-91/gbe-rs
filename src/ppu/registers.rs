@@ -95,12 +95,14 @@ impl Ppu {
     pub(super) fn read_stat(&self) -> u8 {
         let mut stat = self.stat;
 
+        // Clear bits 0-2
+        stat &= !0b0000_0111;
+
         // bit 2 -> ly==lyc
         if self.ly_eq_lyc {
-            stat |= 0x04;
+            stat |= 0b0000_0100;
         }
         // bit 0-1 -> PPU Mode
-        stat &= !0b11;
         stat |= self.mode as u8;
 
         // Bit 7 is always 1
