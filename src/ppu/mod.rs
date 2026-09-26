@@ -204,14 +204,6 @@ impl Ppu {
             _ => {}
         }
 
-        if self.drawing_x < SCREEN_WIDTH && self.fifo.pop().is_some() {
-            if self.scx_discard > 0 {
-                self.scx_discard -= 1;
-            } else {
-                self.drawing_x += 1;
-            }
-        }
-
         let _ = self.consume_pixel();
     }
 
