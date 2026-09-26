@@ -21,6 +21,9 @@ const TOTAL_LINES: u8 = 154;
 
 const SCREEN_WIDTH: u8 = 160;
 
+const SCANLINE_CYCLES: u16 = 456;
+const OAM_SEARCH_CYCLES: u16 = 80;
+
 mod fetcher;
 mod fifo;
 mod memory;
@@ -76,6 +79,8 @@ pub struct Ppu {
     fifo: PixelFifo,
 
     drawing_x: u8,
+    scx_discard: u8,
+    hblank_duration: u16,
 }
 
 impl Ppu {
@@ -106,16 +111,16 @@ impl Ppu {
             fifo: PixelFifo::new(),
 
             drawing_x: 0,
+            scx_discard: 0,
+            hblank_duration: 0,
         }
     }
 
     fn mode_duration(&self) -> u16 {
         match self.mode {
-            PpuMode::HBlank => 204,
-            PpuMode::VBlank => 456,
-            PpuMode::OamSearch => 80,
-            // TODO: Mode 3 duration is variable. 172 T-cycles is the minimum duration
-            PpuMode::Drawing => 172,
+            PpuMode::VBlank => SCANLINE_CYCLES,
+            PpuMode::OamSearch => OAM_SEARCH_CYCLES,
+            _ => unreachable!("HBlank and Drawing have variable cycles"),
         }
     }
 
@@ -150,14 +155,21 @@ impl Ppu {
                 }
             }
 
-            PpuMode::OamSearch => self.mode = PpuMode::Drawing,
+            PpuMode::OamSearch => {
+                self.mode = PpuMode::Drawing;
+                self.scx_discard = self.scx % 8;
+                self.drawing_x = 0;
+
+                self.fifo.clear();
+                self.fetcher.reset();
+            }
 
             PpuMode::Drawing => self.mode = PpuMode::HBlank,
         }
     }
 
     fn push_into_fifo(&mut self, low: u8, high: u8) {
-        if self.fifo.can_push_tile() {
+        if self.fifo.is_empty() {
             self.fifo.push_tile(low, high);
             self.fetcher.complete_push();
         }
@@ -181,7 +193,11 @@ impl Ppu {
         }
 
         if self.drawing_x < SCREEN_WIDTH && self.fifo.pop().is_some() {
-            self.drawing_x += 1;
+            if self.scx_discard > 0 {
+                self.scx_discard -= 1;
+            } else {
+                self.drawing_x += 1;
+            }
         }
     }
 
@@ -196,6 +212,7 @@ impl Ppu {
     /// Returns the interrupts generated during this T-cycle.
     pub fn tick(&mut self) -> PpuInterruptions {
         let mut ppu_interruptions = PpuInterruptions::default();
+        let mut can_advance_mode = false;
 
         if !self.is_lcd_enabled() {
             return ppu_interruptions;
@@ -204,18 +221,30 @@ impl Ppu {
         self.mode_cycles += 1;
 
         match self.mode {
-            PpuMode::OamSearch => {}
-            PpuMode::Drawing => self.tick_fetcher(),
-            PpuMode::HBlank => {}
-            PpuMode::VBlank => {}
+            PpuMode::OamSearch => {
+                can_advance_mode = self.mode_cycles == self.mode_duration();
+            }
+            PpuMode::Drawing => {
+                self.tick_fetcher();
+
+                if self.drawing_x == SCREEN_WIDTH {
+                    self.hblank_duration = SCANLINE_CYCLES - OAM_SEARCH_CYCLES - self.mode_cycles;
+                    can_advance_mode = true;
+                }
+            }
+            PpuMode::HBlank => {
+                can_advance_mode = self.mode_cycles == self.hblank_duration;
+            }
+            PpuMode::VBlank => {
+                can_advance_mode = self.mode_cycles == self.mode_duration();
+            }
         }
 
-        if self.mode_cycles < self.mode_duration() {
+        if !can_advance_mode {
             return ppu_interruptions;
         }
 
         self.mode_cycles = 0;
-
         self.advance_mode();
 
         self.ly_eq_lyc = self.ly == self.lyc;

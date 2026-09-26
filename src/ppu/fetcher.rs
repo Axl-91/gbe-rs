@@ -73,6 +73,19 @@ impl Fetcher {
         }
     }
 
+    pub fn reset(&mut self) {
+        self.step = FetcherStep::StartUp;
+        self.cycles = 0;
+
+        self.x = 0;
+
+        self.tile_number = 0;
+        self.tile_data_low = 0;
+        self.tile_data_high = 0;
+
+        self.context = FetcherContext::default();
+    }
+
     /// Updates the context used to fetch the current background tile.
     ///
     /// The PPU provides this information because it depends on PPU state

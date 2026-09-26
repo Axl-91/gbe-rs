@@ -33,6 +33,10 @@ impl PixelFifo {
         self.pixels.pop_front()
     }
 
+    pub fn clear(&mut self) {
+        self.pixels.clear();
+    }
+
     pub fn can_push_tile(&self) -> bool {
         let new_amount_pixels = self.pixels.len() + PIXELS_PER_TILE;
         let max_pixels = MAX_TILES * PIXELS_PER_TILE;
