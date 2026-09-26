@@ -47,6 +47,10 @@ impl Cpu {
         }
     }
 
+    pub fn peek(&self, address: u16) -> u8 {
+        self.bus.read(address)
+    }
+
     fn tick_read(&mut self, address: u16) -> u8 {
         self.total_t_cycles = self.total_t_cycles.wrapping_add(TICK_CYCLES as u64);
 
@@ -185,7 +189,8 @@ impl Cpu {
         let pc = self.registers.get_pc();
         debug!(
             target: "CPU",
-            "T-Cycles: {} | Executing: {:#04x}",
+            "PC: {:#06x} | T-Cycles: {} | Executing: {:#04x}",
+            pc,
             self.total_t_cycles,
             self.bus.read(pc)
         );
