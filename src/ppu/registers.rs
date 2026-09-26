@@ -111,10 +111,15 @@ impl Ppu {
     pub(super) fn read_stat(&self) -> u8 {
         let mut stat = self.stat;
 
+        // Clear bits 0-2
+        stat &= !0b0000_0111;
+
+        // bit 2 -> ly==lyc
         if self.ly_eq_lyc {
-            stat |= 0x04;
+            stat |= 0b0000_0100;
         }
-        stat &= !0b11;
+
+        // bits 0-1 -> mode
         stat |= self.visible_mode() as u8;
 
         stat | 0b1000_0000
