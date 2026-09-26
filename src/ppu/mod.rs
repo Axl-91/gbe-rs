@@ -24,6 +24,9 @@ const SCREEN_WIDTH: u8 = 160;
 const SCANLINE_CYCLES: u16 = 456;
 const OAM_SEARCH_CYCLES: u16 = 80;
 
+const LCD_ON_LINE0_FAKE_MODE0_CYCLES: u16 = 78;
+const LCD_ON_LINE0_HBLANK_SHORTENING: u16 = 4;
+
 mod fetcher;
 mod fifo;
 mod memory;
@@ -81,6 +84,8 @@ pub struct Ppu {
     drawing_x: u8,
     scx_discard: u8,
     hblank_duration: u16,
+
+    lcd_just_enabled: bool,
 }
 
 impl Ppu {
@@ -113,13 +118,21 @@ impl Ppu {
             drawing_x: 0,
             scx_discard: 0,
             hblank_duration: 0,
+
+            lcd_just_enabled: false,
         }
     }
 
     fn mode_duration(&self) -> u16 {
         match self.mode {
             PpuMode::VBlank => SCANLINE_CYCLES,
-            PpuMode::OamSearch => OAM_SEARCH_CYCLES,
+            PpuMode::OamSearch => {
+                if self.lcd_just_enabled && self.ly == 0 {
+                    LCD_ON_LINE0_FAKE_MODE0_CYCLES
+                } else {
+                    OAM_SEARCH_CYCLES
+                }
+            }
             _ => unreachable!("HBlank and Drawing have variable cycles"),
         }
     }
@@ -138,6 +151,7 @@ impl Ppu {
         match self.mode {
             PpuMode::HBlank => {
                 self.ly += 1;
+                self.ly_eq_lyc = self.ly == self.lyc;
 
                 if self.ly == VISIBLE_LINES {
                     self.mode = PpuMode::VBlank
@@ -148,6 +162,7 @@ impl Ppu {
 
             PpuMode::VBlank => {
                 self.ly += 1;
+                self.ly_eq_lyc = self.ly == self.lyc;
 
                 if self.ly == TOTAL_LINES {
                     self.ly = 0;
@@ -234,10 +249,23 @@ impl Ppu {
                 self.tick_fetcher();
 
                 if self.drawing_x == SCREEN_WIDTH {
-                    self.hblank_duration = SCANLINE_CYCLES - OAM_SEARCH_CYCLES - self.mode_cycles;
+                    let oam_phase_len = if self.lcd_just_enabled && self.ly == 0 {
+                        LCD_ON_LINE0_FAKE_MODE0_CYCLES
+                    } else {
+                        OAM_SEARCH_CYCLES
+                    };
+                    let mut duration = SCANLINE_CYCLES - oam_phase_len - self.mode_cycles;
+
+                    if self.lcd_just_enabled && self.ly == 0 {
+                        duration -= LCD_ON_LINE0_HBLANK_SHORTENING;
+                        self.lcd_just_enabled = false;
+                    }
+
+                    self.hblank_duration = duration;
                     can_advance_mode = true;
                 }
             }
+
             PpuMode::HBlank => {
                 can_advance_mode = self.mode_cycles == self.hblank_duration;
             }

@@ -14,17 +14,15 @@ pub(super) const OBP1_ADDRESS: u16 = 0xFF49;
 pub(super) const WY_ADDRESS: u16 = 0xFF4A;
 pub(super) const WX_ADDRESS: u16 = 0xFF4B;
 
-const HBLANK_CYCLES: u16 = 205;
-
 impl Ppu {
     fn is_oam_accessible(&self) -> bool {
-        !self.is_lcd_enabled() || matches!(self.mode, PpuMode::HBlank | PpuMode::VBlank)
+        !self.is_lcd_enabled() || matches!(self.visible_mode(), PpuMode::HBlank | PpuMode::VBlank)
     }
 
     fn is_vram_accessible(&self) -> bool {
         !self.is_lcd_enabled()
             || matches!(
-                self.mode,
+                self.visible_mode(),
                 PpuMode::HBlank | PpuMode::VBlank | PpuMode::OamSearch
             )
     }
@@ -100,16 +98,18 @@ impl Ppu {
             LCDC_ADDRESS => {
                 let was_off = !self.is_lcd_enabled();
                 self.lcdc = value;
+
                 if !self.is_lcd_enabled() {
                     self.mode = PpuMode::HBlank;
                     self.ly = 0;
                     self.mode_cycles = 0;
-                }
-                if was_off && self.is_lcd_enabled() {
+                    self.lcd_just_enabled = false;
+                } else if was_off {
                     self.ly = 0;
+                    self.mode = PpuMode::OamSearch;
                     self.mode_cycles = 0;
                     self.ly_eq_lyc = self.ly == self.lyc;
-                    self.hblank_duration = HBLANK_CYCLES;
+                    self.lcd_just_enabled = true;
                 }
             }
 

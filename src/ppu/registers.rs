@@ -13,6 +13,18 @@ const OBJ_ENABLE: u8 = 1;
 const BG_WINDOW_ENABLE: u8 = 0;
 
 impl Ppu {
+    pub(super) fn visible_mode(&self) -> PpuMode {
+        if self.is_lcd_on_fake_mode0() {
+            PpuMode::HBlank
+        } else {
+            self.mode
+        }
+    }
+
+    pub(super) fn is_lcd_on_fake_mode0(&self) -> bool {
+        self.lcd_just_enabled && self.ly == 0 && matches!(self.mode, PpuMode::OamSearch)
+    }
+
     /// Computes the current state of the combined STAT signal, without
     /// mutating any state.
     ///
@@ -23,14 +35,18 @@ impl Ppu {
             return false;
         }
 
+        let lyc_condition = self.ly_eq_lyc && self.stat & (1 << 6) != 0;
+
+        if self.is_lcd_on_fake_mode0() {
+            return lyc_condition;
+        }
+
         let mode_condition = match self.mode {
             PpuMode::HBlank => self.stat & (1 << 3) != 0,
             PpuMode::VBlank => self.stat & (1 << 4) != 0,
             PpuMode::OamSearch => self.stat & (1 << 5) != 0,
             PpuMode::Drawing => false,
         };
-
-        let lyc_condition = self.ly_eq_lyc && self.stat & (1 << 6) != 0;
 
         mode_condition || lyc_condition
     }
@@ -95,15 +111,12 @@ impl Ppu {
     pub(super) fn read_stat(&self) -> u8 {
         let mut stat = self.stat;
 
-        // bit 2 -> ly==lyc
         if self.ly_eq_lyc {
             stat |= 0x04;
         }
-        // bit 0-1 -> PPU Mode
         stat &= !0b11;
-        stat |= self.mode as u8;
+        stat |= self.visible_mode() as u8;
 
-        // Bit 7 is always 1
         stat | 0b1000_0000
     }
 }
