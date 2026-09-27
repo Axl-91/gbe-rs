@@ -107,7 +107,7 @@ impl Ppu {
                 } else if was_off {
                     self.ly = 0;
                     self.mode = PpuMode::OamSearch;
-                    self.mode_cycles = 4;
+                    self.mode_cycles = 2;
                     self.ly_eq_lyc = self.ly == self.lyc;
                     self.lcd_switched_on = true;
                 }

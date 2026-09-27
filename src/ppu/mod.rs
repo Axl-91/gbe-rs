@@ -24,6 +24,10 @@ const SCREEN_WIDTH: u8 = 160;
 const SCANLINE_CYCLES: u16 = 456;
 const OAM_SEARCH_CYCLES: u16 = 80;
 
+/// Line 0 after enabling the LCD starts 2 T-cycles late
+/// so its HBlank is 2 cycles shorter.
+const LCD_ON_LINE0_LATE_CYCLES: u16 = 2;
+
 mod fetcher;
 mod fifo;
 mod memory;
@@ -134,63 +138,13 @@ impl Ppu {
     fn calculate_hblank_duration(&mut self) {
         // Once we finish drawing we calculate the duration of Hblank
         // Hblank = TOTAL SCANLINE - OamSearch - Drawing
-        let duration = SCANLINE_CYCLES - OAM_SEARCH_CYCLES - self.mode_cycles;
+        let mut duration = SCANLINE_CYCLES - OAM_SEARCH_CYCLES - self.mode_cycles;
 
         if self.lcd_switched_on {
+            duration -= LCD_ON_LINE0_LATE_CYCLES;
             self.lcd_switched_on = false;
         }
         self.hblank_duration = duration;
-    }
-
-    /// Advances the PPU to its next mode, updating `ly` as needed.
-    ///
-    /// - After `HBlank`, `ly` is incremented; if it reaches
-    ///   [`VISIBLE_LINES`], the PPU enters `VBlank`, otherwise it
-    ///   restarts the line with `OamSearch`.
-    /// - After `VBlank`, `ly` is incremented; once it reaches
-    ///   [`TOTAL_LINES`], `ly` wraps back to 0 and a new frame begins
-    ///   with `OamSearch`.
-    /// - `OamSearch` always transitions to `Drawing`.
-    /// - `Drawing` always transitions to `HBlank`.
-    pub fn advance_mode(&mut self) {
-        match self.mode {
-            PpuMode::HBlank => {
-                self.ly += 1;
-
-                if self.ly == VISIBLE_LINES {
-                    self.mode = PpuMode::VBlank
-                } else {
-                    self.mode = PpuMode::OamSearch
-                }
-            }
-
-            PpuMode::VBlank => {
-                self.ly += 1;
-
-                if self.ly == TOTAL_LINES {
-                    self.ly = 0;
-                    self.mode = PpuMode::OamSearch;
-                }
-            }
-
-            PpuMode::OamSearch => {
-                self.mode = PpuMode::Drawing;
-                self.scx_discard = self.scx % 8;
-                self.drawing_x = 0;
-
-                self.fifo.clear();
-                self.fetcher.reset();
-            }
-
-            PpuMode::Drawing => {
-                self.calculate_hblank_duration();
-                self.mode = PpuMode::HBlank
-            }
-        }
-
-        // Reset values after changes
-        self.mode_cycles = 0;
-        self.ly_eq_lyc = self.ly == self.lyc;
     }
 
     fn push_into_fifo(&mut self, low: u8, high: u8) {
@@ -244,6 +198,57 @@ impl Ppu {
             PpuMode::HBlank => self.mode_cycles == self.hblank_duration,
             PpuMode::VBlank => self.mode_cycles == SCANLINE_CYCLES,
         }
+    }
+
+    /// Advances the PPU to its next mode, updating `ly` as needed.
+    ///
+    /// - After `HBlank`, `ly` is incremented; if it reaches
+    ///   [`VISIBLE_LINES`], the PPU enters `VBlank`, otherwise it
+    ///   restarts the line with `OamSearch`.
+    /// - After `VBlank`, `ly` is incremented; once it reaches
+    ///   [`TOTAL_LINES`], `ly` wraps back to 0 and a new frame begins
+    ///   with `OamSearch`.
+    /// - `OamSearch` always transitions to `Drawing`.
+    /// - `Drawing` always transitions to `HBlank`.
+    pub fn advance_mode(&mut self) {
+        match self.mode {
+            PpuMode::HBlank => {
+                self.ly += 1;
+
+                if self.ly == VISIBLE_LINES {
+                    self.mode = PpuMode::VBlank
+                } else {
+                    self.mode = PpuMode::OamSearch
+                }
+            }
+
+            PpuMode::VBlank => {
+                self.ly += 1;
+
+                if self.ly == TOTAL_LINES {
+                    self.ly = 0;
+                    self.mode = PpuMode::OamSearch;
+                }
+            }
+
+            PpuMode::OamSearch => {
+                self.mode = PpuMode::Drawing;
+                self.scx_discard = self.scx % 8;
+                self.drawing_x = 0;
+
+                self.fifo.clear();
+                self.fetcher.reset();
+            }
+
+            PpuMode::Drawing => {
+                self.calculate_hblank_duration();
+                self.mode = PpuMode::HBlank
+            }
+        }
+
+        // Reset values after changes
+        self.mode_cycles = 0;
+        self.ly_eq_lyc = self.ly == self.lyc;
     }
 
     /// Advances the PPU by one T-cycle.
