@@ -24,6 +24,9 @@ const SCREEN_WIDTH: u8 = 160;
 const SCANLINE_CYCLES: u16 = 456;
 const OAM_SEARCH_CYCLES: u16 = 80;
 
+const LCD_FAKE_MODE_CYCLES: u16 = 78;
+const LCD_HBLANK_SHORTENING: u16 = 4;
+
 mod fetcher;
 mod fifo;
 mod memory;
@@ -73,6 +76,8 @@ pub struct Ppu {
     // PPU mode state
     mode: PpuMode,
     mode_cycles: u16,
+    // LCD state
+    lcd_switched_on: bool,
 
     // STAT state
     ly_eq_lyc: bool,
@@ -111,6 +116,8 @@ impl Ppu {
             // PPU mode state
             mode: PpuMode::OamSearch,
             mode_cycles: 0,
+            // LCD state
+            lcd_switched_on: false,
 
             // STAT state
             ly_eq_lyc: false,
@@ -125,6 +132,24 @@ impl Ppu {
             scx_discard: 0,
             hblank_duration: 0,
         }
+    }
+
+    fn calculate_hblank_duration(&mut self) {
+        let oam_phase_len = if self.lcd_switched_on {
+            LCD_FAKE_MODE_CYCLES
+        } else {
+            OAM_SEARCH_CYCLES
+        };
+
+        // Once we finish drawing we calculate the duration of Hblank
+        // Hblank = TOTAL SCANLINE - OamSearch - Drawing
+        let mut duration = SCANLINE_CYCLES - oam_phase_len - self.mode_cycles;
+        if self.lcd_switched_on {
+            duration -= LCD_HBLANK_SHORTENING;
+            self.lcd_switched_on = false;
+        }
+
+        self.hblank_duration = duration;
     }
 
     /// Advances the PPU to its next mode, updating `ly` as needed.
@@ -168,9 +193,7 @@ impl Ppu {
             }
 
             PpuMode::Drawing => {
-                // Once we finish drawing we calculate the duration of Hblank
-                // Hblank = TOTAL SCANLINE - OamSearch - Drawing
-                self.hblank_duration = SCANLINE_CYCLES - OAM_SEARCH_CYCLES - self.mode_cycles;
+                self.calculate_hblank_duration();
                 self.mode = PpuMode::HBlank
             }
         }
@@ -226,7 +249,14 @@ impl Ppu {
     /// and can transition to the next mode.
     fn can_advance_mode(&self) -> bool {
         match self.mode {
-            PpuMode::OamSearch => self.mode_cycles == OAM_SEARCH_CYCLES,
+            PpuMode::OamSearch => {
+                let oam_phase_len = if self.lcd_switched_on {
+                    LCD_FAKE_MODE_CYCLES
+                } else {
+                    OAM_SEARCH_CYCLES
+                };
+                self.mode_cycles == oam_phase_len
+            }
             PpuMode::Drawing => self.drawing_x == SCREEN_WIDTH,
             PpuMode::HBlank => self.mode_cycles == self.hblank_duration,
             PpuMode::VBlank => self.mode_cycles == SCANLINE_CYCLES,
