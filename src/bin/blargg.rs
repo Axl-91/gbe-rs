@@ -88,7 +88,7 @@ roms/blargg/cpu_instrs.gb"
 
             match byte {
                 b'\n' => {
-                    write!(stdout, "\n")?;
+                    writeln!(stdout)?;
                 }
 
                 0x20..=0x7E => {

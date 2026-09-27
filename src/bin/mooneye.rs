@@ -169,7 +169,7 @@ roms/mooneye/acceptance/..."
             // as hexadecimal.
             match byte {
                 b'\n' => {
-                    write!(stdout, "\n")?;
+                    writeln!(stdout)?;
                 }
 
                 0x20..=0x7E => {
@@ -220,7 +220,7 @@ roms/mooneye/acceptance/..."
         // Progress
         // --------------------------------------------------------
 
-        if steps % DEBUG_INTERVAL == 0 {
+        if steps.is_multiple_of(DEBUG_INTERVAL) {
             let lcdc = emulator.peek(0xFF40);
             let stat = emulator.peek(0xFF41);
             let ly = emulator.peek(0xFF44);
