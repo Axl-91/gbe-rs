@@ -164,8 +164,17 @@ impl Ppu {
                 self.fetcher.reset();
             }
 
-            PpuMode::Drawing => self.mode = PpuMode::HBlank,
+            PpuMode::Drawing => {
+                // Once we finish drawing we calculate the duration of Hblank
+                // Hblank = TOTAL SCANLINE - OamSearch - Drawing
+                self.hblank_duration = SCANLINE_CYCLES - OAM_SEARCH_CYCLES - self.mode_cycles;
+                self.mode = PpuMode::HBlank
+            }
         }
+
+        // Reset values after changes
+        self.mode_cycles = 0;
+        self.ly_eq_lyc = self.ly == self.lyc;
     }
 
     fn push_into_fifo(&mut self, low: u8, high: u8) {
@@ -207,6 +216,24 @@ impl Ppu {
         let _ = self.consume_pixel();
     }
 
+    /// Executes the logic associated with the current PPU mode.
+    fn execute_mode(&mut self) {
+        if let PpuMode::Drawing = self.mode {
+            self.tick_fetcher();
+        }
+    }
+
+    /// Checks whether the current PPU mode has completed its work
+    /// and can transition to the next mode.
+    fn can_advance_mode(&self) -> bool {
+        match self.mode {
+            PpuMode::OamSearch => self.mode_cycles == self.mode_duration(),
+            PpuMode::Drawing => self.drawing_x == SCREEN_WIDTH,
+            PpuMode::HBlank => self.mode_cycles == self.hblank_duration,
+            PpuMode::VBlank => self.mode_cycles == self.mode_duration(),
+        }
+    }
+
     /// Advances the PPU by one T-cycle.
     ///
     /// Increments the cycle counter for the current mode. Once it reaches
@@ -218,42 +245,19 @@ impl Ppu {
     /// Returns the interrupts generated during this T-cycle.
     pub fn tick(&mut self) -> PpuInterruptions {
         let mut ppu_interruptions = PpuInterruptions::default();
-        let mut can_advance_mode = false;
 
         if !self.is_lcd_enabled() {
             return ppu_interruptions;
         }
-
         self.mode_cycles += 1;
 
-        match self.mode {
-            PpuMode::OamSearch => {
-                can_advance_mode = self.mode_cycles == self.mode_duration();
-            }
-            PpuMode::Drawing => {
-                self.tick_fetcher();
+        self.execute_mode();
 
-                if self.drawing_x == SCREEN_WIDTH {
-                    self.hblank_duration = SCANLINE_CYCLES - OAM_SEARCH_CYCLES - self.mode_cycles;
-                    can_advance_mode = true;
-                }
-            }
-            PpuMode::HBlank => {
-                can_advance_mode = self.mode_cycles == self.hblank_duration;
-            }
-            PpuMode::VBlank => {
-                can_advance_mode = self.mode_cycles == self.mode_duration();
-            }
-        }
-
-        if !can_advance_mode {
+        if !self.can_advance_mode() {
             return ppu_interruptions;
         }
 
-        self.mode_cycles = 0;
         self.advance_mode();
-
-        self.ly_eq_lyc = self.ly == self.lyc;
 
         if self.update_stat_line() {
             ppu_interruptions.stat = true;
