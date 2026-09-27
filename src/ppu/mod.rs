@@ -24,9 +24,6 @@ const SCREEN_WIDTH: u8 = 160;
 const SCANLINE_CYCLES: u16 = 456;
 const OAM_SEARCH_CYCLES: u16 = 80;
 
-const LCD_FAKE_MODE_CYCLES: u16 = 78;
-const LCD_HBLANK_SHORTENING: u16 = 4;
-
 mod fetcher;
 mod fifo;
 mod memory;
@@ -135,20 +132,13 @@ impl Ppu {
     }
 
     fn calculate_hblank_duration(&mut self) {
-        let oam_phase_len = if self.lcd_switched_on {
-            LCD_FAKE_MODE_CYCLES
-        } else {
-            OAM_SEARCH_CYCLES
-        };
-
         // Once we finish drawing we calculate the duration of Hblank
         // Hblank = TOTAL SCANLINE - OamSearch - Drawing
-        let mut duration = SCANLINE_CYCLES - oam_phase_len - self.mode_cycles;
+        let duration = SCANLINE_CYCLES - OAM_SEARCH_CYCLES - self.mode_cycles;
+
         if self.lcd_switched_on {
-            duration -= LCD_HBLANK_SHORTENING;
             self.lcd_switched_on = false;
         }
-
         self.hblank_duration = duration;
     }
 
@@ -249,14 +239,7 @@ impl Ppu {
     /// and can transition to the next mode.
     fn can_advance_mode(&self) -> bool {
         match self.mode {
-            PpuMode::OamSearch => {
-                let oam_phase_len = if self.lcd_switched_on {
-                    LCD_FAKE_MODE_CYCLES
-                } else {
-                    OAM_SEARCH_CYCLES
-                };
-                self.mode_cycles == oam_phase_len
-            }
+            PpuMode::OamSearch => self.mode_cycles == OAM_SEARCH_CYCLES,
             PpuMode::Drawing => self.drawing_x == SCREEN_WIDTH,
             PpuMode::HBlank => self.mode_cycles == self.hblank_duration,
             PpuMode::VBlank => self.mode_cycles == SCANLINE_CYCLES,
