@@ -166,27 +166,21 @@ impl Fetcher {
         }
     }
 
-    pub(super) fn receive(&mut self, value: u8) -> Option<FetcherRequest> {
+    pub(super) fn receive(&mut self, value: u8) {
         match self.step {
             FetcherStep::TileNumber => {
                 self.tile_number = value;
                 self.step = FetcherStep::TileDataLow;
-                None
             }
 
             FetcherStep::TileDataLow => {
                 self.tile_data_low = value;
                 self.step = FetcherStep::TileDataHigh;
-                None
             }
 
             FetcherStep::TileDataHigh => {
                 self.tile_data_high = value;
                 self.step = FetcherStep::Push;
-                Some(FetcherRequest::Push {
-                    low: self.tile_data_low,
-                    high: self.tile_data_high,
-                })
             }
 
             FetcherStep::StartUp | FetcherStep::Push => {

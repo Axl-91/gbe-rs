@@ -206,14 +206,10 @@ impl Ppu {
         match request {
             Some(FetcherRequest::ReadVram(address)) => {
                 let value = self.read_vram(address);
-                let request = self.fetcher.receive(value);
-
-                if let Some(FetcherRequest::Push { low, high }) = request {
-                    self.push_into_fifo(low, high);
-                }
+                self.fetcher.receive(value);
             }
             Some(FetcherRequest::Push { low, high }) => self.push_into_fifo(low, high),
-            _ => {}
+            None => {}
         }
 
         let _ = self.consume_pixel();
