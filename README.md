@@ -45,8 +45,13 @@ The goal of this project is to build a simple and accurate emulator for the orig
 - [ ] PPU
   - [x] Memory
   - [x] Registers
-  - [x] Timing
+  - [x] Basic Timing
+  - [ ] LCD Timing & Quirks
   - [ ] Rendering
+    - [x] Background
+    - [ ] Window
+    - [ ] Sprites
+    - [ ] Pixel Mixing
 - [ ] Input
 
 ### Frontend
