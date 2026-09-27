@@ -14,6 +14,7 @@ pub(super) const OBP1_ADDRESS: u16 = 0xFF49;
 pub(super) const WY_ADDRESS: u16 = 0xFF4A;
 pub(super) const WX_ADDRESS: u16 = 0xFF4B;
 
+// TODO: This is a temporary solution
 const HBLANK_CYCLES: u16 = 205;
 
 impl Ppu {

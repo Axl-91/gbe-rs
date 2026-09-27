@@ -66,18 +66,23 @@ pub struct Ppu {
     wy: u8,
     wx: u8,
 
+    // PPU memory
     vram: [u8; VRAM_SIZE],
     oam: [u8; OAM_SIZE],
 
+    // PPU mode state
     mode: PpuMode,
     mode_cycles: u16,
 
+    // STAT state
     ly_eq_lyc: bool,
     stat_line: bool,
 
+    // Rendering pipeline
     fetcher: Fetcher,
     fifo: PixelFifo,
 
+    // Rendering state
     drawing_x: u8,
     scx_discard: u8,
     hblank_duration: u16,
@@ -86,6 +91,7 @@ pub struct Ppu {
 impl Ppu {
     pub fn new() -> Self {
         Self {
+            // PPU registers
             lcdc: 0x91,
             stat: 0x85,
             scy: 0,
@@ -98,29 +104,26 @@ impl Ppu {
             wy: 0,
             wx: 0,
 
+            // PPU memory
             vram: [0; VRAM_SIZE],
             oam: [0; OAM_SIZE],
 
+            // PPU mode state
             mode: PpuMode::OamSearch,
-            mode_cycles: 0x00,
+            mode_cycles: 0,
 
+            // STAT state
             ly_eq_lyc: false,
             stat_line: false,
 
+            // Rendering pipeline
             fetcher: Fetcher::new(),
             fifo: PixelFifo::new(),
 
+            // Rendering state
             drawing_x: 0,
             scx_discard: 0,
             hblank_duration: 0,
-        }
-    }
-
-    fn mode_duration(&self) -> u16 {
-        match self.mode {
-            PpuMode::VBlank => SCANLINE_CYCLES,
-            PpuMode::OamSearch => OAM_SEARCH_CYCLES,
-            _ => unreachable!("HBlank and Drawing have variable cycles"),
         }
     }
 
@@ -227,20 +230,19 @@ impl Ppu {
     /// and can transition to the next mode.
     fn can_advance_mode(&self) -> bool {
         match self.mode {
-            PpuMode::OamSearch => self.mode_cycles == self.mode_duration(),
+            PpuMode::OamSearch => self.mode_cycles == OAM_SEARCH_CYCLES,
             PpuMode::Drawing => self.drawing_x == SCREEN_WIDTH,
             PpuMode::HBlank => self.mode_cycles == self.hblank_duration,
-            PpuMode::VBlank => self.mode_cycles == self.mode_duration(),
+            PpuMode::VBlank => self.mode_cycles == SCANLINE_CYCLES,
         }
     }
 
     /// Advances the PPU by one T-cycle.
     ///
-    /// Increments the cycle counter for the current mode. Once it reaches
-    /// [`Ppu::mode_duration`], the counter resets and the PPU advances to
-    /// its next mode ([`Ppu::advance_mode`]). The LYC comparison and STAT
-    /// interrupt line are then updated, and entering VBlank generates a
-    /// VBlank interrupt.
+    /// Executes the logic associated with the current mode and advances to
+    /// the next mode when the current mode has completed. The LYC comparison
+    /// and STAT interrupt line are then updated, and entering VBlank generates
+    /// a VBlank interrupt.
     ///
     /// Returns the interrupts generated during this T-cycle.
     pub fn tick(&mut self) -> PpuInterruptions {
