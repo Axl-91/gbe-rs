@@ -84,6 +84,13 @@ impl Ppu {
         self.lcdc & (1 << WINDOW_ENABLE) != 0
     }
 
+    pub(super) fn can_start_window(&self) -> bool {
+        println!("{} {}", self.drawing_x as i16, self.wx as i16 - 7,);
+        self.is_window_enabled()
+            && self.ly >= self.wy
+            && self.drawing_x as i16 >= self.wx as i16 - 7
+    }
+
     pub(super) fn is_bg_window_tile_data(&self) -> bool {
         self.lcdc & (1 << BG_WINDOW_TILE_DATA) != 0
     }

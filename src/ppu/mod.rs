@@ -92,6 +92,10 @@ pub struct Ppu {
     drawing_x: u8,
     scx_discard: u8,
     hblank_duration: u16,
+
+    // Window state
+    window_active: bool,
+    window_line_counter: u8,
 }
 
 impl Ppu {
@@ -132,6 +136,10 @@ impl Ppu {
             drawing_x: 0,
             scx_discard: 0,
             hblank_duration: 0,
+
+            // Window state
+            window_active: false,
+            window_line_counter: 0,
         }
     }
 
@@ -167,6 +175,12 @@ impl Ppu {
     }
 
     fn tick_fetcher(&mut self) {
+        if !self.window_active && self.can_start_window() {
+            self.window_active = true;
+            self.fifo.clear();
+            self.fetcher.reset();
+        }
+
         self.add_fetcher_context();
         let request = self.fetcher.tick();
 
@@ -213,9 +227,14 @@ impl Ppu {
     pub fn advance_mode(&mut self) {
         match self.mode {
             PpuMode::HBlank => {
+                if self.window_active {
+                    self.window_line_counter += 1;
+                    self.window_active = false;
+                }
                 self.ly += 1;
 
                 if self.ly == VISIBLE_LINES {
+                    self.window_line_counter = 0;
                     self.mode = PpuMode::VBlank
                 } else {
                     self.mode = PpuMode::OamSearch

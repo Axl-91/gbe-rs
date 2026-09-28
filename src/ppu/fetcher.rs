@@ -1,8 +1,8 @@
 use crate::{memory::map::VRAM_START, ppu::Ppu};
 
 const TILE_DATA_SIGNED_START: u16 = 0x9000;
-const BG_TILE_MAP_START: u16 = 0x9800;
-const BG_TILE_MAP_ALT_START: u16 = 0x9C00;
+const TILE_MAP_START: u16 = 0x9800;
+const TILE_MAP_ALT_START: u16 = 0x9C00;
 
 const TILE_SIZE: u8 = 8;
 const TILES_PER_ROW: u8 = 32;
@@ -199,9 +199,9 @@ impl Ppu {
     /// Returns the base address of the selected background tile map.
     fn bg_tile_map_address(&self) -> u16 {
         if self.is_bg_tile_map() {
-            BG_TILE_MAP_ALT_START
+            TILE_MAP_ALT_START
         } else {
-            BG_TILE_MAP_START
+            TILE_MAP_START
         }
     }
 
@@ -226,11 +226,7 @@ impl Ppu {
         self.ly.wrapping_add(self.scy) % TILE_SIZE
     }
 
-    /// Provides the fetcher with the context required to fetch the next tile.
-    ///
-    /// The context is derived from the current PPU state and includes
-    /// the selected tile map address, tile row, and tile data addressing mode.
-    pub(super) fn add_fetcher_context(&mut self) {
+    fn add_bg_fetcher_context(&mut self) {
         let tile_map_address = self.bg_tile_map_address() + self.bg_tile_map_offset();
 
         let row = self.bg_tile_row();
@@ -238,5 +234,50 @@ impl Ppu {
 
         self.fetcher
             .add_context(tile_map_address, row, tile_data_unsigned);
+    }
+
+    /// Returns the base address of the selected window tile map.
+    fn window_tile_map_address(&self) -> u16 {
+        if self.is_window_tile_map() {
+            TILE_MAP_ALT_START
+        } else {
+            TILE_MAP_START
+        }
+    }
+
+    fn window_tile_map_offset(&self) -> u16 {
+        let y_offset = TILES_PER_ROW as u16 * (self.window_line_counter / TILE_SIZE) as u16;
+
+        let x_offset = self.fetcher.x & (TILES_PER_ROW - 1);
+
+        let tile_map_offset = y_offset + x_offset as u16;
+
+        tile_map_offset & (TILE_MAP_SIZE - 1)
+    }
+
+    fn window_tile_row(&self) -> u8 {
+        self.window_line_counter % TILE_SIZE
+    }
+
+    fn add_window_fetcher_context(&mut self) {
+        let tile_map_address = self.window_tile_map_address() + self.window_tile_map_offset();
+
+        let row = self.window_tile_row();
+        let tile_data_unsigned = self.is_bg_window_tile_data();
+
+        self.fetcher
+            .add_context(tile_map_address, row, tile_data_unsigned);
+    }
+
+    /// Provides the fetcher with the context required to fetch the next tile.
+    ///
+    /// The context is derived from the current PPU state and includes
+    /// the selected tile map address, tile row, and tile data addressing mode.
+    pub(super) fn add_fetcher_context(&mut self) {
+        if self.window_active {
+            self.add_window_fetcher_context();
+        } else {
+            self.add_bg_fetcher_context();
+        }
     }
 }
