@@ -118,7 +118,8 @@ impl Ppu {
                 self.stat = value & 0b0111_1000;
             }
 
-            LY_ADDRESS => self.ly = 0x00,
+            // LY is READ only
+            LY_ADDRESS => {}
 
             SCY_ADDRESS => self.scy = value,
             SCX_ADDRESS => self.scx = value,

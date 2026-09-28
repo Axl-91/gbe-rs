@@ -22,7 +22,7 @@ BIN_DIR="$ROOT_DIR/target/release"
 
 # Every suite is a directory under $SUITES_DIR with a runner binary of the
 # same name in $BIN_DIR.
-ALL_SUITES=(blargg mooneye)
+ALL_SUITES=(blargg mooneye microtests)
 
 DEFAULT_TIMEOUT_SECS=60
 
@@ -35,6 +35,7 @@ With no suite options, runs every suite (${ALL_SUITES[*]}).
 Suites:
   --blargg           Run only the blargg tests
   --mooneye          Run only the mooneye tests
+  --microtests       Run only the gbmicro tests
 
 Options:
   -j, --jobs N       Number of ROMs to run in parallel (default: CPU count)
@@ -84,6 +85,10 @@ while (( $# > 0 )); do
 
         --mooneye)
             add_suite "mooneye"
+            ;;
+            
+        --microtests)
+            add_suite "microtests"
             ;;
 
         -j|--jobs)
