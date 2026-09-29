@@ -1,13 +1,6 @@
-use crate::ppu::fetcher::{Fetcher, FetcherRequest};
+use super::*;
 
-const STARTUP_DELAY: u8 = 6;
 const TILE_DATA_SIGNED_START: u16 = 0x9000;
-
-fn complete_start_up_phase(fetcher: &mut Fetcher) {
-    for _ in 0..STARTUP_DELAY {
-        fetcher.tick();
-    }
-}
 
 #[test]
 fn fetcher_requests_tile_number_first() {
