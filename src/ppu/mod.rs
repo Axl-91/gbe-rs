@@ -106,6 +106,7 @@ pub struct Ppu {
     window_active: bool,
     window_line_counter: u8,
 
+    // Sprites state
     sprites: Vec<Sprite>,
     sprite_fetch_index: usize,
 }
@@ -155,9 +156,27 @@ impl Ppu {
             window_active: false,
             window_line_counter: 0,
 
+            // Sprites state
             sprites: Vec::new(),
             sprite_fetch_index: 0,
         }
+    }
+
+    pub(super) fn turn_off(&mut self) {
+        self.lcd_switched_on = false;
+        self.mode = PpuMode::HBlank;
+        self.ly = 0;
+        self.mode_cycles = 0;
+        self.oam_searcher.reset();
+        self.sprite_fetcher.reset();
+        self.sprite_fetch_index = 0;
+    }
+
+    pub(super) fn turn_on(&mut self) {
+        self.mode = PpuMode::OamSearch;
+        self.mode_cycles = 2;
+        self.ly_eq_lyc = self.ly == self.lyc;
+        self.lcd_switched_on = true;
     }
 
     fn calculate_hblank_duration(&mut self) {
@@ -277,8 +296,9 @@ impl Ppu {
     /// - After `VBlank`, `ly` is incremented; once it reaches
     ///   [`TOTAL_LINES`], `ly` wraps back to 0 and a new frame begins
     ///   with `OamSearch`.
-    /// - `OamSearch` always transitions to `Drawing`.
-    /// - `Drawing` always transitions to `HBlank`.
+    /// - `OamSearch` always transitions to `Drawing` while
+    ///   clearing the FIFO, Fetcher and OamSearcher.
+    /// - `Drawing` calculates the `HBlank` duration and trasition to it.
     pub fn advance_mode(&mut self) {
         match self.mode {
             PpuMode::HBlank => {

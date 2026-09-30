@@ -45,9 +45,6 @@ fn oam_search_processes_all_oam_entries() {
         assert_eq!(searcher.tick(), None);
         assert_eq!(searcher.tick(), Some(expected_index));
     }
-
-    assert_eq!(searcher.tick(), None);
-    assert_eq!(searcher.tick(), None);
 }
 
 #[test]
@@ -190,20 +187,6 @@ fn only_ten_sprites_are_selected() {
     }
 
     assert_eq!(ppu.sprites.len(), MAX_SPRITES_PER_LINE);
-}
-
-#[test]
-fn oam_search_stops_after_all_entries() {
-    let mut searcher = OamSearcher::new();
-
-    for _ in 0..OAM_ENTRY_COUNT {
-        searcher.tick();
-        searcher.tick();
-    }
-
-    for _ in 0..OAM_ENTRY_COUNT {
-        assert_eq!(searcher.tick(), None);
-    }
 }
 
 #[test]

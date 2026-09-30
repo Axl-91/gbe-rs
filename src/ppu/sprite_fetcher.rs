@@ -178,6 +178,13 @@ impl SpriteFetcher {
 }
 
 impl Ppu {
+    /// Checks whether the next sprite should be fetched at the current drawing position.
+    ///
+    /// The X coordinate stored in OAM is offset by 8 pixels from the sprite's
+    /// screen position, so the fetch starts when the OAM X coordinate reaches
+    /// `drawing_x + 8`.
+    ///
+    /// Returns `Some` if the next sprite should be fetched, or `None` otherwise.
     fn should_fetch_sprite(&self) -> Option<Sprite> {
         self.sprites
             .get(self.sprite_fetch_index)

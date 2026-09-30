@@ -1,8 +1,5 @@
 //! Sprite handling for the Game Boy PPU.
 
-// TODO: Once all functions are used we can delete this
-#![allow(dead_code)]
-
 use crate::ppu::Ppu;
 
 const SPRITE_HEIGHT_8X8: u8 = 8;
@@ -10,7 +7,6 @@ const SPRITE_HEIGHT_8X16: u8 = 16;
 const MAX_SPRITES_PER_LINE: usize = 10;
 
 const OAM_ENTRY_SIZE: u16 = 4;
-const OAM_ENTRY_COUNT: u8 = 40;
 const SPRITE_Y_OFFSET: u8 = 16;
 
 const OAM_SEARCH_CYCLES: u8 = 2;
@@ -50,10 +46,6 @@ impl OamSearcher {
         }
 
         self.cycles = 0;
-
-        if self.index >= OAM_ENTRY_COUNT {
-            return None;
-        }
 
         let index = self.index;
         self.index += 1;

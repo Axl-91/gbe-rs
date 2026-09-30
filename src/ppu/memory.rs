@@ -100,16 +100,9 @@ impl Ppu {
                 self.lcdc = value;
 
                 if !self.is_lcd_enabled() {
-                    self.mode = PpuMode::HBlank;
-                    self.ly = 0;
-                    self.mode_cycles = 0;
-                    self.lcd_switched_on = false;
+                    self.turn_off();
                 } else if was_off {
-                    self.ly = 0;
-                    self.mode = PpuMode::OamSearch;
-                    self.mode_cycles = 2;
-                    self.ly_eq_lyc = self.ly == self.lyc;
-                    self.lcd_switched_on = true;
+                    self.turn_on();
                 }
             }
 
