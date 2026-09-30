@@ -5,10 +5,14 @@
 //! per-scanline mode state machine (`OamSearch` -> `Drawing` -> `HBlank`,
 //! repeating for each visible line, then `VBlank` for the remaining
 
-use crate::ppu::{
-    fetcher::{Fetcher, FetcherRequest},
-    fifo::PixelFifo,
-    sprites::{OamSearcher, Sprite},
+use crate::{
+    memory::map::VRAM_START,
+    ppu::{
+        fetcher::{Fetcher, FetcherRequest},
+        fifo::PixelFifo,
+        sprite_fetcher::{SpriteFetcher, SpriteFetcherRequest},
+        sprites::{OamSearcher, Sprite},
+    },
 };
 
 const VRAM_SIZE: usize = 0x2000;
@@ -33,6 +37,7 @@ mod fetcher;
 mod fifo;
 mod memory;
 mod registers;
+mod sprite_fetcher;
 mod sprites;
 
 #[cfg(test)]
@@ -90,6 +95,7 @@ pub struct Ppu {
     fetcher: Fetcher,
     fifo: PixelFifo,
     oam_searcher: OamSearcher,
+    sprite_fetcher: SpriteFetcher,
 
     // Rendering state
     drawing_x: u8,
@@ -101,6 +107,7 @@ pub struct Ppu {
     window_line_counter: u8,
 
     sprites: Vec<Sprite>,
+    sprite_fetch_index: usize,
 }
 
 impl Ppu {
@@ -137,6 +144,7 @@ impl Ppu {
             fetcher: Fetcher::new(),
             fifo: PixelFifo::new(),
             oam_searcher: OamSearcher::new(),
+            sprite_fetcher: SpriteFetcher::new(),
 
             // Rendering state
             drawing_x: 0,
@@ -148,6 +156,7 @@ impl Ppu {
             window_line_counter: 0,
 
             sprites: Vec::new(),
+            sprite_fetch_index: 0,
         }
     }
 
@@ -200,8 +209,40 @@ impl Ppu {
             Some(FetcherRequest::Push { low, high }) => self.push_into_fifo(low, high),
             None => {}
         }
+    }
 
-        let _ = self.consume_pixel();
+    fn push_sprite_pixels(&mut self, low: u8, high: u8) {
+        self.fifo.push_tile(low, high);
+    }
+
+    fn tick_sprite_fetcher(&mut self) {
+        match self.sprite_fetcher.tick() {
+            Some(SpriteFetcherRequest::ReadVram(address)) => {
+                let value = self.vram[(address - VRAM_START) as usize];
+                self.sprite_fetcher.receive(value);
+            }
+
+            Some(SpriteFetcherRequest::Push { high, low }) => {
+                self.push_sprite_pixels(low, high);
+                self.sprite_fetcher.complete_push();
+            }
+
+            None => {}
+        }
+    }
+
+    fn tick_drawing(&mut self) {
+        if self.sprite_fetcher.is_active() {
+            self.tick_sprite_fetcher();
+            return;
+        }
+
+        self.tick_fetcher();
+        let consumed_pixel = self.consume_pixel();
+
+        if consumed_pixel.is_some() {
+            self.update_sprite_fetcher_context();
+        }
     }
 
     /// Executes the logic associated with the current PPU mode.
@@ -212,7 +253,7 @@ impl Ppu {
                     self.add_sprite(index);
                 }
             }
-            PpuMode::Drawing => self.tick_fetcher(),
+            PpuMode::Drawing => self.tick_drawing(),
             _ => {}
         }
     }
@@ -261,6 +302,8 @@ impl Ppu {
                 if self.ly == TOTAL_LINES {
                     self.ly = 0;
                     self.mode = PpuMode::OamSearch;
+                    self.sprite_fetch_index = 0;
+                    self.sprite_fetcher.reset();
                 }
             }
 
@@ -272,6 +315,8 @@ impl Ppu {
                 self.fifo.clear();
                 self.fetcher.reset();
                 self.oam_searcher.reset();
+
+                self.update_sprite_fetcher_context();
             }
 
             PpuMode::Drawing => {
