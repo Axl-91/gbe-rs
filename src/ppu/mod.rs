@@ -8,6 +8,7 @@
 use crate::ppu::{
     fetcher::{Fetcher, FetcherRequest},
     fifo::PixelFifo,
+    sprites::{OamSearcher, Sprite},
 };
 
 const VRAM_SIZE: usize = 0x2000;
@@ -32,6 +33,7 @@ mod fetcher;
 mod fifo;
 mod memory;
 mod registers;
+mod sprites;
 
 #[cfg(test)]
 mod tests;
@@ -87,6 +89,7 @@ pub struct Ppu {
     // Rendering pipeline
     fetcher: Fetcher,
     fifo: PixelFifo,
+    oam_searcher: OamSearcher,
 
     // Rendering state
     drawing_x: u8,
@@ -96,6 +99,8 @@ pub struct Ppu {
     // Window state
     window_active: bool,
     window_line_counter: u8,
+
+    sprites: Vec<Sprite>,
 }
 
 impl Ppu {
@@ -131,6 +136,7 @@ impl Ppu {
             // Rendering pipeline
             fetcher: Fetcher::new(),
             fifo: PixelFifo::new(),
+            oam_searcher: OamSearcher::new(),
 
             // Rendering state
             drawing_x: 0,
@@ -140,6 +146,8 @@ impl Ppu {
             // Window state
             window_active: false,
             window_line_counter: 0,
+
+            sprites: Vec::new(),
         }
     }
 
@@ -198,8 +206,14 @@ impl Ppu {
 
     /// Executes the logic associated with the current PPU mode.
     fn execute_mode(&mut self) {
-        if let PpuMode::Drawing = self.mode {
-            self.tick_fetcher();
+        match self.mode {
+            PpuMode::OamSearch => {
+                if let Some(index) = self.oam_searcher.tick() {
+                    self.add_sprite(index);
+                }
+            }
+            PpuMode::Drawing => self.tick_fetcher(),
+            _ => {}
         }
     }
 
@@ -257,6 +271,7 @@ impl Ppu {
 
                 self.fifo.clear();
                 self.fetcher.reset();
+                self.oam_searcher.reset();
             }
 
             PpuMode::Drawing => {

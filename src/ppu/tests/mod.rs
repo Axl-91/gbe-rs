@@ -17,4 +17,5 @@ mod fetcher;
 mod fifo;
 mod memory;
 mod registers;
+mod sprites;
 mod windows;
