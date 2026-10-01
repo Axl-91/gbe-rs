@@ -34,6 +34,8 @@ const OAM_SEARCH_CYCLES: u16 = 80;
 /// so its HBlank is 2 cycles shorter.
 const LCD_ON_LINE0_LATE_CYCLES: u16 = 2;
 
+pub(super) const SPRITE_SIZE: i16 = 8;
+
 mod bg_fifo;
 mod fetcher;
 mod memory;
@@ -236,8 +238,13 @@ impl Ppu {
     }
 
     fn push_sprite_pixels(&mut self, low: u8, high: u8) {
-        let sprite = self.sprite_fetcher.get_sprite();
-        self.sprite_fifo.push_tile(&sprite, low, high);
+        let sprite_x = self.sprite_fetcher.sprite_x();
+        let real_x_pos = sprite_x as i16 - SPRITE_SIZE;
+        let relative_x = real_x_pos - self.drawing_x as i16;
+
+        if self.sprite_fifo.should_push_sprite(relative_x) {
+            self.sprite_fifo.push_tile(relative_x, low, high);
+        }
     }
 
     fn tick_sprite_fetcher(&mut self) {

@@ -70,8 +70,8 @@ impl SpriteFetcher {
         self.active
     }
 
-    pub(super) fn get_sprite(&self) -> Sprite {
-        self.sprite
+    pub(super) fn sprite_x(&self) -> u8 {
+        self.sprite.x
     }
 
     pub(super) fn reset(&mut self) {
@@ -94,11 +94,6 @@ impl SpriteFetcher {
         let line = ly + SPRITE_Y_OFFSET;
 
         let mut row = line - self.sprite.y;
-
-        println!(
-            "ly={}, sprite.y={}, line={}, row={}, height={}",
-            ly, self.sprite.y, line, row, sprite_height
-        );
 
         if self.sprite.attributes & (1 << ATTRIBUTE_Y_FLIP) != 0 {
             row = sprite_height - 1 - row;

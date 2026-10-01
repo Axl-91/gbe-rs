@@ -3,9 +3,7 @@
 
 use std::collections::VecDeque;
 
-use crate::ppu::{SCREEN_WIDTH, Sprite};
-
-const SPRITE_SIZE: i16 = 8;
+use crate::ppu::{SCREEN_WIDTH, SPRITE_SIZE};
 
 #[derive(Clone, Copy)]
 enum SpritePixel {
@@ -18,50 +16,45 @@ pub(super) struct SpriteFifo {
     pixels: VecDeque<SpritePixel>,
 }
 
+fn create_pixels_queue() -> VecDeque<SpritePixel> {
+    (0..SCREEN_WIDTH).map(|_| SpritePixel::Empty).collect()
+}
+
 impl SpriteFifo {
     pub(super) fn new() -> Self {
         Self {
-            pixels: (0..SCREEN_WIDTH).map(|_| SpritePixel::Empty).collect(),
+            pixels: create_pixels_queue(),
         }
     }
 
-    fn len(&self) -> usize {
-        self.pixels.len()
-    }
-
-    fn is_empty(&self) -> bool {
-        self.pixels.is_empty()
-    }
-
     fn pop(&mut self) -> Option<u8> {
-        self.pixels.pop_front().map(|pixel| match pixel {
-            SpritePixel::Empty | SpritePixel::Transparent => 0,
-            SpritePixel::Color(color) => color,
-        })
+        let pixel = self.pixels.pop_front()?;
+
+        match pixel {
+            SpritePixel::Empty | SpritePixel::Transparent => Some(0),
+            SpritePixel::Color(color) => Some(color),
+        }
     }
 
     fn clear(&mut self) {
-        self.pixels.clear();
+        self.pixels = create_pixels_queue();
     }
 
-    fn should_push_sprite(&self, sprite: &Sprite) -> bool {
-        let real_x_pos = sprite.x as i16 - SPRITE_SIZE;
-
+    pub(super) fn should_push_sprite(&self, sprite_pos: i16) -> bool {
         (0..SPRITE_SIZE).any(|pixel| {
-            let pos_x = real_x_pos + pixel;
+            let pos_x = sprite_pos + pixel;
 
             if pos_x < 0 {
                 return false;
             }
+
             matches!(self.pixels.get(pos_x as usize), Some(SpritePixel::Empty))
         })
     }
 
-    pub(super) fn push_tile(&mut self, sprite: &Sprite, low: u8, high: u8) {
-        let real_x_pos = sprite.x as i16 - SPRITE_SIZE;
-
+    pub(super) fn push_tile(&mut self, sprite_pos: i16, low: u8, high: u8) {
         for pixel in 0..SPRITE_SIZE {
-            let pos_x = real_x_pos + pixel;
+            let pos_x = sprite_pos + pixel;
 
             if pos_x < 0 {
                 continue;
