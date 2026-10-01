@@ -70,6 +70,10 @@ impl SpriteFetcher {
         self.active
     }
 
+    pub(super) fn get_sprite(&self) -> Sprite {
+        self.sprite
+    }
+
     pub(super) fn reset(&mut self) {
         self.step = SpriteFetcherStep::TileNumber;
         self.cycles = 0;
@@ -88,7 +92,13 @@ impl SpriteFetcher {
 
     fn sprite_row_and_tile(&self, ly: u8, sprite_height: u8) -> (u8, u8) {
         let line = ly + SPRITE_Y_OFFSET;
+
         let mut row = line - self.sprite.y;
+
+        println!(
+            "ly={}, sprite.y={}, line={}, row={}, height={}",
+            ly, self.sprite.y, line, row, sprite_height
+        );
 
         if self.sprite.attributes & (1 << ATTRIBUTE_Y_FLIP) != 0 {
             row = sprite_height - 1 - row;

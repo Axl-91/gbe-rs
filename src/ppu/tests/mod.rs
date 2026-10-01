@@ -13,8 +13,8 @@ fn complete_start_up_phase(fetcher: &mut Fetcher) {
     }
 }
 
+mod bg_fifo;
 mod fetcher;
-mod fifo;
 mod memory;
 mod registers;
 mod sprite_fetcher;

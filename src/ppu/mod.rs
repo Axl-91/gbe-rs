@@ -8,9 +8,10 @@
 use crate::{
     memory::map::VRAM_START,
     ppu::{
+        bg_fifo::BgFifo,
         fetcher::{Fetcher, FetcherRequest},
-        fifo::PixelFifo,
         sprite_fetcher::{SpriteFetcher, SpriteFetcherRequest},
+        sprite_fifo::SpriteFifo,
         sprites::{OamSearcher, Sprite},
     },
 };
@@ -33,11 +34,12 @@ const OAM_SEARCH_CYCLES: u16 = 80;
 /// so its HBlank is 2 cycles shorter.
 const LCD_ON_LINE0_LATE_CYCLES: u16 = 2;
 
+mod bg_fifo;
 mod fetcher;
-mod fifo;
 mod memory;
 mod registers;
 mod sprite_fetcher;
+mod sprite_fifo;
 mod sprites;
 
 #[cfg(test)]
@@ -93,7 +95,8 @@ pub struct Ppu {
 
     // Rendering pipeline
     fetcher: Fetcher,
-    fifo: PixelFifo,
+    bg_fifo: BgFifo,
+    sprite_fifo: SpriteFifo,
     oam_searcher: OamSearcher,
     sprite_fetcher: SpriteFetcher,
 
@@ -143,7 +146,8 @@ impl Ppu {
 
             // Rendering pipeline
             fetcher: Fetcher::new(),
-            fifo: PixelFifo::new(),
+            bg_fifo: BgFifo::new(),
+            sprite_fifo: SpriteFifo::new(),
             oam_searcher: OamSearcher::new(),
             sprite_fetcher: SpriteFetcher::new(),
 
@@ -170,6 +174,7 @@ impl Ppu {
         self.oam_searcher.reset();
         self.sprite_fetcher.reset();
         self.sprite_fetch_index = 0;
+        self.sprites.clear();
     }
 
     pub(super) fn turn_on(&mut self) {
@@ -192,14 +197,14 @@ impl Ppu {
     }
 
     fn push_into_fifo(&mut self, low: u8, high: u8) {
-        if self.fifo.is_empty() {
-            self.fifo.push_tile(low, high);
+        if self.bg_fifo.is_empty() {
+            self.bg_fifo.push_tile(low, high);
             self.fetcher.complete_push();
         }
     }
 
     fn consume_pixel(&mut self) -> Option<u8> {
-        let pixel = self.fifo.pop()?;
+        let pixel = self.bg_fifo.pop()?;
 
         if self.scx_discard > 0 {
             self.scx_discard -= 1;
@@ -213,7 +218,7 @@ impl Ppu {
     fn tick_fetcher(&mut self) {
         if !self.window_active && self.can_start_window() {
             self.window_active = true;
-            self.fifo.clear();
+            self.bg_fifo.clear();
             self.fetcher.reset();
         }
 
@@ -231,7 +236,8 @@ impl Ppu {
     }
 
     fn push_sprite_pixels(&mut self, low: u8, high: u8) {
-        self.fifo.push_tile(low, high);
+        let sprite = self.sprite_fetcher.get_sprite();
+        self.sprite_fifo.push_tile(&sprite, low, high);
     }
 
     fn tick_sprite_fetcher(&mut self) {
@@ -312,6 +318,10 @@ impl Ppu {
                     self.window_line_counter = 0;
                     self.mode = PpuMode::VBlank
                 } else {
+                    // Clear sprite data for the next scanline.
+                    self.sprite_fetch_index = 0;
+                    self.sprites.clear();
+
                     self.mode = PpuMode::OamSearch
                 }
             }
@@ -332,7 +342,7 @@ impl Ppu {
                 self.scx_discard = self.scx % 8;
                 self.drawing_x = 0;
 
-                self.fifo.clear();
+                self.bg_fifo.clear();
                 self.fetcher.reset();
                 self.oam_searcher.reset();
 

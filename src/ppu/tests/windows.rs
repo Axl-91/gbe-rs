@@ -329,11 +329,11 @@ fn starting_window_clears_fifo() {
 
     ppu.push_into_fifo(low, high);
 
-    assert!(!ppu.fifo.is_empty());
+    assert!(!ppu.bg_fifo.is_empty());
 
     ppu.tick_fetcher();
 
-    assert!(ppu.fifo.is_empty());
+    assert!(ppu.bg_fifo.is_empty());
 }
 
 #[test]
