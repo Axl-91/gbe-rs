@@ -8,8 +8,8 @@
 use crate::{
     memory::map::VRAM_START,
     ppu::{
+        bg_fetcher::{BgFetcher, FetcherRequest},
         bg_fifo::BgFifo,
-        fetcher::{Fetcher, FetcherRequest},
         sprite_fetcher::{SpriteFetcher, SpriteFetcherRequest},
         sprite_fifo::SpriteFifo,
         sprites::{OamSearcher, Sprite},
@@ -36,8 +36,8 @@ const LCD_ON_LINE0_LATE_CYCLES: u16 = 2;
 
 pub(super) const SPRITE_SIZE: i16 = 8;
 
+mod bg_fetcher;
 mod bg_fifo;
-mod fetcher;
 mod memory;
 mod registers;
 mod sprite_fetcher;
@@ -96,7 +96,7 @@ pub struct Ppu {
     stat_line: bool,
 
     // Rendering pipeline
-    fetcher: Fetcher,
+    bg_fetcher: BgFetcher,
     bg_fifo: BgFifo,
     sprite_fifo: SpriteFifo,
     oam_searcher: OamSearcher,
@@ -147,7 +147,7 @@ impl Ppu {
             stat_line: false,
 
             // Rendering pipeline
-            fetcher: Fetcher::new(),
+            bg_fetcher: BgFetcher::new(),
             bg_fifo: BgFifo::new(),
             sprite_fifo: SpriteFifo::new(),
             oam_searcher: OamSearcher::new(),
@@ -201,12 +201,33 @@ impl Ppu {
     fn push_into_fifo(&mut self, low: u8, high: u8) {
         if self.bg_fifo.is_empty() {
             self.bg_fifo.push_tile(low, high);
-            self.fetcher.complete_push();
+            self.bg_fetcher.complete_push();
+        }
+    }
+
+    fn tick_fetcher(&mut self) {
+        if !self.window_active && self.can_start_window() {
+            self.window_active = true;
+            self.bg_fifo.clear();
+            self.bg_fetcher.reset();
+        }
+
+        self.add_fetcher_context();
+        let request = self.bg_fetcher.tick();
+
+        match request {
+            Some(FetcherRequest::ReadVram(address)) => {
+                let value = self.read_vram(address);
+                self.bg_fetcher.receive(value);
+            }
+            Some(FetcherRequest::Push { low, high }) => self.push_into_fifo(low, high),
+            None => {}
         }
     }
 
     fn consume_pixel(&mut self) -> Option<u8> {
         let pixel = self.bg_fifo.pop()?;
+        let _sprite = self.sprite_fifo.pop();
 
         if self.scx_discard > 0 {
             self.scx_discard -= 1;
@@ -215,26 +236,6 @@ impl Ppu {
         }
 
         Some(pixel)
-    }
-
-    fn tick_fetcher(&mut self) {
-        if !self.window_active && self.can_start_window() {
-            self.window_active = true;
-            self.bg_fifo.clear();
-            self.fetcher.reset();
-        }
-
-        self.add_fetcher_context();
-        let request = self.fetcher.tick();
-
-        match request {
-            Some(FetcherRequest::ReadVram(address)) => {
-                let value = self.read_vram(address);
-                self.fetcher.receive(value);
-            }
-            Some(FetcherRequest::Push { low, high }) => self.push_into_fifo(low, high),
-            None => {}
-        }
     }
 
     fn push_sprite_pixels(&mut self, low: u8, high: u8) {
@@ -350,7 +351,7 @@ impl Ppu {
                 self.drawing_x = 0;
 
                 self.bg_fifo.clear();
-                self.fetcher.reset();
+                self.bg_fetcher.reset();
                 self.oam_searcher.reset();
 
                 self.update_sprite_fetcher_context();

@@ -4,7 +4,7 @@ const TILE_DATA_SIGNED_START: u16 = 0x9000;
 
 #[test]
 fn fetcher_requests_tile_number_first() {
-    let mut fetcher = Fetcher::new();
+    let mut fetcher = BgFetcher::new();
     complete_start_up_phase(&mut fetcher);
 
     let address = crate::memory::map::VRAM_START;
@@ -24,7 +24,7 @@ fn fetcher_requests_tile_number_first() {
 
 #[test]
 fn fetcher_requests_tile_data_low_after_tile_number() {
-    let mut fetcher = Fetcher::new();
+    let mut fetcher = BgFetcher::new();
     complete_start_up_phase(&mut fetcher);
 
     let tile_map_address = crate::memory::map::VRAM_START;
@@ -48,7 +48,7 @@ fn fetcher_requests_tile_data_low_after_tile_number() {
 
 #[test]
 fn fetcher_requests_tile_data_high_after_low() {
-    let mut fetcher = Fetcher::new();
+    let mut fetcher = BgFetcher::new();
     complete_start_up_phase(&mut fetcher);
 
     let tile_map_address = crate::memory::map::VRAM_START;
@@ -75,7 +75,7 @@ fn fetcher_requests_tile_data_high_after_low() {
 
 #[test]
 fn fetcher_pushes_received_tile_data() {
-    let mut fetcher = Fetcher::new();
+    let mut fetcher = BgFetcher::new();
     complete_start_up_phase(&mut fetcher);
 
     let tile_map_address = crate::memory::map::VRAM_START;
@@ -109,7 +109,7 @@ fn fetcher_pushes_received_tile_data() {
 
 #[test]
 fn fetcher_uses_unsigned_tile_data_addressing() {
-    let mut fetcher = Fetcher::new();
+    let mut fetcher = BgFetcher::new();
     complete_start_up_phase(&mut fetcher);
 
     let tile_map_address = crate::memory::map::VRAM_START;
@@ -137,7 +137,7 @@ fn fetcher_uses_unsigned_tile_data_addressing() {
 
 #[test]
 fn fetcher_uses_signed_tile_data_addressing() {
-    let mut fetcher = Fetcher::new();
+    let mut fetcher = BgFetcher::new();
     complete_start_up_phase(&mut fetcher);
 
     let tile_map_address = crate::memory::map::VRAM_START;
@@ -166,7 +166,7 @@ fn fetcher_uses_signed_tile_data_addressing() {
 
 #[test]
 fn fetcher_uses_tile_row_when_fetching_tile_data() {
-    let mut fetcher = Fetcher::new();
+    let mut fetcher = BgFetcher::new();
     complete_start_up_phase(&mut fetcher);
 
     let tile_map_address = crate::memory::map::VRAM_START;
@@ -194,7 +194,7 @@ fn fetcher_uses_tile_row_when_fetching_tile_data() {
 
 #[test]
 fn fetcher_uses_background_tile_map_address() {
-    let mut fetcher = Fetcher::new();
+    let mut fetcher = BgFetcher::new();
     complete_start_up_phase(&mut fetcher);
 
     let tile_map_address = crate::memory::map::VRAM_START;
@@ -214,7 +214,7 @@ fn fetcher_uses_background_tile_map_address() {
 
 #[test]
 fn fetcher_uses_window_tile_map_address() {
-    let mut fetcher = Fetcher::new();
+    let mut fetcher = BgFetcher::new();
     complete_start_up_phase(&mut fetcher);
 
     let tile_map_address = crate::memory::map::VRAM_START + 0x400;

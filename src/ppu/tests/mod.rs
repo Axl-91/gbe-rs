@@ -7,7 +7,7 @@ const MAX_TILES: usize = 8;
 
 const STARTUP_DELAY: u8 = 6;
 
-fn complete_start_up_phase(fetcher: &mut Fetcher) {
+fn complete_start_up_phase(fetcher: &mut BgFetcher) {
     for _ in 0..STARTUP_DELAY {
         fetcher.tick();
     }

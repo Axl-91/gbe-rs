@@ -27,7 +27,7 @@ impl SpriteFifo {
         }
     }
 
-    fn pop(&mut self) -> Option<u8> {
+    pub(super) fn pop(&mut self) -> Option<u8> {
         let pixel = self.pixels.pop_front()?;
 
         match pixel {

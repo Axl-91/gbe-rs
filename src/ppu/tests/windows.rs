@@ -9,7 +9,7 @@ const FETCHER_STARTUP_CYCLES: u8 = 6;
 
 fn complete_fetcher_startup(ppu: &mut Ppu) {
     for _ in 0..FETCHER_STARTUP_CYCLES {
-        ppu.fetcher.tick();
+        ppu.bg_fetcher.tick();
     }
 }
 
@@ -93,9 +93,9 @@ fn background_context_uses_background_tile_map() {
     ppu.add_fetcher_context();
     complete_fetcher_startup(&mut ppu);
 
-    assert!(ppu.fetcher.tick().is_none());
+    assert!(ppu.bg_fetcher.tick().is_none());
 
-    match ppu.fetcher.tick() {
+    match ppu.bg_fetcher.tick() {
         Some(FetcherRequest::ReadVram(address)) => {
             assert_eq!(address, TILE_MAP_START);
         }
@@ -113,9 +113,9 @@ fn background_context_uses_alternate_tile_map() {
     ppu.add_fetcher_context();
     complete_fetcher_startup(&mut ppu);
 
-    assert!(ppu.fetcher.tick().is_none());
+    assert!(ppu.bg_fetcher.tick().is_none());
 
-    match ppu.fetcher.tick() {
+    match ppu.bg_fetcher.tick() {
         Some(FetcherRequest::ReadVram(address)) => {
             assert_eq!(address, TILE_MAP_ALT_START);
         }
@@ -133,9 +133,9 @@ fn window_context_uses_window_tile_map() {
     ppu.add_fetcher_context();
     complete_fetcher_startup(&mut ppu);
 
-    assert!(ppu.fetcher.tick().is_none());
+    assert!(ppu.bg_fetcher.tick().is_none());
 
-    match ppu.fetcher.tick() {
+    match ppu.bg_fetcher.tick() {
         Some(FetcherRequest::ReadVram(address)) => {
             assert_eq!(address, TILE_MAP_START);
         }
@@ -153,9 +153,9 @@ fn window_context_uses_alternate_tile_map() {
     ppu.add_fetcher_context();
     complete_fetcher_startup(&mut ppu);
 
-    assert!(ppu.fetcher.tick().is_none());
+    assert!(ppu.bg_fetcher.tick().is_none());
 
-    match ppu.fetcher.tick() {
+    match ppu.bg_fetcher.tick() {
         Some(FetcherRequest::ReadVram(address)) => {
             assert_eq!(address, TILE_MAP_ALT_START);
         }
@@ -175,9 +175,9 @@ fn background_context_uses_current_scroll_position() {
     ppu.add_fetcher_context();
     complete_fetcher_startup(&mut ppu);
 
-    assert!(ppu.fetcher.tick().is_none());
+    assert!(ppu.bg_fetcher.tick().is_none());
 
-    match ppu.fetcher.tick() {
+    match ppu.bg_fetcher.tick() {
         Some(FetcherRequest::ReadVram(address)) => {
             let y = ppu.ly.wrapping_add(ppu.scy);
             let y_offset = 32 * (y / 8) as u16;
@@ -201,9 +201,9 @@ fn window_context_uses_window_line_counter() {
     ppu.add_fetcher_context();
     complete_fetcher_startup(&mut ppu);
 
-    assert!(ppu.fetcher.tick().is_none());
+    assert!(ppu.bg_fetcher.tick().is_none());
 
-    match ppu.fetcher.tick() {
+    match ppu.bg_fetcher.tick() {
         Some(FetcherRequest::ReadVram(address)) => {
             let y_offset = 32 * (ppu.window_line_counter / 8) as u16;
 
@@ -226,9 +226,9 @@ fn window_context_ignores_background_scroll() {
     ppu.add_fetcher_context();
     complete_fetcher_startup(&mut ppu);
 
-    assert!(ppu.fetcher.tick().is_none());
+    assert!(ppu.bg_fetcher.tick().is_none());
 
-    match ppu.fetcher.tick() {
+    match ppu.bg_fetcher.tick() {
         Some(FetcherRequest::ReadVram(address)) => {
             let y_offset = 32 * (ppu.window_line_counter / 8) as u16;
 
@@ -251,24 +251,24 @@ fn background_context_uses_current_tile_row() {
     complete_fetcher_startup(&mut ppu);
 
     // Complete TileNumber step.
-    ppu.fetcher.tick();
+    ppu.bg_fetcher.tick();
 
     let tile_number = rand::random();
 
-    match ppu.fetcher.tick() {
+    match ppu.bg_fetcher.tick() {
         Some(FetcherRequest::ReadVram(_)) => {
-            ppu.fetcher.receive(tile_number);
+            ppu.bg_fetcher.receive(tile_number);
         }
         _ => panic!("Expected a tile number request"),
     }
 
     // Complete TileDataLow step.
-    ppu.fetcher.tick();
+    ppu.bg_fetcher.tick();
 
     let row = ppu.ly.wrapping_add(ppu.scy) % 8;
     let expected_address = VRAM_START + tile_number as u16 * 16 + row as u16 * 2;
 
-    match ppu.fetcher.tick() {
+    match ppu.bg_fetcher.tick() {
         Some(FetcherRequest::ReadVram(address)) => {
             assert_eq!(address, expected_address);
         }
@@ -290,24 +290,24 @@ fn window_context_uses_current_tile_row() {
     complete_fetcher_startup(&mut ppu);
 
     // Complete TileNumber step.
-    ppu.fetcher.tick();
+    ppu.bg_fetcher.tick();
 
     let tile_number = rand::random();
 
-    match ppu.fetcher.tick() {
+    match ppu.bg_fetcher.tick() {
         Some(FetcherRequest::ReadVram(_)) => {
-            ppu.fetcher.receive(tile_number);
+            ppu.bg_fetcher.receive(tile_number);
         }
         _ => panic!("Expected a tile number request"),
     }
 
     // Complete TileDataLow step.
-    ppu.fetcher.tick();
+    ppu.bg_fetcher.tick();
 
     let row = ppu.window_line_counter % 8;
     let expected_address = VRAM_START + tile_number as u16 * 16 + row as u16 * 2;
 
-    match ppu.fetcher.tick() {
+    match ppu.bg_fetcher.tick() {
         Some(FetcherRequest::ReadVram(address)) => {
             assert_eq!(address, expected_address);
         }
@@ -347,14 +347,14 @@ fn starting_window_resets_fetcher() {
 
     // Advance the fetcher until it is about to request the tile number.
     complete_fetcher_startup(&mut ppu);
-    ppu.fetcher.tick();
+    ppu.bg_fetcher.tick();
 
     // Starting the window must reset the fetcher before it continues.
     ppu.tick_fetcher();
 
     // After the reset, the fetcher is back in its startup phase.
     // The first tick of that phase does not generate a VRAM request.
-    assert!(ppu.fetcher.tick().is_none());
+    assert!(ppu.bg_fetcher.tick().is_none());
 }
 
 #[test]
@@ -371,12 +371,12 @@ fn window_activation_switches_fetcher_to_window_context() {
     assert!(ppu.window_active);
 
     for _ in 0..(FETCHER_STARTUP_CYCLES - 1) {
-        ppu.fetcher.tick();
+        ppu.bg_fetcher.tick();
     }
 
-    ppu.fetcher.tick();
+    ppu.bg_fetcher.tick();
 
-    match ppu.fetcher.tick() {
+    match ppu.bg_fetcher.tick() {
         Some(FetcherRequest::ReadVram(address)) => {
             assert_eq!(address, TILE_MAP_START);
         }

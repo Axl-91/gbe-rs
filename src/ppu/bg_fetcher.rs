@@ -44,7 +44,7 @@ struct FetcherContext {
 ///
 /// Each timed fetch step takes two T-cycles. The initial startup phase
 /// takes six T-cycles and produces no VRAM request.
-pub struct Fetcher {
+pub struct BgFetcher {
     step: FetcherStep,
     cycles: u8,
 
@@ -57,7 +57,7 @@ pub struct Fetcher {
     context: FetcherContext,
 }
 
-impl Fetcher {
+impl BgFetcher {
     pub fn new() -> Self {
         Self {
             step: FetcherStep::StartUp,
@@ -210,7 +210,7 @@ impl Ppu {
     fn bg_tile_map_offset(&self) -> u16 {
         let y = self.ly.wrapping_add(self.scy);
         let y_offset = TILES_PER_ROW as u16 * (y / TILE_SIZE) as u16;
-        let mut x_offset = self.fetcher.x + self.scx / TILE_SIZE;
+        let mut x_offset = self.bg_fetcher.x + self.scx / TILE_SIZE;
 
         // We keep the X offset between the 32 tiles
         x_offset &= TILES_PER_ROW - 1;
@@ -232,7 +232,7 @@ impl Ppu {
         let row = self.bg_tile_row();
         let tile_data_unsigned = self.is_bg_window_tile_data();
 
-        self.fetcher
+        self.bg_fetcher
             .add_context(tile_map_address, row, tile_data_unsigned);
     }
 
@@ -248,7 +248,7 @@ impl Ppu {
     fn window_tile_map_offset(&self) -> u16 {
         let y_offset = TILES_PER_ROW as u16 * (self.window_line_counter / TILE_SIZE) as u16;
 
-        let x_offset = self.fetcher.x & (TILES_PER_ROW - 1);
+        let x_offset = self.bg_fetcher.x & (TILES_PER_ROW - 1);
 
         let tile_map_offset = y_offset + x_offset as u16;
 
@@ -265,7 +265,7 @@ impl Ppu {
         let row = self.window_tile_row();
         let tile_data_unsigned = self.is_bg_window_tile_data();
 
-        self.fetcher
+        self.bg_fetcher
             .add_context(tile_map_address, row, tile_data_unsigned);
     }
 
