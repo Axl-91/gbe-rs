@@ -44,7 +44,7 @@ impl SpriteFifo {
         self.pixels.pop_front()
     }
 
-    fn clear(&mut self) {
+    pub fn reset(&mut self) {
         self.pixels = create_pixels_queue();
     }
 

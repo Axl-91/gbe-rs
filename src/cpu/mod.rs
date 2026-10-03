@@ -47,6 +47,9 @@ impl Cpu {
         }
     }
 
+    pub fn get_framebuffer(&self) -> &[u8] {
+        self.bus.get_framebuffer()
+    }
     pub fn peek(&self, address: u16) -> u8 {
         self.bus.read(address)
     }

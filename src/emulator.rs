@@ -12,14 +12,19 @@ impl Emulator {
         Self { cpu }
     }
 
-    pub fn step(&mut self) {
-        self.cpu.step();
+    pub fn step(&mut self) -> u8 {
+        self.cpu.step()
     }
 
     pub fn take_serial_output(&mut self) -> Option<u8> {
         self.cpu.take_serial_output()
     }
+
     pub fn peek(&self, address: u16) -> u8 {
         self.cpu.peek(address)
+    }
+
+    pub fn get_framebuffer(&self) -> &[u8] {
+        self.cpu.get_framebuffer()
     }
 }

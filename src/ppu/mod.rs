@@ -379,6 +379,7 @@ impl Ppu {
                 self.bg_fifo.clear();
                 self.bg_fetcher.reset();
                 self.oam_searcher.reset();
+                self.sprite_fifo.reset();
 
                 self.update_sprite_fetcher_context();
             }
@@ -425,6 +426,10 @@ impl Ppu {
             ppu_interruptions.vblank = true
         }
         ppu_interruptions
+    }
+
+    pub fn get_framebuffer(&self) -> &[u8] {
+        &self.framebuffer
     }
 }
 

@@ -2,6 +2,7 @@ pub mod cartridge;
 pub mod cpu;
 pub mod dma;
 pub mod emulator;
+pub mod frontend;
 pub mod joypad;
 pub mod memory;
 pub mod ppu;

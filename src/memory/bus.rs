@@ -49,6 +49,10 @@ impl MemoryBus {
         }
     }
 
+    pub fn get_framebuffer(&self) -> &[u8] {
+        self.ppu.get_framebuffer()
+    }
+
     pub fn is_joypad_active(&self) -> bool {
         self.joypad.is_joypad_active()
     }
