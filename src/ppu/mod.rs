@@ -232,10 +232,8 @@ impl Ppu {
     fn pixel_mixer(&self, background_pixel: u8, sprite_pixel: SpritePixel) -> u8 {
         let sprite_pixel_color = sprite_pixel.get_color();
 
-        if sprite_pixel_color != 0 {
-            if !sprite_pixel.is_behind_bg() || background_pixel == 0 {
-                return sprite_pixel_color;
-            }
+        if sprite_pixel_color != 0 && (!sprite_pixel.is_behind_bg() || background_pixel == 0) {
+            return sprite_pixel_color;
         }
         background_pixel
     }
