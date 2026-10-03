@@ -1,6 +1,3 @@
-// TODO: Once all functions are used we can delete this
-#![allow(dead_code)]
-
 use crate::ppu::{Ppu, PpuMode};
 
 const LCDC_ENABLE: u8 = 7;

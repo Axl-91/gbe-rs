@@ -11,8 +11,6 @@ const SPRITE_HEIGHT_8X16: u8 = 16;
 
 const SPRITE_Y_OFFSET: u8 = 16;
 
-const ATTRIBUTE_Y_FLIP: u8 = 6;
-
 const DEFAULT_CYCLES: u8 = 2;
 const NONE_CYCLES: u8 = 0;
 
@@ -87,15 +85,15 @@ impl SpriteFetcher {
         self.active = true;
 
         self.sprite = sprite;
-        self.tile_data_address = self.sprite_tile_data_address(ly, sprite_height);
+        self.tile_data_address = self.get_sprite_tile_data_address(ly, sprite_height);
     }
 
-    fn sprite_row_and_tile(&self, ly: u8, sprite_height: u8) -> (u8, u8) {
+    fn get_sprite_row_and_tile(&self, ly: u8, sprite_height: u8) -> (u8, u8) {
         let line = ly + SPRITE_Y_OFFSET;
 
         let mut row = line - self.sprite.y;
 
-        if self.sprite.attributes & (1 << ATTRIBUTE_Y_FLIP) != 0 {
+        if self.sprite.get_attributes().y_flip {
             row = sprite_height - 1 - row;
         }
 
@@ -110,17 +108,17 @@ impl SpriteFetcher {
         (row % SPRITE_HEIGHT_8X8, tile)
     }
 
-    fn tile_data_address(&self, tile: u8) -> u16 {
+    fn get_tile_data_address(&self, tile: u8) -> u16 {
         VRAM_START + tile as u16 * TILE_SIZE_BYTES
     }
 
-    fn sprite_tile_data_address(&self, ly: u8, sprite_height: u8) -> u16 {
-        let (row, tile) = self.sprite_row_and_tile(ly, sprite_height);
+    fn get_sprite_tile_data_address(&self, ly: u8, sprite_height: u8) -> u16 {
+        let (row, tile) = self.get_sprite_row_and_tile(ly, sprite_height);
 
-        self.tile_data_address(tile) + row as u16 * 2
+        self.get_tile_data_address(tile) + row as u16 * 2
     }
 
-    fn step_cycles(&self) -> u8 {
+    fn get_step_cycles(&self) -> u8 {
         if let SpriteFetcherStep::Push = self.step {
             return NONE_CYCLES;
         }
@@ -151,7 +149,7 @@ impl SpriteFetcher {
     pub(super) fn tick(&mut self) -> Option<SpriteFetcherRequest> {
         self.cycles += 1;
 
-        if self.cycles < self.step_cycles() {
+        if self.cycles < self.get_step_cycles() {
             return None;
         }
 
@@ -198,6 +196,10 @@ impl Ppu {
     }
 
     pub(super) fn update_sprite_fetcher_context(&mut self) {
+        if !self.is_obj_enabled() {
+            return;
+        }
+
         if let Some(sprite) = self.should_fetch_sprite() {
             let sprite_height = if self.is_obj_size() {
                 SPRITE_HEIGHT_8X16

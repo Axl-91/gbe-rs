@@ -229,17 +229,32 @@ impl Ppu {
         }
     }
 
+    fn apply_palette(&self, pixel_color: u8, palette: u8) -> u8 {
+        (palette >> (pixel_color * 2)) & 0b11
+    }
+
     fn pixel_mixer(&self, background_pixel: u8, sprite_pixel: SpritePixel) -> u8 {
         let sprite_pixel_color = sprite_pixel.get_color();
 
         if sprite_pixel_color != 0 && (!sprite_pixel.is_behind_bg() || background_pixel == 0) {
-            return sprite_pixel_color;
+            let palette = if sprite_pixel.uses_obp1() {
+                self.obp1
+            } else {
+                self.obp0
+            };
+
+            return self.apply_palette(sprite_pixel_color, palette);
         }
-        background_pixel
+
+        self.apply_palette(background_pixel, self.bgp)
     }
 
     fn consume_pixel(&mut self) -> Option<u8> {
         let mut pixel = self.bg_fifo.pop()?;
+
+        if !self.is_bg_window_enabled() {
+            pixel = 0;
+        }
 
         if self.scx_discard > 0 {
             self.scx_discard -= 1;
@@ -263,14 +278,14 @@ impl Ppu {
         let sprite = self.sprite_fetcher.get_sprite();
 
         let sprite_x = sprite.get_x();
-        let sprite_priority = sprite.has_priority();
+        let sprite_attrs = sprite.get_attributes();
 
         let real_x_pos = sprite_x as i16 - SPRITE_SIZE;
         let relative_x = real_x_pos - self.drawing_x as i16;
 
         if self.sprite_fifo.should_push_sprite(relative_x) {
             self.sprite_fifo
-                .push_tile(relative_x, sprite_priority, low, high);
+                .push_tile(relative_x, sprite_attrs, low, high);
         }
     }
 

@@ -1,15 +1,16 @@
-// TODO: Once all functions are used we can delete this
-#![allow(dead_code)]
-
 use std::collections::VecDeque;
 
-use crate::ppu::{SCREEN_WIDTH, SPRITE_SIZE};
+use crate::ppu::{SCREEN_WIDTH, SPRITE_SIZE, sprites::SpriteAttributes};
 
 #[derive(Clone, Copy)]
 pub enum SpritePixel {
     Empty,
     Transparent,
-    Color { color: u8, priority: bool },
+    Color {
+        color: u8,
+        priority: bool,
+        dmg_palette: bool,
+    },
 }
 
 impl SpritePixel {
@@ -22,6 +23,13 @@ impl SpritePixel {
 
     pub(super) fn is_behind_bg(&self) -> bool {
         matches!(self, SpritePixel::Color { priority: true, .. })
+    }
+
+    pub(super) fn uses_obp1(&self) -> bool {
+        match self {
+            SpritePixel::Color { dmg_palette, .. } => *dmg_palette,
+            _ => false,
+        }
     }
 }
 
@@ -60,7 +68,13 @@ impl SpriteFifo {
         })
     }
 
-    pub(super) fn push_tile(&mut self, sprite_pos: i16, priority: bool, low: u8, high: u8) {
+    pub(super) fn push_tile(
+        &mut self,
+        sprite_pos: i16,
+        sprite_attrs: SpriteAttributes,
+        low: u8,
+        high: u8,
+    ) {
         for pixel in 0..SPRITE_SIZE {
             let pos_x = sprite_pos + pixel;
 
@@ -68,7 +82,12 @@ impl SpriteFifo {
                 continue;
             }
 
-            let bit = (SPRITE_SIZE - 1) - pixel;
+            let bit = if sprite_attrs.x_flip {
+                pixel
+            } else {
+                (SPRITE_SIZE - 1) - pixel
+            };
+
             let low_bit = (low >> bit) & 1;
             let high_bit = (high >> bit) & 1;
 
@@ -77,7 +96,14 @@ impl SpriteFifo {
             let sprite_pixel = if color == 0 {
                 SpritePixel::Transparent
             } else {
-                SpritePixel::Color { color, priority }
+                let priority = sprite_attrs.obj_to_bg_priority;
+                let dmg_palette = sprite_attrs.dmg_palette;
+
+                SpritePixel::Color {
+                    color,
+                    priority,
+                    dmg_palette,
+                }
             };
 
             let pos_x = pos_x as usize;

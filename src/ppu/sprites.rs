@@ -12,6 +12,17 @@ const SPRITE_Y_OFFSET: u8 = 16;
 const OAM_SEARCH_CYCLES: u8 = 2;
 
 const ATTRIBUTE_PRIORITY: u8 = 7;
+const ATTRIBUTE_Y_FLIP: u8 = 6;
+const ATTRIBUTE_X_FLIP: u8 = 5;
+const ATTRIBUTE_DMG_PALETTE: u8 = 4;
+
+#[derive(Clone, Copy, Default)]
+pub(super) struct SpriteAttributes {
+    pub(super) obj_to_bg_priority: bool,
+    pub(super) y_flip: bool,
+    pub(super) x_flip: bool,
+    pub(super) dmg_palette: bool,
+}
 
 /// A sprite selected during OAM Search.
 #[derive(Clone, Copy, Default)]
@@ -27,8 +38,29 @@ impl Sprite {
         self.x
     }
 
-    pub(super) fn has_priority(&self) -> bool {
+    fn has_priority(&self) -> bool {
         self.attributes & (1 << ATTRIBUTE_PRIORITY) != 0
+    }
+
+    fn has_y_flip(&self) -> bool {
+        self.attributes & (1 << ATTRIBUTE_Y_FLIP) != 0
+    }
+
+    fn has_x_flip(&self) -> bool {
+        self.attributes & (1 << ATTRIBUTE_X_FLIP) != 0
+    }
+
+    fn has_dmg_palette(&self) -> bool {
+        self.attributes & (1 << ATTRIBUTE_DMG_PALETTE) != 0
+    }
+
+    pub(super) fn get_attributes(&self) -> SpriteAttributes {
+        SpriteAttributes {
+            obj_to_bg_priority: self.has_priority(),
+            y_flip: self.has_y_flip(),
+            x_flip: self.has_x_flip(),
+            dmg_palette: self.has_dmg_palette(),
+        }
     }
 }
 

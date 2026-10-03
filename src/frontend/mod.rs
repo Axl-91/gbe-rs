@@ -1,6 +1,7 @@
 use pixels::{Pixels, SurfaceTexture};
 use std::time::Instant;
 use std::{sync::Arc, time::Duration};
+use winit::event_loop::ControlFlow;
 use winit::{
     application::ApplicationHandler,
     event::WindowEvent,
@@ -10,10 +11,16 @@ use winit::{
 
 use crate::Emulator;
 
-const GB_LIGHTEST: [u8; 3] = [224, 248, 208];
-const GB_LIGHT: [u8; 3] = [136, 192, 112];
-const GB_DARK: [u8; 3] = [52, 104, 86];
-const GB_DARKEST: [u8; 3] = [8, 24, 32];
+const SCREEN_WIDTH: u32 = 160;
+const SCREEN_HEIGHT: u32 = 144;
+
+const FRAME_CYCLES: u32 = 70_224;
+
+const GB_LIGHTEST: [u8; 3] = [155, 188, 15];
+const GB_LIGHT: [u8; 3] = [139, 172, 15];
+const GB_DARK: [u8; 3] = [48, 98, 48];
+const GB_DARKEST: [u8; 3] = [15, 56, 15];
+const ALPHA_SOLID: u8 = 255;
 
 fn gameboy_color(pixel: u8) -> [u8; 3] {
     match pixel {
@@ -36,7 +43,7 @@ fn update_framebuffer(emulator: &Emulator, pixels: &mut Pixels<'static>) {
         frame[rgba_index] = red;
         frame[rgba_index + 1] = green;
         frame[rgba_index + 2] = blue;
-        frame[rgba_index + 3] = 255;
+        frame[rgba_index + 3] = ALPHA_SOLID;
     }
 }
 
@@ -44,6 +51,7 @@ struct Frontend {
     emulator: Emulator,
     window: Option<Arc<Window>>,
     pixels: Option<Pixels<'static>>,
+    next_frame: Instant,
 }
 
 impl Frontend {
@@ -52,6 +60,7 @@ impl Frontend {
             emulator,
             window: None,
             pixels: None,
+            next_frame: Instant::now(),
         }
     }
 }
@@ -65,33 +74,32 @@ impl ApplicationHandler for Frontend {
         );
 
         let size = window.inner_size();
-
         let surface_texture = SurfaceTexture::new(size.width, size.height, window.clone());
-
-        let pixels = Pixels::new(160, 144, surface_texture).unwrap();
+        let pixels = Pixels::new(SCREEN_WIDTH, SCREEN_HEIGHT, surface_texture).unwrap();
 
         self.window = Some(window);
         self.pixels = Some(pixels);
     }
 
-    fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
-        let frame_start = Instant::now();
-        let mut cycles = 0;
+    fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
+        let now = Instant::now();
 
-        while cycles < 70_224 {
-            cycles += self.emulator.step() as u32;
+        if now >= self.next_frame {
+            let mut cycles = 0;
+
+            while cycles < FRAME_CYCLES {
+                cycles += self.emulator.step() as u32;
+            }
+
+            if let Some(window) = &self.window {
+                window.request_redraw();
+            }
+
+            // Gameboy speed should be 59.73 FPS
+            self.next_frame += Duration::from_secs_f64(1.0 / 59.73);
         }
 
-        let frame_duration = frame_start.elapsed();
-        let target_duration = Duration::from_secs_f64(1.0 / 59.73);
-
-        if frame_duration < target_duration {
-            std::thread::sleep(target_duration - frame_duration);
-        }
-
-        if let Some(window) = &self.window {
-            window.request_redraw();
-        }
+        event_loop.set_control_flow(ControlFlow::WaitUntil(self.next_frame));
     }
 
     fn window_event(
