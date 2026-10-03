@@ -11,7 +11,7 @@ use crate::{
         bg_fetcher::{BgFetcher, FetcherRequest},
         bg_fifo::BgFifo,
         sprite_fetcher::{SpriteFetcher, SpriteFetcherRequest},
-        sprite_fifo::SpriteFifo,
+        sprite_fifo::{SpriteFifo, SpritePixel},
         sprites::{OamSearcher, Sprite},
     },
 };
@@ -97,10 +97,10 @@ pub struct Ppu {
 
     // Rendering pipeline
     bg_fetcher: BgFetcher,
+    sprite_fetcher: SpriteFetcher,
     bg_fifo: BgFifo,
     sprite_fifo: SpriteFifo,
     oam_searcher: OamSearcher,
-    sprite_fetcher: SpriteFetcher,
 
     // Rendering state
     drawing_x: u8,
@@ -114,6 +114,8 @@ pub struct Ppu {
     // Sprites state
     sprites: Vec<Sprite>,
     sprite_fetch_index: usize,
+
+    framebuffer: Vec<u8>,
 }
 
 impl Ppu {
@@ -165,6 +167,8 @@ impl Ppu {
             // Sprites state
             sprites: Vec::new(),
             sprite_fetch_index: 0,
+
+            framebuffer: vec![0; SCREEN_WIDTH as usize * VISIBLE_LINES as usize],
         }
     }
 
@@ -225,13 +229,32 @@ impl Ppu {
         }
     }
 
+    fn pixel_mixer(&self, background_pixel: u8, sprite_pixel: SpritePixel) -> u8 {
+        let sprite_pixel_color = sprite_pixel.get_color();
+
+        if sprite_pixel_color != 0 {
+            if !sprite_pixel.is_behind_bg() || background_pixel == 0 {
+                return sprite_pixel_color;
+            }
+        }
+        background_pixel
+    }
+
     fn consume_pixel(&mut self) -> Option<u8> {
-        let pixel = self.bg_fifo.pop()?;
-        let _sprite = self.sprite_fifo.pop();
+        let mut pixel = self.bg_fifo.pop()?;
 
         if self.scx_discard > 0 {
             self.scx_discard -= 1;
+            return None;
         } else if self.drawing_x < SCREEN_WIDTH {
+            let index = self.ly as usize * SCREEN_WIDTH as usize + self.drawing_x as usize;
+
+            if let Some(sprite_pixel) = self.sprite_fifo.pop() {
+                pixel = self.pixel_mixer(pixel, sprite_pixel)
+            }
+
+            self.framebuffer[index] = pixel;
+
             self.drawing_x += 1;
         }
 
@@ -239,12 +262,17 @@ impl Ppu {
     }
 
     fn push_sprite_pixels_into_fifo(&mut self, low: u8, high: u8) {
-        let sprite_x = self.sprite_fetcher.sprite_x();
+        let sprite = self.sprite_fetcher.get_sprite();
+
+        let sprite_x = sprite.get_x();
+        let sprite_priority = sprite.has_priority();
+
         let real_x_pos = sprite_x as i16 - SPRITE_SIZE;
         let relative_x = real_x_pos - self.drawing_x as i16;
 
         if self.sprite_fifo.should_push_sprite(relative_x) {
-            self.sprite_fifo.push_tile(relative_x, low, high);
+            self.sprite_fifo
+                .push_tile(relative_x, sprite_priority, low, high);
         }
     }
 

@@ -6,10 +6,23 @@ use std::collections::VecDeque;
 use crate::ppu::{SCREEN_WIDTH, SPRITE_SIZE};
 
 #[derive(Clone, Copy)]
-enum SpritePixel {
+pub enum SpritePixel {
     Empty,
     Transparent,
-    Color(u8),
+    Color { color: u8, priority: bool },
+}
+
+impl SpritePixel {
+    pub(super) fn get_color(&self) -> u8 {
+        match self {
+            SpritePixel::Empty | SpritePixel::Transparent => 0,
+            SpritePixel::Color { color, .. } => *color,
+        }
+    }
+
+    pub(super) fn is_behind_bg(&self) -> bool {
+        matches!(self, SpritePixel::Color { priority: true, .. })
+    }
 }
 
 pub(super) struct SpriteFifo {
@@ -27,13 +40,8 @@ impl SpriteFifo {
         }
     }
 
-    pub(super) fn pop(&mut self) -> Option<u8> {
-        let pixel = self.pixels.pop_front()?;
-
-        match pixel {
-            SpritePixel::Empty | SpritePixel::Transparent => Some(0),
-            SpritePixel::Color(color) => Some(color),
-        }
+    pub(super) fn pop(&mut self) -> Option<SpritePixel> {
+        self.pixels.pop_front()
     }
 
     fn clear(&mut self) {
@@ -52,7 +60,7 @@ impl SpriteFifo {
         })
     }
 
-    pub(super) fn push_tile(&mut self, sprite_pos: i16, low: u8, high: u8) {
+    pub(super) fn push_tile(&mut self, sprite_pos: i16, priority: bool, low: u8, high: u8) {
         for pixel in 0..SPRITE_SIZE {
             let pos_x = sprite_pos + pixel;
 
@@ -69,7 +77,7 @@ impl SpriteFifo {
             let sprite_pixel = if color == 0 {
                 SpritePixel::Transparent
             } else {
-                SpritePixel::Color(color)
+                SpritePixel::Color { color, priority }
             };
 
             let pos_x = pos_x as usize;

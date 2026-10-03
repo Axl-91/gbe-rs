@@ -11,6 +11,8 @@ const SPRITE_Y_OFFSET: u8 = 16;
 
 const OAM_SEARCH_CYCLES: u8 = 2;
 
+const ATTRIBUTE_PRIORITY: u8 = 7;
+
 /// A sprite selected during OAM Search.
 #[derive(Clone, Copy, Default)]
 pub(super) struct Sprite {
@@ -18,6 +20,16 @@ pub(super) struct Sprite {
     pub y: u8,
     pub tile: u8,
     pub attributes: u8,
+}
+
+impl Sprite {
+    pub(super) fn get_x(&self) -> u8 {
+        self.x
+    }
+
+    pub(super) fn has_priority(&self) -> bool {
+        self.attributes & (1 << ATTRIBUTE_PRIORITY) != 0
+    }
 }
 
 pub(super) struct OamSearcher {

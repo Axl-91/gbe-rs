@@ -70,8 +70,8 @@ impl SpriteFetcher {
         self.active
     }
 
-    pub(super) fn sprite_x(&self) -> u8 {
-        self.sprite.x
+    pub(super) fn get_sprite(&self) -> Sprite {
+        self.sprite
     }
 
     pub(super) fn reset(&mut self) {
