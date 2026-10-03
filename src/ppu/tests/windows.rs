@@ -327,11 +327,11 @@ fn starting_window_clears_fifo() {
     let low = rand::random();
     let high = rand::random();
 
-    ppu.push_into_fifo(low, high);
+    ppu.push_bg_pixels_into_fifo(low, high);
 
     assert!(!ppu.bg_fifo.is_empty());
 
-    ppu.tick_fetcher();
+    ppu.tick_bg_fetcher();
 
     assert!(ppu.bg_fifo.is_empty());
 }
@@ -350,7 +350,7 @@ fn starting_window_resets_fetcher() {
     ppu.bg_fetcher.tick();
 
     // Starting the window must reset the fetcher before it continues.
-    ppu.tick_fetcher();
+    ppu.tick_bg_fetcher();
 
     // After the reset, the fetcher is back in its startup phase.
     // The first tick of that phase does not generate a VRAM request.
@@ -366,7 +366,7 @@ fn window_activation_switches_fetcher_to_window_context() {
     ppu.wx = 7;
     ppu.drawing_x = 0;
 
-    ppu.tick_fetcher();
+    ppu.tick_bg_fetcher();
 
     assert!(ppu.window_active);
 

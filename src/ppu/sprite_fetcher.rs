@@ -206,6 +206,8 @@ impl Ppu {
             };
 
             self.sprite_fetch_index += 1;
+            self.bg_fetcher.pause();
+
             self.sprite_fetcher
                 .add_context(sprite, self.ly, sprite_height);
         }

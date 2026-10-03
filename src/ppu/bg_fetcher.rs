@@ -86,6 +86,11 @@ impl BgFetcher {
         self.context = FetcherContext::default();
     }
 
+    pub(super) fn pause(&mut self) {
+        self.step = FetcherStep::TileNumber;
+        self.cycles = 0
+    }
+
     /// Updates the context used to fetch the current background tile.
     ///
     /// The PPU provides this information because it depends on PPU state

@@ -198,14 +198,14 @@ impl Ppu {
         self.hblank_duration = duration;
     }
 
-    fn push_into_fifo(&mut self, low: u8, high: u8) {
+    fn push_bg_pixels_into_fifo(&mut self, low: u8, high: u8) {
         if self.bg_fifo.is_empty() {
             self.bg_fifo.push_tile(low, high);
             self.bg_fetcher.complete_push();
         }
     }
 
-    fn tick_fetcher(&mut self) {
+    fn tick_bg_fetcher(&mut self) {
         if !self.window_active && self.can_start_window() {
             self.window_active = true;
             self.bg_fifo.clear();
@@ -220,7 +220,7 @@ impl Ppu {
                 let value = self.read_vram(address);
                 self.bg_fetcher.receive(value);
             }
-            Some(FetcherRequest::Push { low, high }) => self.push_into_fifo(low, high),
+            Some(FetcherRequest::Push { low, high }) => self.push_bg_pixels_into_fifo(low, high),
             None => {}
         }
     }
@@ -238,7 +238,7 @@ impl Ppu {
         Some(pixel)
     }
 
-    fn push_sprite_pixels(&mut self, low: u8, high: u8) {
+    fn push_sprite_pixels_into_fifo(&mut self, low: u8, high: u8) {
         let sprite_x = self.sprite_fetcher.sprite_x();
         let real_x_pos = sprite_x as i16 - SPRITE_SIZE;
         let relative_x = real_x_pos - self.drawing_x as i16;
@@ -256,7 +256,7 @@ impl Ppu {
             }
 
             Some(SpriteFetcherRequest::Push { high, low }) => {
-                self.push_sprite_pixels(low, high);
+                self.push_sprite_pixels_into_fifo(low, high);
                 self.sprite_fetcher.complete_push();
             }
 
@@ -270,7 +270,7 @@ impl Ppu {
             return;
         }
 
-        self.tick_fetcher();
+        self.tick_bg_fetcher();
         let consumed_pixel = self.consume_pixel();
 
         if consumed_pixel.is_some() {
