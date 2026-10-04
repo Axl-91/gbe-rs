@@ -47,15 +47,20 @@ add_sprite
   - [x] Registers
   - [x] Basic Timing
   - [ ] LCD Timing & Quirks
-  - [ ] Rendering
+  - [x] Rendering
     - [x] Background
     - [x] Window
-    - [ ] Sprites
-    - [ ] Pixel Mixing
+    - [x] Sprites
+    - [x] Pixel Mixing
 - [ ] Input
 
 ### Frontend
 - [ ] Frontend
+  - [x] Framebuffer Rendering
+  - [x] DMG Colors
+  - [ ] Input
+  - [ ] Audio
+  - [ ] Debugging / Tools
 
 ## Emulator architecture
 
