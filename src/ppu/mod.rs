@@ -365,12 +365,11 @@ impl Ppu {
                     self.window_line_counter = 0;
                     self.mode = PpuMode::VBlank
                 } else {
-                    // Clear sprite data for the next scanline.
-                    self.sprite_fetch_index = 0;
-                    self.sprites.clear();
-
                     self.mode = PpuMode::OamSearch
                 }
+                // Clear sprite data for the next scanline.
+                self.sprite_fetch_index = 0;
+                self.sprites.clear();
             }
 
             PpuMode::VBlank => {
