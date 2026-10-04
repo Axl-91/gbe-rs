@@ -60,7 +60,7 @@ impl Joypad {
     /// Creates a new joypad with no group selected and no buttons pressed.
     pub fn new() -> Self {
         Self {
-            select: SELECT_MASK,
+            select: BOTH_SELECTED,
             dpad: INACTIVE,
             buttons: INACTIVE,
         }
