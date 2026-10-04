@@ -64,7 +64,10 @@ impl SpriteFifo {
                 return false;
             }
 
-            matches!(self.pixels.get(pos_x as usize), Some(SpritePixel::Empty))
+            matches!(
+                self.pixels.get(pos_x as usize),
+                Some(SpritePixel::Empty | SpritePixel::Transparent)
+            )
         })
     }
 
@@ -110,7 +113,7 @@ impl SpriteFifo {
 
             // If the pixel is outside the visible area, we don't take it into account.
             if let Some(pixel) = self.pixels.get_mut(pos_x)
-                && matches!(pixel, SpritePixel::Empty)
+                && matches!(pixel, SpritePixel::Empty | SpritePixel::Transparent)
             {
                 *pixel = sprite_pixel;
             }

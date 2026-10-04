@@ -247,6 +247,10 @@ impl Ppu {
         self.apply_palette(background_pixel, self.bgp)
     }
 
+    fn get_screen_position(&self) -> usize {
+        self.ly as usize * SCREEN_WIDTH as usize + self.drawing_x as usize
+    }
+
     fn consume_pixel(&mut self) -> Option<u8> {
         let mut pixel = self.bg_fifo.pop()?;
 
@@ -258,7 +262,7 @@ impl Ppu {
             self.scx_discard -= 1;
             return None;
         } else if self.drawing_x < SCREEN_WIDTH {
-            let index = self.ly as usize * SCREEN_WIDTH as usize + self.drawing_x as usize;
+            let index = self.get_screen_position();
 
             if let Some(sprite_pixel) = self.sprite_fifo.pop() {
                 pixel = self.pixel_mixer(pixel, sprite_pixel)
