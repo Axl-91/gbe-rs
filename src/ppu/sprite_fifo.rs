@@ -109,10 +109,10 @@ impl SpriteFifo {
             let pos_x = pos_x as usize;
 
             // If the pixel is outside the visible area, we don't take it into account.
-            if let Some(pixel) = self.pixels.get_mut(pos_x) {
-                if matches!(pixel, SpritePixel::Empty) {
-                    *pixel = sprite_pixel;
-                }
+            if let Some(pixel) = self.pixels.get_mut(pos_x)
+                && matches!(pixel, SpritePixel::Empty)
+            {
+                *pixel = sprite_pixel;
             }
         }
     }
