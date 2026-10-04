@@ -74,6 +74,51 @@ The emulator advances the hardware over time using the CPU's clock cycles. Each 
 
 Hardware components are responsible for their own internal state and timing, while the emulator coordinates their execution and the communication between them. This approach keeps the different parts of the emulator modular while allowing them to behave as a single system.
 
+## Running
+
+### Run the emulator
+
+To run the emulator with a Game Boy ROM:
+
+```bash
+cargo run -- <PATH_TO_ROM>
+```
+
+For example:
+
+```bash
+cargo run -- ./roms/tetris.gb
+```
+
+### Run the tests
+
+Run the project's own tests with:
+
+```bash
+cargo test
+```
+
+### Run test suites
+
+The repository includes several Game Boy test suites that can be run using:
+
+```bash
+./test_suites/run.sh
+```
+
+To run a specific test suite:
+
+```bash
+./test_suites/run.sh --suite <SUITE>
+```
+
+For example:
+
+```bash
+./test_suites/run.sh --suite blargg
+```
+
+
 ## References
 
 - [Pan Docs](https://gbdev.io/pandocs/) — The single most comprehensive technical reference for Game Boy hardware behavior, covering the CPU, memory map, PPU, timers, interrupts, and more.
