@@ -242,10 +242,8 @@ impl Ppu {
             } else {
                 self.obp0
             };
-
             return self.apply_palette(sprite_pixel_color, palette);
         }
-
         self.apply_palette(background_pixel, self.bgp)
     }
 

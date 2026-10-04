@@ -119,12 +119,23 @@ impl Ppu {
             let tile = self.oam[address as usize + 2];
             let attributes = self.oam[address as usize + 3];
 
-            self.sprites.push(Sprite {
+            let sprite = Sprite {
                 y,
                 x,
                 tile,
                 attributes,
-            });
+            };
+
+            // We insert the new sprite in X order so the sprite fetcher
+            // can process sprites from left to right. Using `>` instead of
+            // `>=` preserves OAM order for sprites with the same X position.
+            let position = self
+                .sprites
+                .iter()
+                .position(|sprite| sprite.x > x)
+                .unwrap_or(self.sprites.len());
+
+            self.sprites.insert(position, sprite);
         }
     }
 }
