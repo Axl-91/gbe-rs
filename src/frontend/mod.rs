@@ -4,6 +4,7 @@ use std::{sync::Arc, time::Duration};
 use winit::event::{ElementState, KeyEvent};
 use winit::event_loop::ControlFlow;
 use winit::keyboard::{KeyCode, PhysicalKey};
+use winit::platform::wayland::WindowAttributesExtWayland;
 use winit::{
     application::ApplicationHandler,
     event::WindowEvent,
@@ -86,7 +87,11 @@ impl ApplicationHandler for Frontend {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         let window = Arc::new(
             event_loop
-                .create_window(Window::default_attributes())
+                .create_window(
+                    Window::default_attributes()
+                        .with_title("GBE-RS")
+                        .with_name("gbe-rs", "gbe-rs"),
+                )
                 .unwrap(),
         );
 

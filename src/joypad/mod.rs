@@ -80,13 +80,27 @@ impl Joypad {
         0xC0 | select | nibble
     }
 
+    // Interruptions occurs when there is a bit changes from 1 -> 0
+    // on the bits 0..3
+    fn has_interruption(&self, previous_state: u8) -> bool {
+        let current_state = self.read();
+
+        (previous_state & (!current_state & 0x0F)) != 0
+    }
+
     /// Updates which button group(s) are selected.
-    pub fn write(&mut self, value: u8) {
+    pub fn write(&mut self, value: u8) -> bool {
+        let previous_state = self.read();
+
         self.select = value & SELECT_MASK;
+
+        self.has_interruption(previous_state)
     }
 
     /// Marks a button as pressed.
-    pub fn press(&mut self, button: Button) {
+    pub fn press(&mut self, button: Button) -> bool {
+        let previous_state = self.read();
+
         let mask = !(1 << button.bit());
 
         if button.is_dpad() {
@@ -94,6 +108,8 @@ impl Joypad {
         } else {
             self.buttons &= mask;
         }
+
+        self.has_interruption(previous_state)
     }
 
     /// Marks a button as released.

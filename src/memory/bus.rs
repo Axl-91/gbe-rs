@@ -20,8 +20,10 @@ const UNMAPPED_ADDRESS_VALUE: u8 = 0xFF;
 const WRAM_SIZE: usize = 0x2000;
 const HRAM_SIZE: usize = 0x7F;
 
-const VBLANK_INTERRUPT: u8 = 0x01;
-const STAT_INTERRUPT: u8 = 0x02;
+// bit to set interruptions
+const VBLANK_INTERRUPT: u8 = 0b0000_0001;
+const STAT_INTERRUPT: u8 = 0b0000_0010;
+const JOYPAD_INTERRUPT: u8 = 0b0001_0000;
 
 /// Provides access to the Game Boy memory address space.
 pub struct MemoryBus {
@@ -63,7 +65,11 @@ impl MemoryBus {
     }
 
     pub fn joypad_press(&mut self, button: Button) {
-        self.joypad.press(button);
+        let has_interruption = self.joypad.press(button);
+
+        if has_interruption {
+            self.interrupt_flags |= JOYPAD_INTERRUPT
+        }
     }
 
     pub fn joypad_release(&mut self, button: Button) {
@@ -76,6 +82,7 @@ impl MemoryBus {
 
     fn ppu_tick(&mut self) {
         let ppu_interruptions = self.ppu.tick();
+
         if ppu_interruptions.vblank {
             self.interrupt_flags |= VBLANK_INTERRUPT;
         }
@@ -188,7 +195,12 @@ impl MemoryBus {
 
             UNUSABLE_MEMORY_START..=UNUSABLE_MEMORY_END => {}
 
-            JOYPAD_ADDRESS => self.joypad.write(value),
+            JOYPAD_ADDRESS => {
+                let has_interruption = self.joypad.write(value);
+                if has_interruption {
+                    self.interrupt_flags |= JOYPAD_INTERRUPT;
+                }
+            }
 
             SERIAL_DATA_ADDRESS => self.serial.write_data(value),
             SERIAL_CONTROL_ADDRESS => self.serial.write_control(value),
