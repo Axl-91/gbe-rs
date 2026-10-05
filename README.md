@@ -52,13 +52,13 @@ add_sprite
     - [x] Window
     - [x] Sprites
     - [x] Pixel Mixing
-- [ ] Input
+- [x] Input
 
 ### Frontend
 - [ ] Frontend
   - [x] Framebuffer Rendering
   - [x] DMG Colors
-  - [ ] Input
+  - [x] Input
   - [ ] Audio
   - [ ] Debugging / Tools
 
