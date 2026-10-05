@@ -182,6 +182,8 @@ impl Ppu {
         self.oam_searcher.reset();
         self.sprite_fetcher.reset();
         self.sprite_fetch_index = 0;
+        self.window_active = false;
+        self.window_line_counter = 0;
         self.sprites.clear();
     }
 
@@ -216,6 +218,7 @@ impl Ppu {
             self.window_active = true;
             self.bg_fifo.clear();
             self.bg_fetcher.reset();
+            self.scx_discard = 0;
         }
 
         self.add_fetcher_context();

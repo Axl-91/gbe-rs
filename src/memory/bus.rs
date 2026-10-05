@@ -5,7 +5,12 @@
 
 use super::map::*;
 use crate::{
-    cartridge::Cartridge, dma::Dma, joypad::Joypad, ppu::Ppu, serial::Serial, timer::Timer,
+    cartridge::Cartridge,
+    dma::Dma,
+    joypad::{Button, Joypad},
+    ppu::Ppu,
+    serial::Serial,
+    timer::Timer,
 };
 
 /// Value returned when reading from an address that isn't backed by any
@@ -55,6 +60,14 @@ impl MemoryBus {
 
     pub fn is_joypad_active(&self) -> bool {
         self.joypad.is_joypad_active()
+    }
+
+    pub fn joypad_press(&mut self, button: Button) {
+        self.joypad.press(button);
+    }
+
+    pub fn joypad_release(&mut self, button: Button) {
+        self.joypad.release(button);
     }
 
     pub fn take_serial_output(&mut self) -> Option<u8> {

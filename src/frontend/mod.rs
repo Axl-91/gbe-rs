@@ -1,7 +1,9 @@
 use pixels::{Pixels, SurfaceTexture};
 use std::time::Instant;
 use std::{sync::Arc, time::Duration};
+use winit::event::{ElementState, KeyEvent};
 use winit::event_loop::ControlFlow;
+use winit::keyboard::{KeyCode, PhysicalKey};
 use winit::{
     application::ApplicationHandler,
     event::WindowEvent,
@@ -10,6 +12,7 @@ use winit::{
 };
 
 use crate::Emulator;
+use crate::joypad::Button;
 
 const SCREEN_WIDTH: u32 = 160;
 const SCREEN_HEIGHT: u32 = 144;
@@ -44,6 +47,20 @@ fn update_framebuffer(emulator: &Emulator, pixels: &mut Pixels<'static>) {
         frame[rgba_index + 1] = green;
         frame[rgba_index + 2] = blue;
         frame[rgba_index + 3] = ALPHA_SOLID;
+    }
+}
+
+fn key_to_button(key: KeyCode) -> Option<Button> {
+    match key {
+        KeyCode::KeyW => Some(Button::Up),
+        KeyCode::KeyA => Some(Button::Left),
+        KeyCode::KeyS => Some(Button::Down),
+        KeyCode::KeyD => Some(Button::Right),
+        KeyCode::KeyJ => Some(Button::A),
+        KeyCode::KeyK => Some(Button::B),
+        KeyCode::Enter => Some(Button::Start),
+        KeyCode::ShiftLeft => Some(Button::Select),
+        _ => None,
     }
 }
 
@@ -116,6 +133,24 @@ impl ApplicationHandler for Frontend {
                 if let Some(pixels) = &mut self.pixels {
                     update_framebuffer(&self.emulator, pixels);
                     pixels.render().unwrap();
+                }
+            }
+            WindowEvent::KeyboardInput {
+                event:
+                    KeyEvent {
+                        physical_key: PhysicalKey::Code(key),
+                        state,
+                        repeat,
+                        ..
+                    },
+                ..
+            } => {
+                if let Some(button) = key_to_button(key) {
+                    match state {
+                        ElementState::Pressed if !repeat => self.emulator.press_button(button),
+                        ElementState::Released => self.emulator.release_button(button),
+                        _ => {}
+                    }
                 }
             }
             _ => {}

@@ -9,7 +9,7 @@ mod registers;
 #[cfg(test)]
 mod tests;
 
-use crate::{cpu::instructions::*, memory::MemoryBus};
+use crate::{cpu::instructions::*, joypad::Button, memory::MemoryBus};
 use log::debug;
 use registers::Registers;
 
@@ -50,8 +50,17 @@ impl Cpu {
     pub fn get_framebuffer(&self) -> &[u8] {
         self.bus.get_framebuffer()
     }
+
     pub fn peek(&self, address: u16) -> u8 {
         self.bus.read(address)
+    }
+
+    pub fn joypad_press(&mut self, button: Button) {
+        self.bus.joypad_press(button)
+    }
+
+    pub fn joypad_release(&mut self, button: Button) {
+        self.bus.joypad_release(button)
     }
 
     fn tick_read(&mut self, address: u16) -> u8 {
