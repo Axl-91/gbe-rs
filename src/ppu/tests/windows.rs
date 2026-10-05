@@ -13,6 +13,10 @@ fn complete_fetcher_startup(ppu: &mut Ppu) {
     }
 }
 
+fn trigger_window_y(ppu: &mut Ppu) {
+    ppu.window_y_triggered = true;
+}
+
 #[test]
 fn window_starts_when_wy_is_reached() {
     let mut ppu = Ppu::new();
@@ -26,6 +30,7 @@ fn window_starts_when_wy_is_reached() {
     assert!(!ppu.can_start_window());
 
     ppu.ly = 10;
+    trigger_window_y(&mut ppu);
 
     assert!(ppu.can_start_window());
 }
@@ -37,6 +42,7 @@ fn window_starts_at_wx_minus_seven() {
     ppu.lcdc |= 1 << 5;
     ppu.ly = ppu.wy;
     ppu.wx = 15;
+    trigger_window_y(&mut ppu);
 
     ppu.drawing_x = 7;
     assert!(!ppu.can_start_window());
@@ -53,6 +59,7 @@ fn window_starts_at_screen_edge_when_wx_is_less_than_seven() {
     ppu.ly = ppu.wy;
     ppu.wx = 3;
     ppu.drawing_x = 0;
+    trigger_window_y(&mut ppu);
 
     assert!(ppu.can_start_window());
 }
@@ -68,6 +75,34 @@ fn window_does_not_start_before_wy() {
     ppu.drawing_x = 0;
 
     assert!(!ppu.can_start_window());
+}
+
+#[test]
+fn window_does_not_start_without_y_trigger() {
+    let mut ppu = Ppu::new();
+
+    ppu.lcdc |= 1 << 5;
+    ppu.ly = ppu.wy;
+    ppu.wx = 7;
+    ppu.drawing_x = 0;
+
+    assert!(!ppu.window_y_triggered);
+    assert!(!ppu.can_start_window());
+}
+
+#[test]
+fn window_can_start_after_y_trigger() {
+    let mut ppu = Ppu::new();
+
+    ppu.lcdc |= 1 << 5;
+    ppu.wy = 10;
+    ppu.ly = 20;
+    ppu.wx = 7;
+    ppu.drawing_x = 0;
+
+    trigger_window_y(&mut ppu);
+
+    assert!(ppu.can_start_window());
 }
 
 #[test]
@@ -323,6 +358,7 @@ fn starting_window_clears_fifo() {
     ppu.ly = ppu.wy;
     ppu.wx = 7;
     ppu.drawing_x = 0;
+    trigger_window_y(&mut ppu);
 
     let low = rand::random();
     let high = rand::random();
@@ -344,6 +380,7 @@ fn starting_window_resets_fetcher() {
     ppu.ly = ppu.wy;
     ppu.wx = 7;
     ppu.drawing_x = 0;
+    trigger_window_y(&mut ppu);
 
     // Advance the fetcher until it is about to request the tile number.
     complete_fetcher_startup(&mut ppu);
@@ -365,6 +402,7 @@ fn window_activation_switches_fetcher_to_window_context() {
     ppu.ly = ppu.wy;
     ppu.wx = 7;
     ppu.drawing_x = 0;
+    trigger_window_y(&mut ppu);
 
     ppu.tick_bg_fetcher();
 

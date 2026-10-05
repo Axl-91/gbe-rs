@@ -109,6 +109,7 @@ pub struct Ppu {
 
     // Window state
     window_active: bool,
+    window_y_triggered: bool,
     window_line_counter: u8,
 
     // Sprites state
@@ -162,6 +163,7 @@ impl Ppu {
 
             // Window state
             window_active: false,
+            window_y_triggered: false,
             window_line_counter: 0,
 
             // Sprites state
@@ -365,8 +367,11 @@ impl Ppu {
                 }
                 self.ly += 1;
 
+                if self.ly == self.wy {
+                    self.window_y_triggered = true;
+                }
+
                 if self.ly == VISIBLE_LINES {
-                    self.window_line_counter = 0;
                     self.mode = PpuMode::VBlank
                 } else {
                     self.mode = PpuMode::OamSearch
@@ -382,6 +387,10 @@ impl Ppu {
                 if self.ly == TOTAL_LINES {
                     self.ly = 0;
                     self.mode = PpuMode::OamSearch;
+
+                    self.window_line_counter = 0;
+                    self.window_y_triggered = self.ly == self.wy;
+
                     self.sprite_fetch_index = 0;
                     self.sprite_fetcher.reset();
                 }

@@ -83,7 +83,7 @@ impl Ppu {
 
     pub(super) fn can_start_window(&self) -> bool {
         self.is_window_enabled()
-            && self.ly >= self.wy
+            && self.window_y_triggered
             && self.drawing_x as i16 >= self.wx as i16 - 7
     }
 
