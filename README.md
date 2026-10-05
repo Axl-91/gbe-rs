@@ -22,7 +22,7 @@ The goal of this project is to build a simple and accurate emulator for the orig
   - [x] Bit operations
   - [x] CPU control instructions
 - [x] Instruction timing
-add_sprite
+
 ### Memory
 - [x] Memory bus
 - [x] VRAM
