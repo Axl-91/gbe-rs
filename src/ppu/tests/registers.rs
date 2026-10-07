@@ -15,6 +15,16 @@ fn lcdc_write_disables_lcd_and_resets_ly() {
 }
 
 #[test]
+fn lcdc_write_enables_lcd_and_ly_stays_zero() {
+    let mut ppu = Ppu::new();
+
+    ppu.write(LCDC_ADDRESS, 0);
+    ppu.write(LCDC_ADDRESS, 0x91);
+
+    assert_eq!(ppu.read(LY_ADDRESS), 0);
+}
+
+#[test]
 fn lcdc_write_enables_lcd() {
     let mut ppu = Ppu::new();
 
