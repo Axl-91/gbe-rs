@@ -33,6 +33,23 @@ impl Ppu {
         self.vram[offset]
     }
 
+    /// On DMG, the CPU observes LY already incremented during the last
+    /// M-cycle (4 dots) of HBlank, while the internal `ly` used by LYC,
+    /// OAM search and the window logic still changes at the line boundary.
+    fn read_ly(&self) -> u8 {
+        if !self.is_lcd_enabled() {
+            return self.ly;
+        }
+        let is_hblank = matches!(self.mode, PpuMode::HBlank);
+        let is_last_m_cycle = self.mode_cycles + 4 >= self.hblank_duration;
+
+        if is_hblank && is_last_m_cycle {
+            self.ly + 1
+        } else {
+            self.ly
+        }
+    }
+
     pub fn read(&self, address: u16) -> u8 {
         match address {
             VRAM_START..=VRAM_END => {
@@ -55,8 +72,7 @@ impl Ppu {
 
             LCDC_ADDRESS => self.lcdc,
             STAT_ADDRESS => self.read_stat(),
-            LY_ADDRESS => self.ly,
-
+            LY_ADDRESS => self.read_ly(),
             SCY_ADDRESS => self.scy,
             SCX_ADDRESS => self.scx,
             LYC_ADDRESS => self.lyc,

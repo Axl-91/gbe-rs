@@ -30,10 +30,6 @@ const SCREEN_WIDTH: u8 = 160;
 const SCANLINE_CYCLES: u16 = 456;
 const OAM_SEARCH_CYCLES: u16 = 80;
 
-/// Line 0 after enabling the LCD starts 2 T-cycles late
-/// so its HBlank is 2 cycles shorter.
-const LCD_ON_LINE0_LATE_CYCLES: u16 = 2;
-
 pub(super) const SPRITE_SIZE: i16 = 8;
 
 mod bg_fetcher;
@@ -189,7 +185,8 @@ impl Ppu {
 
     pub(super) fn turn_on(&mut self) {
         self.mode = PpuMode::OamSearch;
-        self.mode_cycles = 2;
+        // TODO: LCD ON logic still unfinished
+        self.mode_cycles = 0;
         self.ly_eq_lyc = self.ly == self.lyc;
         self.lcd_switched_on = true;
     }
@@ -197,10 +194,9 @@ impl Ppu {
     fn calculate_hblank_duration(&mut self) {
         // Once we finish drawing we calculate the duration of Hblank
         // Hblank = TOTAL SCANLINE - OamSearch - Drawing
-        let mut duration = SCANLINE_CYCLES - OAM_SEARCH_CYCLES - self.mode_cycles;
+        let duration = SCANLINE_CYCLES - OAM_SEARCH_CYCLES - self.mode_cycles;
 
         if self.lcd_switched_on {
-            duration -= LCD_ON_LINE0_LATE_CYCLES;
             self.lcd_switched_on = false;
         }
         self.hblank_duration = duration;

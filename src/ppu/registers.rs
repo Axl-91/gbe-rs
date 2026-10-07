@@ -1,4 +1,4 @@
-use crate::ppu::{Ppu, PpuMode};
+use crate::ppu::{Ppu, PpuMode, VISIBLE_LINES};
 
 const LCDC_ENABLE: u8 = 7;
 const WINDOW_TILE_MAP: u8 = 6;
@@ -34,7 +34,11 @@ impl Ppu {
 
         let mode_condition = match self.mode {
             PpuMode::HBlank => self.stat & (1 << 3) != 0,
-            PpuMode::VBlank => self.stat & (1 << 4) != 0,
+            PpuMode::VBlank => {
+                self.stat & (1 << 4) != 0
+                // DMG quirk: OAM condition It's also activated on LY=144
+                || (self.ly == VISIBLE_LINES && self.stat & (1 << 5) != 0)
+            }
             PpuMode::OamSearch => self.stat & (1 << 5) != 0,
             PpuMode::Drawing => false,
         };
