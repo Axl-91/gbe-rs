@@ -1,5 +1,5 @@
 use crate::memory::map::{OAM_END, OAM_START, VRAM_END, VRAM_START};
-use crate::ppu::{Ppu, PpuMode};
+use crate::ppu::{Ppu, PpuMode, SCANLINE_CYCLES, TOTAL_LINES};
 
 pub(super) const LCDC_ADDRESS: u16 = 0xFF40;
 pub(super) const STAT_ADDRESS: u16 = 0xFF41;
@@ -33,17 +33,29 @@ impl Ppu {
         self.vram[offset]
     }
 
-    /// On DMG, the CPU observes LY already incremented during the last
-    /// M-cycle (4 dots) of HBlank, while the internal `ly` used by LYC,
-    /// OAM search and the window logic still changes at the line boundary.
+    /// Returns the LY value as observed by the CPU.
+    ///
+    /// On DMG, the CPU sees LY already incremented during the last M-cycle
+    /// (4 dots) of every line that advances to the next one: HBlank on lines
+    /// 0..=143 and VBlank on lines 144..=152. The internal `ly` field still
+    /// changes at the line boundary.
     fn read_ly(&self) -> u8 {
         if !self.is_lcd_enabled() {
             return self.ly;
         }
-        let is_hblank = matches!(self.mode, PpuMode::HBlank);
-        let is_last_m_cycle = self.mode_cycles + 4 >= self.hblank_duration;
+        if self.ly == TOTAL_LINES - 1 {
+            return 0;
+        }
 
-        if is_hblank && is_last_m_cycle {
+        let line_length = match self.mode {
+            PpuMode::HBlank => self.hblank_duration,
+            PpuMode::VBlank => SCANLINE_CYCLES,
+            _ => return self.ly,
+        };
+
+        let in_last_m_cycle = self.mode_cycles + 4 >= line_length;
+
+        if in_last_m_cycle && self.ly < TOTAL_LINES - 1 {
             self.ly + 1
         } else {
             self.ly
