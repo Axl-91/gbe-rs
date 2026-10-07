@@ -127,31 +127,11 @@ For example:
 
 ## Test Suites
 
-### Blargg
+I use several test suites to verify the emulator’s functionality. The passing tests from each suite are included in the repository and run in CI:
 
-| Test name | Status |
-|---|---|
-| CPU instructions tests (Isolated) | ✅ Passing |
-| CPU instructions tests (Integrated) | ✅ Passing |
-| Instructions Timing tests | ✅ Passing |
-
-### Mooneye
-
-| Test name | Status |
-|---|---|
-| Instructions Timing Tests | ✅ Passing |
-| Boot registers test | ✅ Passing |
-| Boot DIV test | ✅ Passing |
-| DAA instruction tests | ✅ Passing |
-| POP Timing tests | ✅ Passing |
-| PUSH Timing tests | ✅ Passing |
-| Interrupt tests | ✅ Passing |
-| Timer tests | ✅ Passing |
-| MBC1 (No Multicarts) | ✅ Passing |
-| MBC2/3 | Not tested |
-| OAM DMA tests | ✅ Passing |
-| HALT Tests | ✅ Passing |
-| PPU Tests | ⏳ In progress... |
+- [Blargg’s tests](https://github.com/Axl-91/gbe-rs/tree/main/test_suites/blargg) (14 tests)
+- [Mooneye tests](https://github.com/Axl-91/gbe-rs/tree/main/test_suites/mooneye) (~70 tests)
+- [GBMicrotests](https://github.com/Axl-91/gbe-rs/tree/main/test_suites/microtests) (~90 tests)
 
 ---------------------------------------
 <div align="center">
