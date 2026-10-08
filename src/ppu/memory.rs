@@ -199,7 +199,7 @@ impl Ppu {
             LYC_ADDRESS => {
                 self.lyc = value;
                 if self.is_lcd_enabled() {
-                    self.ly_eq_lyc = self.ly == self.lyc;
+                    self.ly_eq_lyc = self.read_ly() == self.lyc;
                 }
             }
             BGP_ADDRESS => self.bgp = value,

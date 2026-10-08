@@ -418,6 +418,13 @@ impl Ppu {
         self.ly_eq_lyc = self.ly == self.lyc;
     }
 
+    fn in_last_hblank_cycles(&self) -> bool {
+        let is_hblank = matches!(self.mode, PpuMode::HBlank);
+        let in_last_cycles = self.mode_cycles + 4 == self.hblank_duration;
+
+        is_hblank && in_last_cycles
+    }
+
     /// Advances the PPU by one T-cycle.
     ///
     /// Executes the logic associated with the current mode and advances to
@@ -437,7 +444,7 @@ impl Ppu {
         // The visible LY changes in the last M-cycle of HBlank, 4 dots before the
         // internal line boundary. The LY==LYC flag is cleared at that point and
         // recomputed in `advance_mode` with the new `ly`.
-        if matches!(self.mode, PpuMode::HBlank) && self.mode_cycles + 4 == self.hblank_duration {
+        if self.in_last_hblank_cycles() {
             self.ly_eq_lyc = false;
         }
 
