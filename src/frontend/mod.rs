@@ -19,6 +19,7 @@ const SCREEN_WIDTH: u32 = 160;
 const SCREEN_HEIGHT: u32 = 144;
 
 const FRAME_CYCLES: u32 = 70_224;
+const EMULATION_CHUNK_CYCLES: u32 = 256;
 
 const GB_LIGHTEST: [u8; 3] = [155, 188, 15];
 const GB_LIGHT: [u8; 3] = [139, 172, 15];
@@ -69,6 +70,7 @@ struct Frontend {
     emulator: Emulator,
     window: Option<Arc<Window>>,
     pixels: Option<Pixels<'static>>,
+    frame_cycles: u32,
     next_frame: Instant,
 }
 
@@ -78,6 +80,7 @@ impl Frontend {
             emulator,
             window: None,
             pixels: None,
+            frame_cycles: 0,
             next_frame: Instant::now(),
         }
     }
@@ -109,19 +112,27 @@ impl ApplicationHandler for Frontend {
         if now >= self.next_frame {
             let mut cycles = 0;
 
-            while cycles < FRAME_CYCLES {
+            while cycles < EMULATION_CHUNK_CYCLES {
                 cycles += self.emulator.step() as u32;
             }
 
-            if let Some(window) = &self.window {
-                window.request_redraw();
+            self.frame_cycles += cycles;
+
+            if self.frame_cycles >= FRAME_CYCLES {
+                self.frame_cycles -= FRAME_CYCLES;
+
+                if let Some(window) = &self.window {
+                    window.request_redraw();
+                }
+
+                // Game Boy speed should be 59.73 FPS.
+                self.next_frame += Duration::from_secs_f64(1.0 / 59.73);
             }
 
-            // Gameboy speed should be 59.73 FPS
-            self.next_frame += Duration::from_secs_f64(1.0 / 59.73);
+            event_loop.set_control_flow(ControlFlow::Poll);
+        } else {
+            event_loop.set_control_flow(ControlFlow::WaitUntil(self.next_frame));
         }
-
-        event_loop.set_control_flow(ControlFlow::WaitUntil(self.next_frame));
     }
 
     fn window_event(

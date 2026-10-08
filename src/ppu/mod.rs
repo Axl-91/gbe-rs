@@ -174,17 +174,26 @@ impl Ppu {
         self.lcd_switched_on = false;
         self.mode = PpuMode::HBlank;
         self.ly = 0;
+        self.drawing_x = 0;
         self.mode_cycles = 0;
+
+        self.window_active = false;
+        self.window_y_triggered = false;
+        self.window_line_counter = 0;
+        self.scx_discard = 0;
+
+        self.sprite_fetch_index = 0;
         self.oam_searcher.reset();
         self.sprite_fetcher.reset();
-        self.sprite_fetch_index = 0;
-        self.window_active = false;
-        self.window_line_counter = 0;
+        self.bg_fetcher.reset();
+        self.bg_fifo.clear();
+        self.sprite_fifo.reset();
         self.sprites.clear();
     }
 
     pub(super) fn turn_on(&mut self) {
         self.mode = PpuMode::OamSearch;
+        self.framebuffer.fill(0);
         self.mode_cycles = 2;
         self.ly_eq_lyc = self.ly == self.lyc;
         self.lcd_switched_on = true;
