@@ -54,6 +54,7 @@ pub struct Joypad {
     select: u8,
     dpad: u8,
     buttons: u8,
+    state: u8,
 }
 
 impl Joypad {
@@ -63,44 +64,44 @@ impl Joypad {
             select: BOTH_SELECTED,
             dpad: INACTIVE,
             buttons: INACTIVE,
+            state: INACTIVE,
         }
     }
 
     /// Reads the current value of the `P1`/`JOYP` register.
     pub fn read(&self) -> u8 {
-        let select = self.select & SELECT_MASK;
+        0xC0 | (self.select & SELECT_MASK) | self.state
+    }
 
-        let nibble = match select {
+    /// Calculates the current state of P10-P13 from the selected buttons.
+    fn calculate_state(&self) -> u8 {
+        match self.select & SELECT_MASK {
             BOTH_SELECTED => self.dpad & self.buttons,
             BUTTONS_SELECTED => self.buttons,
             DPAD_SELECTED => self.dpad,
             _ => INACTIVE,
-        };
-
-        0xC0 | select | nibble
+        }
     }
 
-    // Interruptions occurs when there is a bit changes from 1 -> 0
-    // on the bits 0..3
-    fn has_interruption(&self, previous_state: u8) -> bool {
-        let current_state = self.read();
+    /// Updates the stored P10-P13 state and returns whether a
+    /// 1 -> 0 transition occurred.
+    fn update_state(&mut self) -> bool {
+        let previous_state = self.state;
+        let current_state = self.calculate_state();
 
-        (previous_state & (!current_state & 0x0F)) != 0
+        self.state = current_state;
+
+        (previous_state & !current_state) != 0
     }
 
     /// Updates which button group(s) are selected.
     pub fn write(&mut self, value: u8) -> bool {
-        let previous_state = self.read();
-
         self.select = value & SELECT_MASK;
-
-        self.has_interruption(previous_state)
+        self.update_state()
     }
 
     /// Marks a button as pressed.
     pub fn press(&mut self, button: Button) -> bool {
-        let previous_state = self.read();
-
         let mask = !(1 << button.bit());
 
         if button.is_dpad() {
@@ -109,7 +110,7 @@ impl Joypad {
             self.buttons &= mask;
         }
 
-        self.has_interruption(previous_state)
+        self.update_state()
     }
 
     /// Marks a button as released.
@@ -121,12 +122,13 @@ impl Joypad {
         } else {
             self.buttons |= mask;
         }
+        self.update_state();
     }
 
     /// Returns whether any of the currently selected button lines
     /// (P10-P13) reads as pressed.
     pub fn is_joypad_active(&self) -> bool {
-        self.read() & 0x0F != INACTIVE
+        self.state != INACTIVE
     }
 }
 
