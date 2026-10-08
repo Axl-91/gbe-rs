@@ -5,6 +5,8 @@
 //! per-scanline mode state machine (`OamSearch` -> `Drawing` -> `HBlank`,
 //! repeating for each visible line, then `VBlank` for the remaining
 
+use std::collections::VecDeque;
+
 use crate::{
     memory::map::VRAM_START,
     ppu::{
@@ -42,6 +44,17 @@ mod sprites;
 
 #[cfg(test)]
 mod tests;
+
+/// Dots between a pixel leaving the FIFO and its palette being applied.
+const PIXEL_OUTPUT_DELAY: u8 = 4;
+
+/// A pixel waiting for its palette to be applied and its framebuffer write.
+struct PendingPixel {
+    index: usize,
+    background: u8,
+    sprite: Option<SpritePixel>,
+    remaining: u8,
+}
 
 #[derive(Default)]
 pub struct PpuInterruptions {
@@ -113,6 +126,7 @@ pub struct Ppu {
     sprite_fetch_index: usize,
 
     framebuffer: Vec<u8>,
+    pending_pixels: VecDeque<PendingPixel>,
 }
 
 impl Ppu {
@@ -167,6 +181,7 @@ impl Ppu {
             sprite_fetch_index: 0,
 
             framebuffer: vec![0; SCREEN_WIDTH as usize * VISIBLE_LINES as usize],
+            pending_pixels: VecDeque::new(),
         }
     }
 
@@ -189,6 +204,7 @@ impl Ppu {
         self.bg_fifo.clear();
         self.sprite_fifo.reset();
         self.sprites.clear();
+        self.pending_pixels.clear();
     }
 
     pub(super) fn turn_on(&mut self) {
@@ -260,6 +276,44 @@ impl Ppu {
         self.ly as usize * SCREEN_WIDTH as usize + self.drawing_x as usize
     }
 
+    fn queue_pixel(&mut self, background: u8, sprite: Option<SpritePixel>) {
+        let index = self.get_screen_position();
+
+        if self.ly == 0 {
+            self.write_pixel(index, background, sprite);
+            return;
+        }
+
+        self.pending_pixels.push_back(PendingPixel {
+            index,
+            background,
+            sprite,
+            remaining: PIXEL_OUTPUT_DELAY,
+        });
+    }
+
+    /// Applies the palettes as they are right now and writes the framebuffer.
+    fn write_pixel(&mut self, index: usize, background: u8, sprite: Option<SpritePixel>) {
+        self.framebuffer[index] = match sprite {
+            Some(sprite) => self.pixel_mixer(background, sprite),
+            None => self.apply_palette(background, self.bgp),
+        };
+    }
+
+    /// Advances the output delay by one dot and writes the pixels that are due.
+    /// It runs in every mode, since the last pixels of a line leave the
+    /// queue during the first dots of HBlank.
+    fn flush_pending_pixels(&mut self) {
+        for pixel in self.pending_pixels.iter_mut() {
+            pixel.remaining -= 1;
+        }
+
+        while matches!(self.pending_pixels.front(), Some(p) if p.remaining == 0) {
+            let pixel = self.pending_pixels.pop_front().unwrap();
+            self.write_pixel(pixel.index, pixel.background, pixel.sprite);
+        }
+    }
+
     fn consume_pixel(&mut self) -> Option<u8> {
         let mut pixel = self.bg_fifo.pop()?;
 
@@ -271,13 +325,8 @@ impl Ppu {
             self.scx_discard -= 1;
             return None;
         } else if self.drawing_x < SCREEN_WIDTH {
-            let index = self.get_screen_position();
-
-            if let Some(sprite_pixel) = self.sprite_fifo.pop() {
-                pixel = self.pixel_mixer(pixel, sprite_pixel)
-            }
-
-            self.framebuffer[index] = pixel;
+            let sprite_pixel = self.sprite_fifo.pop();
+            self.queue_pixel(pixel, sprite_pixel);
 
             self.drawing_x += 1;
         }
@@ -449,6 +498,7 @@ impl Ppu {
             return ppu_interruptions;
         }
         self.mode_cycles += 1;
+        self.flush_pending_pixels();
 
         // The visible LY changes in the last M-cycle of HBlank, 4 dots before the
         // internal line boundary. The LY==LYC flag is cleared at that point and
