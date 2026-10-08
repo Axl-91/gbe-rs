@@ -185,8 +185,7 @@ impl Ppu {
 
     pub(super) fn turn_on(&mut self) {
         self.mode = PpuMode::OamSearch;
-        // TODO: LCD ON logic still unfinished
-        self.mode_cycles = 0;
+        self.mode_cycles = 2;
         self.ly_eq_lyc = self.ly == self.lyc;
         self.lcd_switched_on = true;
     }
@@ -434,6 +433,13 @@ impl Ppu {
             return ppu_interruptions;
         }
         self.mode_cycles += 1;
+
+        // The visible LY changes in the last M-cycle of HBlank, 4 dots before the
+        // internal line boundary. The LY==LYC flag is cleared at that point and
+        // recomputed in `advance_mode` with the new `ly`.
+        if matches!(self.mode, PpuMode::HBlank) && self.mode_cycles + 4 == self.hblank_duration {
+            self.ly_eq_lyc = false;
+        }
 
         self.execute_mode();
 

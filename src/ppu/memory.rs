@@ -1,5 +1,5 @@
 use crate::memory::map::{OAM_END, OAM_START, VRAM_END, VRAM_START};
-use crate::ppu::{Ppu, PpuMode, SCANLINE_CYCLES, TOTAL_LINES};
+use crate::ppu::{Ppu, PpuMode, SCANLINE_CYCLES, TOTAL_LINES, VISIBLE_LINES};
 
 pub(super) const LCDC_ADDRESS: u16 = 0xFF40;
 pub(super) const STAT_ADDRESS: u16 = 0xFF41;
@@ -14,23 +14,75 @@ pub(super) const OBP1_ADDRESS: u16 = 0xFF49;
 pub(super) const WY_ADDRESS: u16 = 0xFF4A;
 pub(super) const WX_ADDRESS: u16 = 0xFF4B;
 
+/// `mode_cycles` of OAM search from which the CPU can no longer read VRAM.
+/// VRAM locks a few dots before STAT reports mode 3.
+const VRAM_BLOCK_START: u16 = 76;
+
+/// `mode_cycles` of OAM search from which CPU writes to OAM pass again.
+const OAM_WRITE_UNBLOCK_START: u16 = 76;
+
 impl Ppu {
-    fn is_oam_accessible(&self) -> bool {
-        !self.is_lcd_enabled() || matches!(self.mode, PpuMode::HBlank | PpuMode::VBlank)
+    /// OAM is locked during OAM search and drawing, and also in the last M-cycle
+    /// of HBlank before a visible line (the visible LY has already changed).
+    /// On the first line after the LCD is switched on it stays accessible until
+    /// drawing starts.
+    fn can_read_oam(&self) -> bool {
+        if !self.is_lcd_enabled() {
+            return true;
+        }
+        match self.visible_mode() {
+            PpuMode::VBlank => true,
+            PpuMode::HBlank => !self.is_last_mcycle_before_visible_line(),
+            _ => false,
+        }
     }
 
-    fn is_vram_accessible(&self) -> bool {
-        !self.is_lcd_enabled()
-            || matches!(
-                self.mode,
-                PpuMode::HBlank | PpuMode::VBlank | PpuMode::OamSearch
-            )
+    /// True in the last 4 dots of an HBlank followed by a visible line.
+    /// Line 143 is excluded because VBlank follows and OAM stays accessible.
+    fn is_last_mcycle_before_visible_line(&self) -> bool {
+        matches!(self.mode, PpuMode::HBlank)
+            && self.ly + 1 < VISIBLE_LINES
+            && self.mode_cycles + 4 >= self.hblank_duration
+    }
+
+    /// VRAM is locked during drawing and from `VRAM_BLOCK_START` in OAM search.
+    /// On the first line after the LCD is switched on it stays accessible until
+    /// drawing starts.
+    fn can_read_vram(&self) -> bool {
+        if !self.is_lcd_enabled() {
+            return true;
+        }
+        match self.visible_mode() {
+            PpuMode::HBlank | PpuMode::VBlank => true,
+            PpuMode::OamSearch => self.mode_cycles < VRAM_BLOCK_START,
+            PpuMode::Drawing => false,
+        }
     }
 
     // Read VRAM without restrictions, used for Pixel Fetcher
     pub(super) fn read_vram(&self, address: u16) -> u8 {
         let offset = (address - VRAM_START) as usize;
         self.vram[offset]
+    }
+
+    /// OAM writes are blocked during OAM search and drawing, except in the last
+    /// dots of OAM search, where the write lock is released before drawing starts.
+    /// Unlike reads, they are not blocked in the last M-cycle of HBlank.
+    fn can_write_oam(&self) -> bool {
+        if !self.is_lcd_enabled() {
+            return true;
+        }
+        match self.visible_mode() {
+            PpuMode::HBlank | PpuMode::VBlank => true,
+            PpuMode::OamSearch => self.mode_cycles >= OAM_WRITE_UNBLOCK_START,
+            PpuMode::Drawing => false,
+        }
+    }
+
+    /// VRAM writes are only blocked during drawing, unlike reads, which are also
+    /// blocked in the last dots of OAM search.
+    fn can_write_vram(&self) -> bool {
+        !self.is_lcd_enabled() || !matches!(self.visible_mode(), PpuMode::Drawing)
     }
 
     /// Returns the LY value as observed by the CPU.
@@ -65,7 +117,7 @@ impl Ppu {
     pub fn read(&self, address: u16) -> u8 {
         match address {
             VRAM_START..=VRAM_END => {
-                if self.is_vram_accessible() {
+                if self.can_read_vram() {
                     let offset = (address - VRAM_START) as usize;
                     self.vram[offset]
                 } else {
@@ -74,7 +126,7 @@ impl Ppu {
             }
 
             OAM_START..=OAM_END => {
-                if self.is_oam_accessible() {
+                if self.can_read_oam() {
                     let offset = (address - OAM_START) as usize;
                     self.oam[offset]
                 } else {
@@ -110,14 +162,14 @@ impl Ppu {
     pub fn write(&mut self, address: u16, value: u8) {
         match address {
             VRAM_START..=VRAM_END => {
-                if self.is_vram_accessible() {
+                if self.can_write_vram() {
                     let offset = (address - VRAM_START) as usize;
                     self.vram[offset] = value
                 }
             }
 
             OAM_START..=OAM_END => {
-                if self.is_oam_accessible() {
+                if self.can_write_oam() {
                     let offset = (address - OAM_START) as usize;
                     self.oam[offset] = value
                 }
