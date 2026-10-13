@@ -5,6 +5,7 @@
 
 use super::map::*;
 use crate::{
+    apu::Apu,
     cartridge::Cartridge,
     dma::Dma,
     joypad::{Button, Joypad},
@@ -37,6 +38,7 @@ pub struct MemoryBus {
     serial: Serial,
     joypad: Joypad,
     dma: Dma,
+    apu: Apu,
 }
 
 impl MemoryBus {
@@ -53,6 +55,7 @@ impl MemoryBus {
             serial: Serial::new(),
             joypad: Joypad::new(),
             dma: Dma::new(),
+            apu: Apu::new(),
         }
     }
 
@@ -110,6 +113,7 @@ impl MemoryBus {
                 self.interrupt_flags |= 0x04;
             }
             self.ppu_tick();
+            self.apu.tick();
             self.dma_tick();
         }
     }
