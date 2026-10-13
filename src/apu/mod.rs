@@ -4,19 +4,24 @@
 //! Coordinates channel updates through the frame sequencer and provides
 //! the interface for audio register access.
 
+mod channel1;
 mod frame_sequencer;
 
+use channel1::Channel1;
 use frame_sequencer::FrameSequencer;
 
 const NR52_ADDRESS: u16 = 0xFF26;
 const NR52_UNUSED_BITS: u8 = 0b0111_0000;
-const NR52_CHANNEL_STATUS_MASK: u8 = 0b0000_1111;
 const APU_ENABLE_MASK: u8 = 0b1000_0000;
+
+const CHANNEL1_REGISTERS_START: u16 = 0xFF10;
+const CHANNEL1_REGISTERS_END: u16 = 0xFF14;
 
 /// Game Boy Audio Processing Unit.
 pub struct Apu {
     enabled: bool,
     frame_sequencer: FrameSequencer,
+    channel1: Channel1,
 }
 
 impl Apu {
@@ -24,15 +29,17 @@ impl Apu {
         Self {
             enabled: true,
             frame_sequencer: FrameSequencer::new(),
+            channel1: Channel1::new(),
         }
     }
 
     pub fn read(&self, address: u16) -> u8 {
         match address {
+            CHANNEL1_REGISTERS_START..=CHANNEL1_REGISTERS_END => self.channel1.read(address),
             NR52_ADDRESS => {
                 let enabled = if self.enabled { APU_ENABLE_MASK } else { 0 };
 
-                enabled | NR52_UNUSED_BITS | (self.channel_status() & NR52_CHANNEL_STATUS_MASK)
+                enabled | NR52_UNUSED_BITS | self.channel_status()
             }
             _ => 0xFF,
         }
@@ -40,19 +47,25 @@ impl Apu {
 
     pub fn write(&mut self, address: u16, value: u8) {
         match address {
+            CHANNEL1_REGISTERS_START..=CHANNEL1_REGISTERS_END if self.enabled => {
+                self.channel1.write(address, value);
+            }
             NR52_ADDRESS => {
-                self.enabled = value & APU_ENABLE_MASK != 0;
+                let should_enable = value & APU_ENABLE_MASK != 0;
 
-                if !self.enabled {
+                if self.enabled && !should_enable {
+                    self.channel1 = Channel1::new();
                     self.frame_sequencer = FrameSequencer::new();
                 }
+
+                self.enabled = should_enable;
             }
             _ => {}
         }
     }
 
     fn channel_status(&self) -> u8 {
-        0
+        u8::from(self.channel1.is_active())
     }
 
     /// Advances the APU by one T-cycle.
