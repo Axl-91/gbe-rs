@@ -20,7 +20,7 @@ impl Serial {
     pub fn new() -> Self {
         Self {
             data: 0,
-            control: 0,
+            control: 0x7E,
             output: None,
         }
     }

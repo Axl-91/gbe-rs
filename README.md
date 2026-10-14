@@ -81,13 +81,13 @@ Hardware components are responsible for their own internal state and timing, whi
 To run the emulator with a Game Boy ROM:
 
 ```bash
-cargo run -- <PATH_TO_ROM>
+just run <PATH_TO_ROM>
 ```
 
 For example:
 
 ```bash
-cargo run -- ./roms/tetris.gb
+just run ./roms/tetris.gb
 ```
 
 ### Run the tests
@@ -95,7 +95,7 @@ cargo run -- ./roms/tetris.gb
 Run the project's own tests with:
 
 ```bash
-cargo test
+just test
 ```
 
 ### Run test suites
