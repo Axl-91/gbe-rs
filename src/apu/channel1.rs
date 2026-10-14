@@ -51,11 +51,11 @@ impl Channel1 {
             active: false,
             initial_output_suppressed: false,
 
-            nr10: 0,
-            nr11: 0,
-            nr12: 0,
-            nr13: 0,
-            nr14: 0,
+            nr10: 0x00,
+            nr11: 0b1000_0000,
+            nr12: 0xF3,
+            nr13: 0x00,
+            nr14: 0x00,
 
             frequency_timer: 0,
             duty_position: 0,
@@ -188,11 +188,7 @@ impl Channel1 {
             return;
         }
 
-        let period = self.nr12 & NR12_ENVELOPE_PERIOD_MASK;
-
-        if period == 0 {
-            return;
-        }
+        let period = self.envelope_period();
 
         self.envelope_timer -= 1;
 
@@ -388,16 +384,31 @@ mod tests {
     }
 
     #[test]
-    fn envelope_does_not_change_when_period_is_zero() {
+    fn envelope_period_zero_is_treated_as_eight() {
         let mut channel = Channel1::new();
 
         channel.write(NR12_ADDRESS, 0b0101_1000);
         channel.write(NR14_ADDRESS, NR14_TRIGGER_MASK);
 
-        for _ in 0..20 {
+        assert_eq!(channel.envelope_period(), 8);
+    }
+
+    #[test]
+    fn envelope_increases_volume_after_eight_clocks_when_period_is_zero() {
+        let mut channel = Channel1::new();
+
+        channel.write(NR12_ADDRESS, 0b0101_1000);
+        channel.write(NR14_ADDRESS, NR14_TRIGGER_MASK);
+
+        for _ in 0..7 {
             channel.clock_envelope();
         }
 
         assert_eq!(channel.envelope_volume, 5);
+
+        channel.clock_envelope();
+
+        assert_eq!(channel.envelope_volume, 6);
+        assert_eq!(channel.envelope_timer, 8);
     }
 }
