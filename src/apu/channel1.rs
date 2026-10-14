@@ -28,6 +28,11 @@ const NR12_ENVELOPE_PERIOD_MASK: u8 = 0b0000_0111;
 const NR12_INITIAL_VOLUME_SHIFT: u32 = 4;
 const ENVELOPE_MAX_VOLUME: u8 = 0x0F;
 
+const NR10_SWEEP_PERIOD_MASK: u8 = 0b0111_0000;
+const NR10_SWEEP_PERIOD_SHIFT: u32 = 4;
+const NR10_SWEEP_DIRECTION_MASK: u8 = 0b0000_1000;
+const NR10_SWEEP_SHIFT_MASK: u8 = 0b0000_0111;
+
 pub(super) struct Channel1 {
     active: bool,
     initial_output_suppressed: bool,
@@ -83,7 +88,7 @@ impl Channel1 {
             NR12_ADDRESS => {
                 self.nr12 = value;
 
-                if !self.dac_enabled() {
+                if !self.is_dac_enabled() {
                     self.active = false;
                 }
             }
@@ -99,11 +104,23 @@ impl Channel1 {
         }
     }
 
-    fn dac_enabled(&self) -> bool {
+    fn get_sweep_period(&self) -> u8 {
+        (self.nr10 & NR10_SWEEP_PERIOD_MASK) >> NR10_SWEEP_PERIOD_SHIFT
+    }
+
+    fn get_sweep_direction_decrease(&self) -> bool {
+        self.nr10 & NR10_SWEEP_DIRECTION_MASK != 0
+    }
+
+    fn get_sweep_shift(&self) -> u8 {
+        self.nr10 & NR10_SWEEP_SHIFT_MASK
+    }
+
+    fn is_dac_enabled(&self) -> bool {
         self.nr12 & NR12_DAC_MASK != 0
     }
 
-    fn envelope_period(&self) -> u8 {
+    fn get_envelope_period(&self) -> u8 {
         let period = self.nr12 & NR12_ENVELOPE_PERIOD_MASK;
 
         if period == 0 { 8 } else { period }
@@ -113,11 +130,11 @@ impl Channel1 {
     ///
     /// The channel becomes active only if its DAC is enabled.
     fn trigger(&mut self) {
-        self.active = self.dac_enabled();
-        self.frequency_timer = self.frequency_period();
+        self.active = self.is_dac_enabled();
+        self.frequency_timer = self.get_frequency_period();
 
         self.envelope_volume = self.nr12 >> NR12_INITIAL_VOLUME_SHIFT;
-        self.envelope_timer = self.envelope_period();
+        self.envelope_timer = self.get_envelope_period();
         self.initial_output_suppressed = true;
     }
 
@@ -136,13 +153,13 @@ impl Channel1 {
         self.frequency_timer -= 1;
 
         if self.frequency_timer == 0 {
-            self.frequency_timer = self.frequency_period();
+            self.frequency_timer = self.get_frequency_period();
             self.duty_position = (self.duty_position + 1) % DUTY_STEPS;
             self.initial_output_suppressed = false;
         }
     }
 
-    fn frequency(&self) -> u16 {
+    fn get_frequency(&self) -> u16 {
         let high = u16::from(self.nr14 & NR14_FREQUENCY_MASK);
         let low = u16::from(self.nr13);
 
@@ -150,12 +167,12 @@ impl Channel1 {
     }
 
     /// Calculates the pulse timer period in T-cycles from the 11-bit frequency.
-    fn frequency_period(&self) -> u16 {
-        (FREQUENCY_MAX + 1 - self.frequency()) * FREQUENCY_TIMER_MULTIPLIER
+    fn get_frequency_period(&self) -> u16 {
+        (FREQUENCY_MAX + 1 - self.get_frequency()) * FREQUENCY_TIMER_MULTIPLIER
     }
 
     /// Returns the high/low state of the selected duty pattern at the current phase.
-    fn duty_output(&self) -> bool {
+    fn get_duty_output(&self) -> bool {
         let duty = usize::from((self.nr11 & NR11_DUTY_MASK) >> NR11_DUTY_SHIFT);
         let pattern = DUTY_PATTERNS[duty];
         let bit = (pattern >> self.duty_position) & 1;
@@ -167,12 +184,12 @@ impl Channel1 {
     ///
     /// The output is zero when the channel or DAC is disabled, or while the
     /// initial output is suppressed.
-    pub fn output(&self) -> u8 {
-        if !self.active || !self.dac_enabled() || self.initial_output_suppressed {
+    pub fn get_output(&self) -> u8 {
+        if !self.active || !self.is_dac_enabled() || self.initial_output_suppressed {
             return 0;
         }
 
-        if self.duty_output() {
+        if self.get_duty_output() {
             self.envelope_volume
         } else {
             0
@@ -188,7 +205,7 @@ impl Channel1 {
             return;
         }
 
-        let period = self.envelope_period();
+        let period = self.get_envelope_period();
 
         self.envelope_timer -= 1;
 
@@ -288,14 +305,14 @@ mod tests {
 
         let expected = (u16::from(0x05_u8) << u8::BITS) | u16::from(0xA5_u8);
 
-        assert_eq!(channel.frequency(), expected);
+        assert_eq!(channel.get_frequency(), expected);
     }
 
     #[test]
     fn inactive_channel_outputs_zero() {
         let channel = Channel1::new();
 
-        assert_eq!(channel.output(), 0);
+        assert_eq!(channel.get_output(), 0);
     }
 
     #[test]
@@ -306,7 +323,7 @@ mod tests {
         channel.write(NR11_ADDRESS, 0b1000_0000);
         channel.write(NR14_ADDRESS, NR14_TRIGGER_MASK | NR14_FREQUENCY_MASK);
 
-        assert_eq!(channel.output(), 0);
+        assert_eq!(channel.get_output(), 0);
     }
 
     #[test]
@@ -325,7 +342,7 @@ mod tests {
 
         let expected = nr12 >> 4;
 
-        assert_eq!(channel.output(), expected);
+        assert_eq!(channel.get_output(), expected);
     }
 
     #[test]
@@ -390,7 +407,7 @@ mod tests {
         channel.write(NR12_ADDRESS, 0b0101_1000);
         channel.write(NR14_ADDRESS, NR14_TRIGGER_MASK);
 
-        assert_eq!(channel.envelope_period(), 8);
+        assert_eq!(channel.get_envelope_period(), 8);
     }
 
     #[test]
@@ -410,5 +427,43 @@ mod tests {
 
         assert_eq!(channel.envelope_volume, 6);
         assert_eq!(channel.envelope_timer, 8);
+    }
+
+    #[test]
+    fn sweep_period_uses_bits_six_to_four() {
+        let mut channel = Channel1::new();
+
+        let nr10 = 0b0101_0011;
+        channel.write(NR10_ADDRESS, nr10);
+
+        assert_eq!(channel.get_sweep_period(), 5);
+    }
+
+    #[test]
+    fn sweep_direction_is_decrease_when_configured() {
+        let mut channel = Channel1::new();
+
+        channel.write(NR10_ADDRESS, 0b0000_1000);
+
+        assert!(channel.get_sweep_direction_decrease());
+    }
+
+    #[test]
+    fn sweep_direction_is_increase_when_configured() {
+        let mut channel = Channel1::new();
+
+        channel.write(NR10_ADDRESS, 0);
+
+        assert!(!channel.get_sweep_direction_decrease());
+    }
+
+    #[test]
+    fn sweep_shift_uses_low_three_bits() {
+        let mut channel = Channel1::new();
+
+        let nr10 = 0b0000_0101;
+        channel.write(NR10_ADDRESS, nr10);
+
+        assert_eq!(channel.get_sweep_shift(), 5);
     }
 }
