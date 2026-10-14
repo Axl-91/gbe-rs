@@ -18,6 +18,17 @@ use crate::joypad::Button;
 const SCREEN_WIDTH: u32 = 160;
 const SCREEN_HEIGHT: u32 = 144;
 
+const WINDOW_SCALE: u32 = 6;
+const WINDOW_SCALE_BASE: u32 = 5;
+
+const WINDOW_WIDTH: u32 = 627 * WINDOW_SCALE / WINDOW_SCALE_BASE;
+const WINDOW_HEIGHT: u32 = 547 * WINDOW_SCALE / WINDOW_SCALE_BASE;
+
+const LCD_X: u32 = 146 * WINDOW_SCALE / WINDOW_SCALE_BASE;
+const LCD_Y: u32 = 132 * WINDOW_SCALE / WINDOW_SCALE_BASE;
+const LCD_WIDTH: u32 = 339 * WINDOW_SCALE / WINDOW_SCALE_BASE;
+const LCD_HEIGHT: u32 = 311 * WINDOW_SCALE / WINDOW_SCALE_BASE;
+
 const FRAME_CYCLES: u32 = 70_224;
 const EMULATION_CHUNK_CYCLES: u32 = 256;
 
@@ -37,18 +48,37 @@ fn gameboy_color(pixel: u8) -> [u8; 3] {
     }
 }
 
+fn draw_skin(skin: &image::RgbaImage, pixels: &mut Pixels<'static>) {
+    let resized_skin = image::imageops::resize(
+        skin,
+        WINDOW_WIDTH,
+        WINDOW_HEIGHT,
+        image::imageops::FilterType::Lanczos3,
+    );
+
+    pixels.frame_mut().copy_from_slice(resized_skin.as_raw());
+}
+
 fn update_framebuffer(emulator: &Emulator, pixels: &mut Pixels<'static>) {
     let framebuffer = emulator.get_framebuffer();
     let frame = pixels.frame_mut();
 
-    for (index, pixel) in framebuffer.iter().enumerate() {
-        let [red, green, blue] = gameboy_color(*pixel);
-        let rgba_index = index * 4;
+    for y in 0..LCD_HEIGHT {
+        for x in 0..LCD_WIDTH {
+            let source_x = x * SCREEN_WIDTH / LCD_WIDTH;
+            let source_y = y * SCREEN_HEIGHT / LCD_HEIGHT;
+            let source_index = (source_y * SCREEN_WIDTH + source_x) as usize;
 
-        frame[rgba_index] = red;
-        frame[rgba_index + 1] = green;
-        frame[rgba_index + 2] = blue;
-        frame[rgba_index + 3] = ALPHA_SOLID;
+            let [red, green, blue] = gameboy_color(framebuffer[source_index]);
+            let destination_x = LCD_X + x;
+            let destination_y = LCD_Y + y;
+            let destination_index = ((destination_y * WINDOW_WIDTH + destination_x) * 4) as usize;
+
+            frame[destination_index] = red;
+            frame[destination_index + 1] = green;
+            frame[destination_index + 2] = blue;
+            frame[destination_index + 3] = ALPHA_SOLID;
+        }
     }
 }
 
@@ -93,14 +123,18 @@ impl ApplicationHandler for Frontend {
                 .create_window(
                     Window::default_attributes()
                         .with_title("GBE-RS")
-                        .with_name("gbe-rs", "gbe-rs"),
+                        .with_name("gbe-rs", "gbe-rs")
+                        .with_inner_size(winit::dpi::LogicalSize::new(WINDOW_WIDTH, WINDOW_HEIGHT)),
                 )
                 .unwrap(),
         );
 
         let size = window.inner_size();
         let surface_texture = SurfaceTexture::new(size.width, size.height, window.clone());
-        let pixels = Pixels::new(SCREEN_WIDTH, SCREEN_HEIGHT, surface_texture).unwrap();
+        let mut pixels = Pixels::new(WINDOW_WIDTH, WINDOW_HEIGHT, surface_texture).unwrap();
+
+        let skin = image::open("assets/gameboy_layout.jpg").unwrap().to_rgba8();
+        draw_skin(&skin, &mut pixels);
 
         self.window = Some(window);
         self.pixels = Some(pixels);
