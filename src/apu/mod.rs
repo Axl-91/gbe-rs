@@ -17,6 +17,8 @@ const APU_ENABLE_MASK: u8 = 0b1000_0000;
 const CHANNEL1_REGISTERS_START: u16 = 0xFF10;
 const CHANNEL1_REGISTERS_END: u16 = 0xFF14;
 
+const SWEEP_STEP_1: u8 = 2;
+const SWEEP_STEP_2: u8 = 6;
 const ENVELOPE_STEP: u8 = 7;
 
 /// Game Boy Audio Processing Unit.
@@ -78,8 +80,16 @@ impl Apu {
 
         self.channel1.tick();
 
-        if self.frame_sequencer.tick() && self.frame_sequencer.get_step() == ENVELOPE_STEP {
-            self.channel1.clock_envelope();
+        if self.frame_sequencer.tick() {
+            let step = self.frame_sequencer.get_step();
+
+            if step == SWEEP_STEP_1 || step == SWEEP_STEP_2 {
+                self.channel1.clock_sweep();
+            }
+
+            if step == ENVELOPE_STEP {
+                self.channel1.clock_envelope();
+            }
         }
     }
 }

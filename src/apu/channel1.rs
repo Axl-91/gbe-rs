@@ -33,6 +33,8 @@ const NR10_SWEEP_PERIOD_SHIFT: u32 = 4;
 const NR10_SWEEP_DIRECTION_MASK: u8 = 0b0000_1000;
 const NR10_SWEEP_SHIFT_MASK: u8 = 0b0000_0111;
 
+const SWEEP_PERIOD_ZERO: u8 = 8;
+
 pub(super) struct Channel1 {
     active: bool,
     initial_output_suppressed: bool,
@@ -48,6 +50,10 @@ pub(super) struct Channel1 {
 
     envelope_volume: u8,
     envelope_timer: u8,
+
+    sweep_timer: u8,
+    sweep_shadow_frequency: u16,
+    sweep_enabled: bool,
 }
 
 impl Channel1 {
@@ -67,6 +73,10 @@ impl Channel1 {
 
             envelope_volume: 0,
             envelope_timer: 0,
+
+            sweep_timer: 0,
+            sweep_shadow_frequency: 0,
+            sweep_enabled: false,
         }
     }
 
@@ -116,6 +126,14 @@ impl Channel1 {
         self.nr10 & NR10_SWEEP_SHIFT_MASK
     }
 
+    /// Writes the 11-bit frequency to NR13 and NR14.
+    fn set_frequency(&mut self, frequency: u16) {
+        self.nr13 = frequency as u8;
+
+        self.nr14 = (self.nr14 & !NR14_FREQUENCY_MASK)
+            | ((frequency >> u8::BITS) as u8 & NR14_FREQUENCY_MASK);
+    }
+
     fn is_dac_enabled(&self) -> bool {
         self.nr12 & NR12_DAC_MASK != 0
     }
@@ -126,37 +144,8 @@ impl Channel1 {
         if period == 0 { 8 } else { period }
     }
 
-    /// Triggers the channel and initializes its frequency timer and envelope.
-    ///
-    /// The channel becomes active only if its DAC is enabled.
-    fn trigger(&mut self) {
-        self.active = self.is_dac_enabled();
-        self.frequency_timer = self.get_frequency_period();
-
-        self.envelope_volume = self.nr12 >> NR12_INITIAL_VOLUME_SHIFT;
-        self.envelope_timer = self.get_envelope_period();
-        self.initial_output_suppressed = true;
-    }
-
     pub fn is_active(&self) -> bool {
         self.active
-    }
-
-    /// Advances the channel's frequency timer by one T-cycle.
-    ///
-    /// When the timer expires, reloads it and advances the duty-cycle position.
-    pub fn tick(&mut self) {
-        if !self.active {
-            return;
-        }
-
-        self.frequency_timer -= 1;
-
-        if self.frequency_timer == 0 {
-            self.frequency_timer = self.get_frequency_period();
-            self.duty_position = (self.duty_position + 1) % DUTY_STEPS;
-            self.initial_output_suppressed = false;
-        }
     }
 
     fn get_frequency(&self) -> u16 {
@@ -169,6 +158,83 @@ impl Channel1 {
     /// Calculates the pulse timer period in T-cycles from the 11-bit frequency.
     fn get_frequency_period(&self) -> u16 {
         (FREQUENCY_MAX + 1 - self.get_frequency()) * FREQUENCY_TIMER_MULTIPLIER
+    }
+
+    /// Calculates the next frequency according to the sweep settings.
+    ///
+    /// Returns `None` when the shift is zero or the result exceeds the
+    /// maximum frequency.
+    fn calculate_sweep_frequency(&self) -> Option<u16> {
+        let shift = self.get_sweep_shift();
+
+        if shift == 0 {
+            return None;
+        }
+
+        let frequency = self.sweep_shadow_frequency;
+        let delta = frequency >> shift;
+
+        let new_frequency = if self.get_sweep_direction_decrease() {
+            frequency - delta
+        } else {
+            frequency + delta
+        };
+
+        if new_frequency > FREQUENCY_MAX {
+            return None;
+        }
+
+        Some(new_frequency)
+    }
+
+    /// Advances the sweep and applies a new frequency when its timer expires.
+    pub(super) fn clock_sweep(&mut self) {
+        if !self.tick_sweep_timer() {
+            return;
+        }
+
+        if self.get_sweep_shift() == 0 {
+            return;
+        }
+
+        let Some(frequency) = self.calculate_sweep_frequency() else {
+            self.active = false;
+            return;
+        };
+
+        self.sweep_shadow_frequency = frequency;
+        self.set_frequency(frequency);
+
+        if self.calculate_sweep_frequency().is_none() {
+            self.active = false;
+        }
+    }
+
+    /// Triggers the channel and initializes its frequency timer and envelope.
+    ///
+    /// The channel becomes active only if its DAC is enabled.
+    fn trigger(&mut self) {
+        self.active = self.is_dac_enabled();
+        self.frequency_timer = self.get_frequency_period();
+
+        self.sweep_shadow_frequency = self.get_frequency();
+
+        let sweep_period = self.get_sweep_period();
+        self.sweep_timer = if sweep_period == 0 {
+            SWEEP_PERIOD_ZERO
+        } else {
+            sweep_period
+        };
+
+        self.sweep_enabled = sweep_period != 0 || self.get_sweep_shift() != 0;
+
+        if self.get_sweep_shift() != 0 && self.calculate_sweep_frequency().is_none() {
+            self.active = false;
+        }
+
+        self.envelope_volume = self.nr12 >> NR12_INITIAL_VOLUME_SHIFT;
+        self.envelope_timer = self.get_envelope_period();
+        self.initial_output_suppressed = true;
     }
 
     /// Returns the high/low state of the selected duty pattern at the current phase.
@@ -221,6 +287,48 @@ impl Channel1 {
             self.envelope_volume += 1;
         } else if !increasing && self.envelope_volume > 0 {
             self.envelope_volume -= 1;
+        }
+    }
+
+    /// Advances the sweep timer by one frame sequencer clock.
+    ///
+    /// Returns `true` when the timer expires and must perform a sweep calculation.
+    fn tick_sweep_timer(&mut self) -> bool {
+        if !self.sweep_enabled {
+            return false;
+        }
+
+        self.sweep_timer -= 1;
+
+        if self.sweep_timer > 0 {
+            return false;
+        }
+
+        let period = self.get_sweep_period();
+
+        self.sweep_timer = if period == 0 {
+            SWEEP_PERIOD_ZERO
+        } else {
+            period
+        };
+
+        true
+    }
+
+    /// Advances the channel's frequency timer by one T-cycle.
+    ///
+    /// When the timer expires, reloads it and advances the duty-cycle position.
+    pub fn tick(&mut self) {
+        if !self.active {
+            return;
+        }
+
+        self.frequency_timer -= 1;
+
+        if self.frequency_timer == 0 {
+            self.frequency_timer = self.get_frequency_period();
+            self.duty_position = (self.duty_position + 1) % DUTY_STEPS;
+            self.initial_output_suppressed = false;
         }
     }
 }
@@ -465,5 +573,252 @@ mod tests {
         channel.write(NR10_ADDRESS, nr10);
 
         assert_eq!(channel.get_sweep_shift(), 5);
+    }
+
+    #[test]
+    fn sweep_calculates_increased_frequency() {
+        let mut channel = Channel1::new();
+        let frequency = 1024_u16;
+
+        let nr14_value = ((frequency >> u8::BITS) as u8) | NR14_TRIGGER_MASK;
+
+        channel.write(NR13_ADDRESS, frequency as u8);
+        channel.write(NR10_ADDRESS, 0b0001_0001);
+        channel.write(NR12_ADDRESS, NR12_DAC_MASK);
+        channel.write(NR14_ADDRESS, nr14_value);
+
+        assert_eq!(
+            channel.calculate_sweep_frequency(),
+            Some(frequency + (frequency >> 1)),
+        );
+    }
+
+    #[test]
+    fn sweep_calculates_decreased_frequency() {
+        let mut channel = Channel1::new();
+        let frequency = 1024_u16;
+
+        let nr10_value = 0b0000_1010;
+        let nr12_value = NR12_DAC_MASK;
+        let nr13_value = frequency as u8;
+        let nr14_value = ((frequency >> u8::BITS) as u8) | NR14_TRIGGER_MASK;
+
+        channel.write(NR10_ADDRESS, nr10_value);
+        channel.write(NR12_ADDRESS, nr12_value);
+        channel.write(NR13_ADDRESS, nr13_value);
+        channel.write(NR14_ADDRESS, nr14_value);
+
+        assert_eq!(
+            channel.calculate_sweep_frequency(),
+            Some(frequency - (frequency >> 2)),
+        );
+    }
+
+    #[test]
+    fn sweep_returns_none_when_frequency_overflows() {
+        let mut channel = Channel1::new();
+        let frequency = FREQUENCY_MAX;
+
+        let nr10_value = 0b0000_0001;
+        let nr12_value = NR12_DAC_MASK;
+        let nr13_value = frequency as u8;
+        let nr14_value = ((frequency >> u8::BITS) as u8) | NR14_TRIGGER_MASK;
+
+        channel.write(NR10_ADDRESS, nr10_value);
+        channel.write(NR12_ADDRESS, nr12_value);
+        channel.write(NR13_ADDRESS, nr13_value);
+        channel.write(NR14_ADDRESS, nr14_value);
+
+        assert_eq!(channel.calculate_sweep_frequency(), None);
+    }
+
+    #[test]
+    fn sweep_returns_none_when_shift_is_zero() {
+        let mut channel = Channel1::new();
+
+        channel.write(NR10_ADDRESS, 0b0001_0000);
+
+        assert_eq!(channel.calculate_sweep_frequency(), None);
+    }
+
+    #[test]
+    fn trigger_initializes_sweep_shadow_frequency() {
+        let mut channel = Channel1::new();
+        let frequency = 1024_u16;
+        let nr14_value = ((frequency >> u8::BITS) as u8) | NR14_TRIGGER_MASK;
+
+        channel.write(NR13_ADDRESS, frequency as u8);
+        channel.write(NR10_ADDRESS, 0b0001_0001);
+        channel.write(NR12_ADDRESS, NR12_DAC_MASK);
+        channel.write(NR14_ADDRESS, nr14_value);
+
+        assert_eq!(channel.sweep_shadow_frequency, frequency);
+    }
+
+    #[test]
+    fn trigger_initializes_sweep_timer_from_period() {
+        let mut channel = Channel1::new();
+
+        channel.write(NR10_ADDRESS, 0b0010_0001);
+        channel.write(NR12_ADDRESS, NR12_DAC_MASK);
+        channel.write(NR14_ADDRESS, NR14_TRIGGER_MASK);
+
+        assert_eq!(channel.sweep_timer, 2);
+        assert!(channel.sweep_enabled);
+    }
+
+    #[test]
+    fn trigger_uses_eight_when_sweep_period_is_zero() {
+        let mut channel = Channel1::new();
+
+        channel.write(NR10_ADDRESS, 0b0000_0001);
+        channel.write(NR12_ADDRESS, NR12_DAC_MASK);
+        channel.write(NR14_ADDRESS, NR14_TRIGGER_MASK);
+
+        assert_eq!(channel.sweep_timer, 8);
+        assert!(channel.sweep_enabled);
+    }
+
+    #[test]
+    fn sweep_is_disabled_when_period_and_shift_are_zero() {
+        let mut channel = Channel1::new();
+
+        channel.write(NR10_ADDRESS, 0);
+        channel.write(NR12_ADDRESS, NR12_DAC_MASK);
+        channel.write(NR14_ADDRESS, NR14_TRIGGER_MASK);
+
+        assert!(!channel.sweep_enabled);
+    }
+
+    #[test]
+    fn sweep_timer_does_not_expire_before_configured_period() {
+        let mut channel = Channel1::new();
+
+        channel.write(NR10_ADDRESS, 0b0010_0001);
+        channel.write(NR12_ADDRESS, NR12_DAC_MASK);
+        channel.write(NR14_ADDRESS, NR14_TRIGGER_MASK);
+
+        assert!(!channel.tick_sweep_timer());
+        assert_eq!(channel.sweep_timer, 1);
+    }
+
+    #[test]
+    fn sweep_timer_expires_after_configured_period() {
+        let mut channel = Channel1::new();
+
+        channel.write(NR10_ADDRESS, 0b0010_0001);
+        channel.write(NR12_ADDRESS, NR12_DAC_MASK);
+        channel.write(NR14_ADDRESS, NR14_TRIGGER_MASK);
+
+        assert!(!channel.tick_sweep_timer());
+        assert!(channel.tick_sweep_timer());
+        assert_eq!(channel.sweep_timer, 2);
+    }
+
+    #[test]
+    fn sweep_timer_uses_eight_when_period_is_zero() {
+        let mut channel = Channel1::new();
+
+        channel.write(NR10_ADDRESS, 0b0000_0001);
+        channel.write(NR12_ADDRESS, NR12_DAC_MASK);
+        channel.write(NR14_ADDRESS, NR14_TRIGGER_MASK);
+
+        for _ in 0..7 {
+            assert!(!channel.tick_sweep_timer());
+        }
+
+        assert!(channel.tick_sweep_timer());
+        assert_eq!(channel.sweep_timer, SWEEP_PERIOD_ZERO);
+    }
+
+    #[test]
+    fn disabled_sweep_timer_does_not_advance() {
+        let mut channel = Channel1::new();
+
+        assert!(!channel.tick_sweep_timer());
+        assert_eq!(channel.sweep_timer, 0);
+    }
+
+    #[test]
+    fn sweep_updates_frequency_when_timer_expires() {
+        let mut channel = Channel1::new();
+        let frequency = 1024_u16;
+
+        let nr10_value = 0b0001_0001;
+        let nr12_value = NR12_DAC_MASK;
+        let nr13_value = frequency as u8;
+        let nr14_value = ((frequency >> u8::BITS) as u8) | NR14_TRIGGER_MASK;
+
+        channel.write(NR10_ADDRESS, nr10_value);
+        channel.write(NR12_ADDRESS, nr12_value);
+        channel.write(NR13_ADDRESS, nr13_value);
+        channel.write(NR14_ADDRESS, nr14_value);
+
+        assert_eq!(channel.get_frequency(), frequency);
+
+        channel.clock_sweep();
+
+        assert_eq!(channel.get_frequency(), frequency + (frequency >> 1));
+        assert_eq!(channel.sweep_shadow_frequency, frequency + (frequency >> 1),);
+    }
+
+    #[test]
+    fn sweep_deactivates_channel_when_frequency_overflows() {
+        let mut channel = Channel1::new();
+        let frequency = FREQUENCY_MAX - (FREQUENCY_MAX >> 1);
+
+        let nr10_value = 0b0001_0001;
+        let nr12_value = NR12_DAC_MASK;
+        let nr13_value = frequency as u8;
+        let nr14_value = ((frequency >> u8::BITS) as u8) | NR14_TRIGGER_MASK;
+
+        channel.write(NR10_ADDRESS, nr10_value);
+        channel.write(NR12_ADDRESS, nr12_value);
+        channel.write(NR13_ADDRESS, nr13_value);
+        channel.write(NR14_ADDRESS, nr14_value);
+
+        assert!(channel.is_active());
+
+        channel.clock_sweep();
+
+        assert!(!channel.is_active());
+    }
+
+    #[test]
+    fn sweep_does_not_update_frequency_when_shift_is_zero() {
+        let mut channel = Channel1::new();
+        let frequency = 1024_u16;
+
+        let nr10_value = 0b0001_0000;
+        let nr12_value = NR12_DAC_MASK;
+        let nr13_value = frequency as u8;
+        let nr14_value = ((frequency >> u8::BITS) as u8) | NR14_TRIGGER_MASK;
+
+        channel.write(NR10_ADDRESS, nr10_value);
+        channel.write(NR12_ADDRESS, nr12_value);
+        channel.write(NR13_ADDRESS, nr13_value);
+        channel.write(NR14_ADDRESS, nr14_value);
+
+        channel.clock_sweep();
+
+        assert_eq!(channel.get_frequency(), frequency);
+        assert_eq!(channel.sweep_shadow_frequency, frequency);
+        assert!(channel.is_active());
+    }
+
+    #[test]
+    fn sweep_deactivates_channel_when_trigger_frequency_overflows() {
+        let mut channel = Channel1::new();
+        let frequency = FREQUENCY_MAX;
+
+        channel.write(NR10_ADDRESS, 0b0001_0001);
+        channel.write(NR12_ADDRESS, NR12_DAC_MASK);
+        channel.write(NR13_ADDRESS, frequency as u8);
+        channel.write(
+            NR14_ADDRESS,
+            ((frequency >> u8::BITS) as u8 & NR14_FREQUENCY_MASK) | NR14_TRIGGER_MASK,
+        );
+
+        assert!(!channel.is_active());
     }
 }
