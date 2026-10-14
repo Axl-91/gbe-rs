@@ -41,7 +41,7 @@ impl Apu {
             NR52_ADDRESS => {
                 let enabled = if self.enabled { APU_ENABLE_MASK } else { 0 };
 
-                enabled | NR52_UNUSED_BITS | self.channel_status()
+                enabled | NR52_UNUSED_BITS | self.get_channel_status()
             }
             _ => 0xFF,
         }
@@ -66,7 +66,7 @@ impl Apu {
         }
     }
 
-    fn channel_status(&self) -> u8 {
+    fn get_channel_status(&self) -> u8 {
         u8::from(self.channel1.is_active())
     }
 
