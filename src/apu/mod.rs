@@ -145,4 +145,39 @@ mod tests {
 
         assert_eq!(apu.read(NR52_ADDRESS), APU_ENABLE_MASK | NR52_UNUSED_BITS);
     }
+
+    #[test]
+    fn frame_sequencer_clocks_channel1_sweep_on_step_2() {
+        const FRAME_SEQUENCER_PERIOD: u16 = 8192;
+
+        const NR10_ADDRESS: u16 = 0xFF10;
+        const NR12_ADDRESS: u16 = 0xFF12;
+        const NR13_ADDRESS: u16 = 0xFF13;
+        const NR14_ADDRESS: u16 = 0xFF14;
+
+        const NR12_DAC_MASK: u8 = 0xF8;
+        const NR14_TRIGGER_MASK: u8 = 0x80;
+        const NR14_FREQUENCY_MASK: u8 = 0b0000_0111;
+
+        let mut apu = Apu::new();
+
+        let frequency: u16 = 1024;
+        let expected_frequency = frequency + (frequency >> 1);
+
+        apu.write(NR10_ADDRESS, 0b0001_0001);
+        apu.write(NR12_ADDRESS, NR12_DAC_MASK);
+        apu.write(NR13_ADDRESS, frequency as u8);
+        apu.write(
+            NR14_ADDRESS,
+            ((frequency >> u8::BITS) as u8 & NR14_FREQUENCY_MASK) | NR14_TRIGGER_MASK,
+        );
+
+        assert_eq!(apu.channel1.get_frequency_for_test(), frequency);
+
+        for _ in 0..FRAME_SEQUENCER_PERIOD * 2 {
+            apu.tick();
+        }
+
+        assert_eq!(apu.channel1.get_frequency_for_test(), expected_frequency);
+    }
 }

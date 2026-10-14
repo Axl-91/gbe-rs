@@ -155,6 +155,11 @@ impl Channel1 {
         (high << u8::BITS) | low
     }
 
+    #[cfg(test)]
+    pub(super) fn get_frequency_for_test(&self) -> u16 {
+        self.get_frequency()
+    }
+
     /// Calculates the pulse timer period in T-cycles from the 11-bit frequency.
     fn get_frequency_period(&self) -> u16 {
         (FREQUENCY_MAX + 1 - self.get_frequency()) * FREQUENCY_TIMER_MULTIPLIER
