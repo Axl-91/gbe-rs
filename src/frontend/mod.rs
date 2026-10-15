@@ -15,17 +15,18 @@ use winit::{
 use crate::Emulator;
 use crate::joypad::Button;
 
-/// Game Boy screen width in pixels.
+/// Game Boy screen size in pixels.
 const SCREEN_WIDTH: u32 = 160;
-/// Game Boy screen height in pixels.
 const SCREEN_HEIGHT: u32 = 144;
 
 const WINDOW_SCALE: u32 = 6;
 const WINDOW_SCALE_BASE: u32 = 5;
 
+/// Emulator window screen size in pixels.
 const WINDOW_WIDTH: u32 = 627 * WINDOW_SCALE / WINDOW_SCALE_BASE;
 const WINDOW_HEIGHT: u32 = 547 * WINDOW_SCALE / WINDOW_SCALE_BASE;
 
+/// Initial position and size where LCD is place on the window
 const LCD_X: u32 = 146 * WINDOW_SCALE / WINDOW_SCALE_BASE;
 const LCD_Y: u32 = 132 * WINDOW_SCALE / WINDOW_SCALE_BASE;
 const LCD_WIDTH: u32 = 339 * WINDOW_SCALE / WINDOW_SCALE_BASE;
@@ -40,12 +41,6 @@ fn draw_skin(pixels: &mut Pixels<'static>) {
     let skin = image::load_from_memory_with_format(SKIN_BYTES, image::ImageFormat::Png)
         .unwrap()
         .to_rgba8();
-
-    assert_eq!(
-        (skin.width(), skin.height()),
-        (WINDOW_WIDTH, WINDOW_HEIGHT),
-        "el skin pre-escalado no coincide con WINDOW_WIDTH/HEIGHT; regeneralo"
-    );
 
     pixels.frame_mut().copy_from_slice(skin.as_raw());
 }
@@ -220,6 +215,12 @@ impl ApplicationHandler for Frontend {
 
                 // Game Boy speed should be 59.73 FPS.
                 self.next_frame += Duration::from_secs_f64(1.0 / 59.73);
+
+                // If we fell more than 100 ms behind, resync instead of catching up.
+                let now = Instant::now();
+                if now > self.next_frame + Duration::from_millis(100) {
+                    self.next_frame = now;
+                }
             }
 
             event_loop.set_control_flow(ControlFlow::Poll);
@@ -254,13 +255,18 @@ impl ApplicationHandler for Frontend {
                     },
                 ..
             } => {
+                if key == KeyCode::Escape && state == ElementState::Pressed {
+                    event_loop.exit();
+                    return;
+                };
+
                 if let Some(button) = key_to_button(key) {
                     match state {
                         ElementState::Pressed if !repeat => self.emulator.press_button(button),
                         ElementState::Released => self.emulator.release_button(button),
                         _ => {}
                     }
-                }
+                };
             }
             _ => {}
         }
