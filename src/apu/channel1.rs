@@ -1,5 +1,11 @@
 #![allow(dead_code)]
 
+use crate::apu::{
+    envelope,
+    length_counter::{LENGTH_COUNTER_MAX, LengthCounter},
+    pulse,
+};
+
 const NR10_ADDRESS: u16 = 0xFF10;
 const NR11_ADDRESS: u16 = 0xFF11;
 const NR12_ADDRESS: u16 = 0xFF12;
@@ -12,26 +18,17 @@ const NR13_READ_VALUE: u8 = 0xFF;
 const NR14_READ_MASK: u8 = 0xBF;
 
 const NR14_TRIGGER_MASK: u8 = 0x80;
-const NR12_DAC_MASK: u8 = 0xF8;
 
 const FREQUENCY_MAX: u16 = 0x07FF;
-const FREQUENCY_TIMER_MULTIPLIER: u16 = 4;
-const DUTY_STEPS: u8 = 8;
 const NR14_FREQUENCY_MASK: u8 = 0b0000_0111;
-
-const NR11_DUTY_MASK: u8 = 0b1100_0000;
-const NR11_DUTY_SHIFT: u32 = 6;
-const DUTY_PATTERNS: [u8; 4] = [0b1000_0000, 0b1000_0001, 0b1110_0001, 0b0111_1110];
-
-const NR12_ENVELOPE_DIRECTION_MASK: u8 = 0b0000_1000;
-const NR12_ENVELOPE_PERIOD_MASK: u8 = 0b0000_0111;
-const NR12_INITIAL_VOLUME_SHIFT: u32 = 4;
-const ENVELOPE_MAX_VOLUME: u8 = 0x0F;
 
 const NR10_SWEEP_PERIOD_MASK: u8 = 0b0111_0000;
 const NR10_SWEEP_PERIOD_SHIFT: u32 = 4;
 const NR10_SWEEP_DIRECTION_MASK: u8 = 0b0000_1000;
 const NR10_SWEEP_SHIFT_MASK: u8 = 0b0000_0111;
+
+const NR11_LENGTH_MASK: u8 = 0x3F;
+const NR14_LENGTH_ENABLE_MASK: u8 = 0x40;
 
 const SWEEP_PERIOD_ZERO: u8 = 8;
 
@@ -54,10 +51,13 @@ pub(super) struct Channel1 {
     sweep_timer: u8,
     sweep_shadow_frequency: u16,
     sweep_enabled: bool,
+
+    length_counter: LengthCounter,
+    length_enabled: bool,
 }
 
 impl Channel1 {
-    pub fn new() -> Self {
+    pub(super) fn new() -> Self {
         Self {
             active: false,
             initial_output_suppressed: false,
@@ -77,10 +77,13 @@ impl Channel1 {
             sweep_timer: 0,
             sweep_shadow_frequency: 0,
             sweep_enabled: false,
+
+            length_counter: LengthCounter::new(LENGTH_COUNTER_MAX),
+            length_enabled: false,
         }
     }
 
-    pub fn read(&self, address: u16) -> u8 {
+    pub(super) fn read(&self, address: u16) -> u8 {
         match address {
             NR10_ADDRESS => self.nr10 | NR10_READ_MASK,
             NR11_ADDRESS => self.nr11 | NR11_READ_MASK,
@@ -91,10 +94,23 @@ impl Channel1 {
         }
     }
 
-    pub fn write(&mut self, address: u16, value: u8) {
+    pub(super) fn write(&mut self, address: u16, value: u8) {
+        self.write_with_extra_length_clock(address, value, false);
+    }
+
+    pub(super) fn write_with_extra_length_clock(
+        &mut self,
+        address: u16,
+        value: u8,
+        extra_length_clock: bool,
+    ) {
         match address {
             NR10_ADDRESS => self.nr10 = value,
-            NR11_ADDRESS => self.nr11 = value,
+            NR11_ADDRESS => {
+                self.nr11 = value;
+                self.length_counter
+                    .load(u16::from(value & NR11_LENGTH_MASK));
+            }
             NR12_ADDRESS => {
                 self.nr12 = value;
 
@@ -104,10 +120,21 @@ impl Channel1 {
             }
             NR13_ADDRESS => self.nr13 = value,
             NR14_ADDRESS => {
+                let was_length_enabled = self.length_enabled;
+
                 self.nr14 = value & !NR14_TRIGGER_MASK;
+                self.length_enabled = value & NR14_LENGTH_ENABLE_MASK != 0;
+
+                if !was_length_enabled
+                    && self.length_enabled
+                    && extra_length_clock
+                    && self.length_counter.tick()
+                {
+                    self.active = false;
+                }
 
                 if value & NR14_TRIGGER_MASK != 0 {
-                    self.trigger();
+                    self.trigger(extra_length_clock);
                 }
             }
             _ => {}
@@ -135,24 +162,15 @@ impl Channel1 {
     }
 
     fn is_dac_enabled(&self) -> bool {
-        self.nr12 & NR12_DAC_MASK != 0
+        envelope::is_dac_enabled(self.nr12)
     }
 
-    fn get_envelope_period(&self) -> u8 {
-        let period = self.nr12 & NR12_ENVELOPE_PERIOD_MASK;
-
-        if period == 0 { 8 } else { period }
-    }
-
-    pub fn is_active(&self) -> bool {
+    pub(super) fn is_active(&self) -> bool {
         self.active
     }
 
     fn get_frequency(&self) -> u16 {
-        let high = u16::from(self.nr14 & NR14_FREQUENCY_MASK);
-        let low = u16::from(self.nr13);
-
-        (high << u8::BITS) | low
+        pulse::get_frequency(self.nr13, self.nr14)
     }
 
     #[cfg(test)]
@@ -162,7 +180,7 @@ impl Channel1 {
 
     /// Calculates the pulse timer period in T-cycles from the 11-bit frequency.
     fn get_frequency_period(&self) -> u16 {
-        (FREQUENCY_MAX + 1 - self.get_frequency()) * FREQUENCY_TIMER_MULTIPLIER
+        pulse::get_frequency_period(self.get_frequency())
     }
 
     /// Calculates the next frequency according to the sweep settings.
@@ -215,11 +233,29 @@ impl Channel1 {
         }
     }
 
+    pub(super) fn clock_length(&mut self) {
+        if !self.length_enabled {
+            return;
+        }
+
+        if self.length_counter.tick() {
+            self.active = false;
+        }
+    }
+
     /// Triggers the channel and initializes its frequency timer and envelope.
     ///
     /// The channel becomes active only if its DAC is enabled.
-    fn trigger(&mut self) {
+    fn trigger(&mut self, extra_length_clock: bool) {
         self.active = self.is_dac_enabled();
+
+        if self.length_counter.is_zero() {
+            self.length_counter.reload();
+
+            if self.length_enabled && extra_length_clock {
+                self.length_counter.tick();
+            }
+        }
         self.frequency_timer = self.get_frequency_period();
 
         self.sweep_shadow_frequency = self.get_frequency();
@@ -237,25 +273,24 @@ impl Channel1 {
             self.active = false;
         }
 
-        self.envelope_volume = self.nr12 >> NR12_INITIAL_VOLUME_SHIFT;
-        self.envelope_timer = self.get_envelope_period();
+        super::envelope::trigger(
+            self.nr12,
+            &mut self.envelope_volume,
+            &mut self.envelope_timer,
+        );
         self.initial_output_suppressed = true;
     }
 
     /// Returns the high/low state of the selected duty pattern at the current phase.
     fn get_duty_output(&self) -> bool {
-        let duty = usize::from((self.nr11 & NR11_DUTY_MASK) >> NR11_DUTY_SHIFT);
-        let pattern = DUTY_PATTERNS[duty];
-        let bit = (pattern >> self.duty_position) & 1;
-
-        bit != 0
+        pulse::get_duty_output(self.nr11, self.duty_position)
     }
 
     /// Returns the channel's current digital output level.
     ///
     /// The output is zero when the channel or DAC is disabled, or while the
     /// initial output is suppressed.
-    pub fn get_output(&self) -> u8 {
+    pub(super) fn get_output(&self) -> u8 {
         if !self.active || !self.is_dac_enabled() || self.initial_output_suppressed {
             return 0;
         }
@@ -271,28 +306,13 @@ impl Channel1 {
     ///
     /// Changes the current volume by one step in the configured direction,
     /// without allowing it to exceed the range 0–15.
-    pub fn clock_envelope(&mut self) {
-        if !self.active {
-            return;
-        }
-
-        let period = self.get_envelope_period();
-
-        self.envelope_timer -= 1;
-
-        if self.envelope_timer > 0 {
-            return;
-        }
-
-        self.envelope_timer = period;
-
-        let increasing = self.nr12 & NR12_ENVELOPE_DIRECTION_MASK != 0;
-
-        if increasing && self.envelope_volume < ENVELOPE_MAX_VOLUME {
-            self.envelope_volume += 1;
-        } else if !increasing && self.envelope_volume > 0 {
-            self.envelope_volume -= 1;
-        }
+    pub(super) fn clock_envelope(&mut self) {
+        super::envelope::clock(
+            self.nr12,
+            self.active,
+            &mut self.envelope_volume,
+            &mut self.envelope_timer,
+        );
     }
 
     /// Advances the sweep timer by one frame sequencer clock.
@@ -323,18 +343,16 @@ impl Channel1 {
     /// Advances the channel's frequency timer by one T-cycle.
     ///
     /// When the timer expires, reloads it and advances the duty-cycle position.
-    pub fn tick(&mut self) {
-        if !self.active {
-            return;
-        }
+    pub(super) fn tick(&mut self) {
+        let frequency_period = self.get_frequency_period();
 
-        self.frequency_timer -= 1;
-
-        if self.frequency_timer == 0 {
-            self.frequency_timer = self.get_frequency_period();
-            self.duty_position = (self.duty_position + 1) % DUTY_STEPS;
-            self.initial_output_suppressed = false;
-        }
+        pulse::tick(
+            self.active,
+            &mut self.frequency_timer,
+            frequency_period,
+            &mut self.duty_position,
+            &mut self.initial_output_suppressed,
+        );
     }
 }
 
@@ -347,6 +365,10 @@ impl Default for Channel1 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    const NR12_DAC_MASK: u8 = 0xF8;
+    const FREQUENCY_TIMER_MULTIPLIER: u16 = 4;
+    const ENVELOPE_MAX_VOLUME: u8 = 0x0F;
 
     #[test]
     fn registers_return_expected_values_after_writes() {
@@ -511,16 +533,6 @@ mod tests {
         }
 
         assert_eq!(channel.envelope_volume, 0);
-    }
-
-    #[test]
-    fn envelope_period_zero_is_treated_as_eight() {
-        let mut channel = Channel1::new();
-
-        channel.write(NR12_ADDRESS, 0b0101_1000);
-        channel.write(NR14_ADDRESS, NR14_TRIGGER_MASK);
-
-        assert_eq!(channel.get_envelope_period(), 8);
     }
 
     #[test]

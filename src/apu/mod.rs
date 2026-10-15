@@ -5,10 +5,16 @@
 //! the interface for audio register access.
 
 mod channel1;
+mod channel2;
+mod envelope;
 mod frame_sequencer;
+mod length_counter;
+mod pulse;
 
 use channel1::Channel1;
 use frame_sequencer::FrameSequencer;
+
+use crate::apu::channel2::Channel2;
 
 const NR52_ADDRESS: u16 = 0xFF26;
 const NR52_UNUSED_BITS: u8 = 0b0111_0000;
@@ -16,6 +22,9 @@ const APU_ENABLE_MASK: u8 = 0b1000_0000;
 
 const CHANNEL1_REGISTERS_START: u16 = 0xFF10;
 const CHANNEL1_REGISTERS_END: u16 = 0xFF14;
+
+const CHANNEL2_REGISTERS_START: u16 = 0xFF16;
+const CHANNEL2_REGISTERS_END: u16 = 0xFF19;
 
 const SWEEP_STEP_1: u8 = 2;
 const SWEEP_STEP_2: u8 = 6;
@@ -26,6 +35,7 @@ pub struct Apu {
     enabled: bool,
     frame_sequencer: FrameSequencer,
     channel1: Channel1,
+    channel2: Channel2,
 }
 
 impl Apu {
@@ -34,12 +44,14 @@ impl Apu {
             enabled: true,
             frame_sequencer: FrameSequencer::new(),
             channel1: Channel1::new(),
+            channel2: Channel2::new(),
         }
     }
 
     pub fn read(&self, address: u16) -> u8 {
         match address {
             CHANNEL1_REGISTERS_START..=CHANNEL1_REGISTERS_END => self.channel1.read(address),
+            CHANNEL2_REGISTERS_START..=CHANNEL2_REGISTERS_END => self.channel2.read(address),
             NR52_ADDRESS => {
                 let enabled = if self.enabled { APU_ENABLE_MASK } else { 0 };
 
@@ -52,13 +64,22 @@ impl Apu {
     pub fn write(&mut self, address: u16, value: u8) {
         match address {
             CHANNEL1_REGISTERS_START..=CHANNEL1_REGISTERS_END if self.enabled => {
-                self.channel1.write(address, value);
+                let extra_length_clock = self.frame_sequencer.next_step_skips_length_clock();
+
+                self.channel1
+                    .write_with_extra_length_clock(address, value, extra_length_clock);
+            }
+            CHANNEL2_REGISTERS_START..=CHANNEL2_REGISTERS_END if self.enabled => {
+                let extra_length_clock = self.frame_sequencer.next_step_skips_length_clock();
+                self.channel2
+                    .write_with_extra_length_clock(address, value, extra_length_clock);
             }
             NR52_ADDRESS => {
                 let should_enable = value & APU_ENABLE_MASK != 0;
 
                 if self.enabled && !should_enable {
                     self.channel1 = Channel1::new();
+                    self.channel2 = Channel2::new();
                     self.frame_sequencer = FrameSequencer::new();
                 }
 
@@ -69,7 +90,7 @@ impl Apu {
     }
 
     fn get_channel_status(&self) -> u8 {
-        u8::from(self.channel1.is_active())
+        u8::from(self.channel1.is_active()) | (u8::from(self.channel2.is_active()) << 1)
     }
 
     /// Advances the APU by one T-cycle.
@@ -79,9 +100,15 @@ impl Apu {
         }
 
         self.channel1.tick();
+        self.channel2.tick();
 
         if self.frame_sequencer.tick() {
             let step = self.frame_sequencer.get_step();
+
+            if step.is_multiple_of(2) {
+                self.channel1.clock_length();
+                self.channel2.clock_length();
+            }
 
             if step == SWEEP_STEP_1 || step == SWEEP_STEP_2 {
                 self.channel1.clock_sweep();
@@ -89,6 +116,7 @@ impl Apu {
 
             if step == ENVELOPE_STEP {
                 self.channel1.clock_envelope();
+                self.channel2.clock_envelope();
             }
         }
     }
