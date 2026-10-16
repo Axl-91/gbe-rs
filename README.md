@@ -55,8 +55,8 @@ The goal of this project is to build a simple and accurate emulator for the orig
 - [ ] APU
   - [x] Channel 1 (Pulse + Sweep)
   - [x] Channel 2 (Pulse)
-  - [ ] Channel 3 (Wave)
-  - [ ] Channel 4 (Noise)
+  - [x] Channel 3 (Wave)
+  - [x] Channel 4 (Noise)
   - [ ] Audio Mixing
   - [ ] Audio Output
 - [x] Input
