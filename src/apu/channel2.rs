@@ -1,9 +1,6 @@
 #![allow(dead_code)]
 
-use crate::apu::{
-    length_counter::{LENGTH_COUNTER_MAX, LengthCounter},
-    pulse,
-};
+use crate::apu::{length_counter::LengthCounter, pulse};
 
 const NR21_ADDRESS: u16 = 0xFF16;
 const NR22_ADDRESS: u16 = 0xFF17;
@@ -55,7 +52,7 @@ impl Channel2 {
             envelope_volume: 0,
             envelope_timer: 0,
 
-            length_counter: LengthCounter::new(LENGTH_COUNTER_MAX),
+            length_counter: LengthCounter::default(),
             length_enabled: false,
         }
     }

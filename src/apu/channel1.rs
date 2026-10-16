@@ -1,10 +1,6 @@
 #![allow(dead_code)]
 
-use crate::apu::{
-    envelope,
-    length_counter::{LENGTH_COUNTER_MAX, LengthCounter},
-    pulse,
-};
+use crate::apu::{envelope, length_counter::LengthCounter, pulse};
 
 const NR10_ADDRESS: u16 = 0xFF10;
 const NR11_ADDRESS: u16 = 0xFF11;
@@ -78,7 +74,7 @@ impl Channel1 {
             sweep_shadow_frequency: 0,
             sweep_enabled: false,
 
-            length_counter: LengthCounter::new(LENGTH_COUNTER_MAX),
+            length_counter: LengthCounter::default(),
             length_enabled: false,
         }
     }

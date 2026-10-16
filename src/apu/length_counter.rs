@@ -42,6 +42,12 @@ impl LengthCounter {
     }
 }
 
+impl Default for LengthCounter {
+    fn default() -> Self {
+        Self::new(LENGTH_COUNTER_MAX)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
