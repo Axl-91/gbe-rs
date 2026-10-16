@@ -21,7 +21,7 @@ pub(super) fn trigger(register: u8, volume: &mut u8, timer: &mut u8) {
 }
 
 pub(super) fn clock(register: u8, active: bool, volume: &mut u8, timer: &mut u8) {
-    if !active {
+    if !active || register & PERIOD_MASK == 0 {
         return;
     }
 
@@ -39,5 +39,23 @@ pub(super) fn clock(register: u8, active: bool, volume: &mut u8, timer: &mut u8)
         *volume += 1;
     } else if !increasing && *volume > 0 {
         *volume -= 1;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn zero_period_does_not_change_volume() {
+        let register = 0x08;
+        let mut volume = 0;
+        let mut timer = get_period(register);
+
+        for _ in 0..16 {
+            clock(register, true, &mut volume, &mut timer);
+        }
+
+        assert_eq!(volume, 0);
     }
 }

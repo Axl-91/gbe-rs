@@ -556,22 +556,21 @@ mod tests {
     }
 
     #[test]
-    fn envelope_increases_volume_after_eight_clocks_when_period_is_zero() {
+    fn envelope_does_not_increase_volume_when_period_is_zero() {
         let mut channel = Channel1::new();
 
-        channel.write(NR12_ADDRESS, 0b0101_1000);
+        // Configure the envelope with initial volume 5, increasing direction,
+        // and period zero.
+        channel.write(NR12_ADDRESS, 0x58);
+
+        // Trigger the channel.
         channel.write(NR14_ADDRESS, NR14_TRIGGER_MASK);
 
-        for _ in 0..7 {
+        for _ in 0..16 {
             channel.clock_envelope();
         }
 
         assert_eq!(channel.envelope_volume, 5);
-
-        channel.clock_envelope();
-
-        assert_eq!(channel.envelope_volume, 6);
-        assert_eq!(channel.envelope_timer, 8);
     }
 
     #[test]
