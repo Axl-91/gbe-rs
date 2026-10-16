@@ -63,6 +63,10 @@ impl MemoryBus {
         self.ppu.get_framebuffer()
     }
 
+    pub fn take_audio_samples(&mut self) -> Vec<(f32, f32)> {
+        self.apu.take_samples()
+    }
+
     pub fn is_joypad_active(&self) -> bool {
         self.joypad.is_joypad_active()
     }

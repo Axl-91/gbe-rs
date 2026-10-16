@@ -51,6 +51,10 @@ impl Cpu {
         self.bus.get_framebuffer()
     }
 
+    pub fn take_audio_samples(&mut self) -> Vec<(f32, f32)> {
+        self.bus.take_audio_samples()
+    }
+
     pub fn peek(&self, address: u16) -> u8 {
         self.bus.read(address)
     }

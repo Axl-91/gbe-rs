@@ -12,6 +12,8 @@ use winit::{
     window::Window,
 };
 
+mod audio;
+
 use crate::Emulator;
 use crate::joypad::Button;
 
@@ -146,6 +148,8 @@ fn key_to_button(key: KeyCode) -> Option<Button> {
 struct Frontend {
     /// The Game Boy core being driven by this frontend.
     emulator: Emulator,
+    /// Audio output stream; kept alive for the application's lifetime.
+    audio: audio::AudioOutput,
     /// Window handle; created lazily in `resumed`.
     window: Option<Arc<Window>>,
     /// Pixel buffer and GPU surface; created together with the window.
@@ -160,8 +164,12 @@ struct Frontend {
 
 impl Frontend {
     fn new(emulator: Emulator) -> Self {
+        let audio = audio::AudioOutput::new()
+            .unwrap_or_else(|error| panic!("Failed to initialize audio output: {error}"));
+
         Self {
             emulator,
+            audio,
             window: None,
             pixels: None,
             lcd_map: LcdMap::new(),
@@ -203,6 +211,9 @@ impl ApplicationHandler for Frontend {
             while cycles < EMULATION_CHUNK_CYCLES {
                 cycles += self.emulator.step() as u32;
             }
+
+            let samples = self.emulator.take_audio_samples();
+            self.audio.push_samples(samples);
 
             self.frame_cycles += cycles;
 

@@ -36,9 +36,12 @@ impl LengthCounter {
         self.counter == 0
     }
 
-    #[cfg(test)]
     pub(super) fn get_counter(&self) -> u16 {
         self.counter
+    }
+
+    pub(super) fn set_counter(&mut self, counter: u16) {
+        self.counter = counter;
     }
 }
 

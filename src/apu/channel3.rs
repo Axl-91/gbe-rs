@@ -1,10 +1,8 @@
-#![allow(dead_code)]
-
 use crate::apu::length_counter::LengthCounter;
 use crate::apu::pulse;
 
 const NR30_ADDRESS: u16 = 0xFF1A;
-const NR31_ADDRESS: u16 = 0xFF1B;
+pub(super) const NR31_ADDRESS: u16 = 0xFF1B;
 const NR32_ADDRESS: u16 = 0xFF1C;
 const NR33_ADDRESS: u16 = 0xFF1D;
 const NR34_ADDRESS: u16 = 0xFF1E;
@@ -78,6 +76,21 @@ impl Channel3 {
             length_counter: LengthCounter::new(CHANNEL3_LENGTH_COUNTER_MAX),
             length_enabled: false,
         }
+    }
+
+    pub(super) fn reset(&mut self) {
+        let length = self.length_counter.get_counter();
+        let wave_ram = self.wave_ram;
+
+        *self = Self::new();
+        self.nr30 = 0x00;
+        self.nr31 = 0x00;
+        self.nr32 = 0x00;
+        self.nr33 = 0x00;
+        self.nr34 = 0x00;
+
+        self.length_counter.set_counter(length);
+        self.wave_ram = wave_ram;
     }
 
     pub fn read(&self, address: u16) -> u8 {
@@ -167,7 +180,7 @@ impl Channel3 {
         sample & WAVE_SAMPLE_MASK
     }
 
-    pub fn get_output_sample(&self) -> u8 {
+    pub fn get_output(&self) -> u8 {
         if !self.active {
             return 0;
         }
@@ -225,6 +238,15 @@ impl Channel3 {
             self.wave_position = (self.wave_position + 1) % WAVE_SAMPLE_COUNT;
         }
     }
+
+    pub(super) fn write_length_counter(&mut self, value: u8) {
+        self.length_counter.load(u16::from(value));
+    }
+
+    #[cfg(test)]
+    pub(super) fn get_length_counter_for_test(&self) -> u16 {
+        self.length_counter.get_counter()
+    }
 }
 
 impl Default for Channel3 {
@@ -235,6 +257,8 @@ impl Default for Channel3 {
 
 #[cfg(test)]
 mod tests {
+    use crate::apu::Apu;
+
     use super::*;
 
     const NR34_FREQUENCY_MASK: u8 = 0b0000_0111;
@@ -337,7 +361,7 @@ mod tests {
             NR32_OUTPUT_LEVEL_FULL << NR32_OUTPUT_LEVEL_SHIFT,
         );
 
-        assert_eq!(channel.get_output_sample(), 0x0A);
+        assert_eq!(channel.get_output(), 0x0A);
 
         let frequency_period = channel.get_frequency_period();
 
@@ -345,7 +369,7 @@ mod tests {
             channel.tick();
         }
 
-        assert_eq!(channel.get_output_sample(), 0x0B);
+        assert_eq!(channel.get_output(), 0x0B);
     }
 
     #[test]
@@ -360,25 +384,25 @@ mod tests {
             NR32_ADDRESS,
             NR32_OUTPUT_LEVEL_FULL << NR32_OUTPUT_LEVEL_SHIFT,
         );
-        assert_eq!(channel.get_output_sample(), 0x0C);
+        assert_eq!(channel.get_output(), 0x0C);
 
         channel.write(
             NR32_ADDRESS,
             NR32_OUTPUT_LEVEL_HALF << NR32_OUTPUT_LEVEL_SHIFT,
         );
-        assert_eq!(channel.get_output_sample(), 0x06);
+        assert_eq!(channel.get_output(), 0x06);
 
         channel.write(
             NR32_ADDRESS,
             NR32_OUTPUT_LEVEL_QUARTER << NR32_OUTPUT_LEVEL_SHIFT,
         );
-        assert_eq!(channel.get_output_sample(), 0x03);
+        assert_eq!(channel.get_output(), 0x03);
 
         channel.write(
             NR32_ADDRESS,
             NR32_OUTPUT_LEVEL_MUTE << NR32_OUTPUT_LEVEL_SHIFT,
         );
-        assert_eq!(channel.get_output_sample(), 0);
+        assert_eq!(channel.get_output(), 0);
     }
 
     #[test]
@@ -430,5 +454,52 @@ mod tests {
         channel.write(NR34_ADDRESS, NR34_TRIGGER_MASK | NR34_FREQUENCY_MASK);
 
         assert_eq!(channel.get_frequency_period(), 2);
+    }
+
+    #[test]
+    fn channel3_length_counter_can_be_written_when_apu_is_disabled() {
+        const NR52_ADDRESS: u16 = 0xFF26;
+        const NR31_ADDRESS: u16 = 0xFF1B;
+
+        const APU_DISABLE: u8 = 0x00;
+        const LENGTH_VALUE: u8 = 100;
+        const EXPECTED_LENGTH_COUNTER: u16 = CHANNEL3_LENGTH_COUNTER_MAX - LENGTH_VALUE as u16;
+
+        let mut apu = Apu::new();
+
+        apu.write(NR52_ADDRESS, APU_DISABLE);
+        apu.write(NR31_ADDRESS, LENGTH_VALUE);
+
+        assert_eq!(
+            apu.channel3.get_length_counter_for_test(),
+            EXPECTED_LENGTH_COUNTER
+        );
+        assert_eq!(apu.read(NR52_ADDRESS), 0x70);
+    }
+
+    #[test]
+    fn reset_preserves_length_counter() {
+        const LENGTH_VALUE: u8 = 100;
+        const EXPECTED_LENGTH: u16 = CHANNEL3_LENGTH_COUNTER_MAX - LENGTH_VALUE as u16;
+
+        let mut channel = Channel3::new();
+        channel.write_length_counter(LENGTH_VALUE);
+
+        channel.reset();
+
+        assert_eq!(channel.get_length_counter_for_test(), EXPECTED_LENGTH);
+    }
+
+    #[test]
+    fn reset_preserves_wave_ram() {
+        const WAVE_RAM_ADDRESS: u16 = 0xFF30;
+        const WAVE_RAM_VALUE: u8 = 0xA5;
+
+        let mut channel = Channel3::new();
+
+        channel.write(WAVE_RAM_ADDRESS, WAVE_RAM_VALUE);
+        channel.reset();
+
+        assert_eq!(channel.read(WAVE_RAM_ADDRESS), WAVE_RAM_VALUE);
     }
 }

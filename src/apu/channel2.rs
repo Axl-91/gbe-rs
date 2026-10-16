@@ -1,8 +1,6 @@
-#![allow(dead_code)]
-
 use crate::apu::{length_counter::LengthCounter, pulse};
 
-const NR21_ADDRESS: u16 = 0xFF16;
+pub(super) const NR21_ADDRESS: u16 = 0xFF16;
 const NR22_ADDRESS: u16 = 0xFF17;
 const NR23_ADDRESS: u16 = 0xFF18;
 const NR24_ADDRESS: u16 = 0xFF19;
@@ -57,6 +55,18 @@ impl Channel2 {
         }
     }
 
+    pub(super) fn reset(&mut self) {
+        let length = self.length_counter.get_counter();
+
+        *self = Self::new();
+        self.nr21 = 0x00;
+        self.nr22 = 0x00;
+        self.nr23 = 0x00;
+        self.nr24 = 0x00;
+
+        self.length_counter.set_counter(length);
+    }
+
     pub fn read(&self, address: u16) -> u8 {
         match address {
             NR21_ADDRESS => self.nr21 | NR21_READ_MASK,
@@ -67,6 +77,7 @@ impl Channel2 {
         }
     }
 
+    #[cfg(test)]
     pub fn write(&mut self, address: u16, value: u8) {
         self.write_with_extra_length_clock(address, value, false);
     }
@@ -197,6 +208,16 @@ impl Channel2 {
             0
         }
     }
+
+    pub(super) fn write_length_counter(&mut self, value: u8) {
+        self.length_counter
+            .load(u16::from(value & NR21_LENGTH_MASK));
+    }
+
+    #[cfg(test)]
+    pub(super) fn get_length_counter_for_test(&self) -> u16 {
+        self.length_counter.get_counter()
+    }
 }
 
 impl Default for Channel2 {
@@ -207,6 +228,8 @@ impl Default for Channel2 {
 
 #[cfg(test)]
 mod tests {
+    use crate::apu::{Apu, length_counter::LENGTH_COUNTER_MAX};
+
     use super::*;
 
     const NR22_DAC_MASK: u8 = 0xF8;
@@ -379,5 +402,39 @@ mod tests {
         channel.write(NR24_ADDRESS, NR24_TRIGGER_MASK);
 
         assert_eq!(channel.envelope_timer, 8);
+    }
+
+    #[test]
+    fn channel2_length_counter_can_be_written_when_apu_is_disabled() {
+        const NR52_ADDRESS: u16 = 0xFF26;
+        const NR21_ADDRESS: u16 = 0xFF16;
+
+        const APU_DISABLE: u8 = 0x00;
+        const LENGTH_VALUE: u8 = 10;
+        const EXPECTED_LENGTH_COUNTER: u16 = LENGTH_COUNTER_MAX - LENGTH_VALUE as u16;
+
+        let mut apu = Apu::new();
+
+        apu.write(NR52_ADDRESS, APU_DISABLE);
+        apu.write(NR21_ADDRESS, LENGTH_VALUE);
+
+        assert_eq!(
+            apu.channel2.get_length_counter_for_test(),
+            EXPECTED_LENGTH_COUNTER
+        );
+        assert_eq!(apu.read(NR52_ADDRESS), 0x70);
+    }
+
+    #[test]
+    fn reset_preserves_length_counter() {
+        const LENGTH_VALUE: u8 = 10;
+        const EXPECTED_LENGTH: u16 = LENGTH_COUNTER_MAX - LENGTH_VALUE as u16;
+
+        let mut channel = Channel2::new();
+        channel.write_length_counter(LENGTH_VALUE);
+
+        channel.reset();
+
+        assert_eq!(channel.get_length_counter_for_test(), EXPECTED_LENGTH);
     }
 }

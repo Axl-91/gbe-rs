@@ -35,4 +35,8 @@ impl Emulator {
     pub fn get_framebuffer(&self) -> &[u8] {
         self.cpu.get_framebuffer()
     }
+
+    pub fn take_audio_samples(&mut self) -> Vec<(f32, f32)> {
+        self.cpu.take_audio_samples()
+    }
 }
