@@ -19,6 +19,9 @@ use frame_sequencer::FrameSequencer;
 use crate::apu::{channel2::Channel2, channel3::Channel3, channel4::Channel4};
 
 const NR52_ADDRESS: u16 = 0xFF26;
+const NR50_ADDRESS: u16 = 0xFF24;
+const NR51_ADDRESS: u16 = 0xFF25;
+
 const NR52_UNUSED_BITS: u8 = 0b0111_0000;
 const APU_ENABLE_MASK: u8 = 0b1000_0000;
 
@@ -44,6 +47,10 @@ const ENVELOPE_STEP: u8 = 7;
 /// Game Boy Audio Processing Unit.
 pub struct Apu {
     enabled: bool,
+
+    nr50: u8,
+    nr51: u8,
+
     frame_sequencer: FrameSequencer,
     channel1: Channel1,
     channel2: Channel2,
@@ -55,6 +62,10 @@ impl Apu {
     pub fn new() -> Self {
         Self {
             enabled: true,
+
+            nr50: 0x77,
+            nr51: 0xF3,
+
             frame_sequencer: FrameSequencer::new(),
             channel1: Channel1::new(),
             channel2: Channel2::new(),
@@ -69,12 +80,14 @@ impl Apu {
             CHANNEL2_REGISTERS_START..=CHANNEL2_REGISTERS_END => self.channel2.read(address),
             CHANNEL3_REGISTERS_START..=CHANNEL3_REGISTERS_END => self.channel3.read(address),
             CHANNEL4_REGISTERS_START..=CHANNEL4_REGISTERS_END => self.channel4.read(address),
-            WAVE_RAM_START..=WAVE_RAM_END => self.channel3.read(address),
+            NR50_ADDRESS => self.nr50,
+            NR51_ADDRESS => self.nr51,
             NR52_ADDRESS => {
                 let enabled = if self.enabled { APU_ENABLE_MASK } else { 0 };
 
                 enabled | NR52_UNUSED_BITS | self.get_channel_status()
             }
+            WAVE_RAM_START..=WAVE_RAM_END => self.channel3.read(address),
             _ => 0xFF,
         }
     }
@@ -107,6 +120,8 @@ impl Apu {
             WAVE_RAM_START..=WAVE_RAM_END if self.enabled => {
                 self.channel3.write(address, value);
             }
+            NR50_ADDRESS => self.nr50 = value,
+            NR51_ADDRESS => self.nr51 = value,
             NR52_ADDRESS => {
                 let should_enable = value & APU_ENABLE_MASK != 0;
 
@@ -199,13 +214,6 @@ mod tests {
         apu.write(NR52_ADDRESS, APU_ENABLE_MASK);
 
         assert_eq!(apu.read(NR52_ADDRESS), APU_ENABLE_MASK | NR52_UNUSED_BITS);
-    }
-
-    #[test]
-    fn reading_unimplemented_apu_register_returns_unmapped_value() {
-        let apu = Apu::new();
-
-        assert_eq!(apu.read(NR52_ADDRESS - 1), 0xFF);
     }
 
     #[test]
