@@ -52,13 +52,13 @@ The goal of this project is to build a simple and accurate emulator for the orig
     - [x] Window
     - [x] Sprites
     - [x] Pixel Mixing
-- [ ] APU
+- [x] APU
   - [x] Channel 1 (Pulse + Sweep)
   - [x] Channel 2 (Pulse)
   - [x] Channel 3 (Wave)
   - [x] Channel 4 (Noise)
-  - [ ] Audio Mixing
-  - [ ] Audio Output
+  - [x] Audio Mixing
+  - [x] Audio Output
 - [x] Input
 
 ### Frontend
@@ -66,7 +66,7 @@ The goal of this project is to build a simple and accurate emulator for the orig
   - [x] Framebuffer Rendering
   - [x] DMG Colors
   - [x] Input
-  - [ ] Audio
+  - [x] Audio
   - [ ] Debugging / Tools
 
 
