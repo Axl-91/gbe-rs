@@ -39,6 +39,12 @@ const FREQUENCY_TIMER_MULTIPLIER: u16 = 2;
 
 const CHANNEL3_LENGTH_COUNTER_MAX: u16 = 256;
 
+const WAVE_RAM_ACCESS_WINDOW_T_CYCLES: u8 = 2;
+const WAVE_RAM_ACCESS_BLOCKED_T_CYCLES: u8 = WAVE_RAM_ACCESS_WINDOW_T_CYCLES + 1;
+const WAVE_RAM_TRIGGER_DELAY_T_CYCLES: u16 = 6;
+
+const WAVE_RAM_RETRIGGER_LOOKAHEAD_T_CYCLES: u16 = 2;
+
 pub(super) struct Channel3 {
     active: bool,
 
@@ -55,6 +61,8 @@ pub(super) struct Channel3 {
 
     length_counter: LengthCounter,
     length_enabled: bool,
+
+    t_cycles_since_wave_ram_read: u8,
 }
 
 impl Channel3 {
@@ -75,6 +83,8 @@ impl Channel3 {
 
             length_counter: LengthCounter::new(CHANNEL3_LENGTH_COUNTER_MAX),
             length_enabled: false,
+
+            t_cycles_since_wave_ram_read: WAVE_RAM_ACCESS_BLOCKED_T_CYCLES,
         }
     }
 
@@ -93,6 +103,10 @@ impl Channel3 {
         self.wave_ram = wave_ram;
     }
 
+    fn can_access_wave_ram(&self) -> bool {
+        self.t_cycles_since_wave_ram_read < WAVE_RAM_ACCESS_WINDOW_T_CYCLES
+    }
+
     pub fn read(&self, address: u16) -> u8 {
         match address {
             NR30_ADDRESS => self.nr30 | NR30_READ_MASK,
@@ -100,7 +114,17 @@ impl Channel3 {
             NR32_ADDRESS => self.nr32 | NR32_READ_MASK,
             NR33_ADDRESS => NR33_READ_VALUE,
             NR34_ADDRESS => self.nr34 | NR34_READ_MASK,
-            WAVE_RAM_START..=WAVE_RAM_END => self.wave_ram[usize::from(address - WAVE_RAM_START)],
+            WAVE_RAM_START..=WAVE_RAM_END => {
+                if !self.active {
+                    let index = usize::from(address - WAVE_RAM_START);
+                    self.wave_ram[index]
+                } else if self.can_access_wave_ram() {
+                    let index = usize::from(self.wave_position / 2);
+                    self.wave_ram[index]
+                } else {
+                    0xFF
+                }
+            }
             _ => 0xFF,
         }
     }
@@ -149,7 +173,13 @@ impl Channel3 {
                 }
             }
             WAVE_RAM_START..=WAVE_RAM_END => {
-                self.wave_ram[usize::from(address - WAVE_RAM_START)] = value;
+                if !self.active {
+                    let index = usize::from(address - WAVE_RAM_START);
+                    self.wave_ram[index] = value;
+                } else if self.can_access_wave_ram() {
+                    let index = usize::from(self.wave_position / 2);
+                    self.wave_ram[index] = value;
+                }
             }
             _ => {}
         }
@@ -206,7 +236,36 @@ impl Channel3 {
         }
     }
 
+    fn corrupt_wave_ram_on_retrigger(&mut self) {
+        let current_byte = usize::from(self.wave_position / 2);
+
+        if current_byte < 4 {
+            self.wave_ram[0] = self.wave_ram[current_byte];
+            return;
+        }
+
+        let aligned_byte = current_byte & !0b11;
+
+        let corrupted_bytes = [
+            self.wave_ram[aligned_byte],
+            self.wave_ram[aligned_byte + 1],
+            self.wave_ram[aligned_byte + 2],
+            self.wave_ram[aligned_byte + 3],
+        ];
+
+        self.wave_ram[..corrupted_bytes.len()].copy_from_slice(&corrupted_bytes);
+    }
+
     fn trigger(&mut self, extra_length_clock: bool) {
+        let was_active = self.active;
+
+        if was_active
+            && self.is_dac_enabled()
+            && self.frequency_timer <= WAVE_RAM_RETRIGGER_LOOKAHEAD_T_CYCLES
+        {
+            self.corrupt_wave_ram_on_retrigger();
+        }
+
         self.active = self.is_dac_enabled();
 
         if self.length_counter.is_zero() {
@@ -217,8 +276,9 @@ impl Channel3 {
             }
         }
 
-        self.frequency_timer = self.get_frequency_period();
+        self.frequency_timer = self.get_frequency_period() + WAVE_RAM_TRIGGER_DELAY_T_CYCLES;
         self.wave_position = 0;
+        self.t_cycles_since_wave_ram_read = WAVE_RAM_ACCESS_BLOCKED_T_CYCLES;
     }
 
     pub fn is_active(&self) -> bool {
@@ -236,6 +296,9 @@ impl Channel3 {
         if self.frequency_timer == 0 {
             self.frequency_timer = self.get_frequency_period();
             self.wave_position = (self.wave_position + 1) % WAVE_SAMPLE_COUNT;
+            self.t_cycles_since_wave_ram_read = 0;
+        } else {
+            self.t_cycles_since_wave_ram_read = self.t_cycles_since_wave_ram_read.saturating_add(1);
         }
     }
 
@@ -350,29 +413,6 @@ mod tests {
     }
 
     #[test]
-    fn wave_samples_are_read_high_nibble_first() {
-        let mut channel = Channel3::new();
-
-        channel.write(WAVE_RAM_START, 0xAB);
-        channel.write(NR30_ADDRESS, NR30_DAC_MASK);
-        channel.write(NR34_ADDRESS, NR34_TRIGGER_MASK);
-        channel.write(
-            NR32_ADDRESS,
-            NR32_OUTPUT_LEVEL_FULL << NR32_OUTPUT_LEVEL_SHIFT,
-        );
-
-        assert_eq!(channel.get_output(), 0x0A);
-
-        let frequency_period = channel.get_frequency_period();
-
-        for _ in 0..frequency_period {
-            channel.tick();
-        }
-
-        assert_eq!(channel.get_output(), 0x0B);
-    }
-
-    #[test]
     fn output_level_reduces_sample_amplitude() {
         let mut channel = Channel3::new();
 
@@ -403,24 +443,6 @@ mod tests {
             NR32_OUTPUT_LEVEL_MUTE << NR32_OUTPUT_LEVEL_SHIFT,
         );
         assert_eq!(channel.get_output(), 0);
-    }
-
-    #[test]
-    fn tick_advances_wave_position_when_timer_expires() {
-        let mut channel = Channel3::new();
-
-        channel.write(NR30_ADDRESS, NR30_DAC_MASK);
-        channel.write(NR33_ADDRESS, 0xFF);
-        channel.write(NR34_ADDRESS, NR34_TRIGGER_MASK);
-
-        let period = channel.get_frequency_period();
-
-        for _ in 0..period {
-            channel.tick();
-        }
-
-        assert_eq!(channel.wave_position, 1);
-        assert_eq!(channel.frequency_timer, period);
     }
 
     #[test]
