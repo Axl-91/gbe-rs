@@ -59,6 +59,9 @@ pub const INTERRUPT_FLAG_ADDRESS: u16 = 0xFF0F;
 pub const APU_REGISTERS_START: u16 = 0xFF10;
 pub const APU_REGISTERS_END: u16 = 0xFF26;
 
+pub const WAVE_RAM_START: u16 = 0xFF30;
+pub const WAVE_RAM_END: u16 = 0xFF3F;
+
 pub const DMA_ADDRESS: u16 = 0xFF46;
 
 pub const PPU_REGISTERS_START: u16 = 0xFF40;

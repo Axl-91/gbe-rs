@@ -164,6 +164,8 @@ impl MemoryBus {
 
             APU_REGISTERS_START..=APU_REGISTERS_END => self.apu.read(address),
 
+            WAVE_RAM_START..=WAVE_RAM_END => self.apu.read(address),
+
             PPU_REGISTERS_START..=PPU_REGISTERS_END => self.ppu.read(address),
 
             HRAM_START..=HRAM_END => {
@@ -220,6 +222,8 @@ impl MemoryBus {
             INTERRUPT_FLAG_ADDRESS => self.interrupt_flags = value,
 
             APU_REGISTERS_START..=APU_REGISTERS_END => self.apu.write(address, value),
+
+            WAVE_RAM_START..=WAVE_RAM_END => self.apu.write(address, value),
 
             PPU_REGISTERS_START..=PPU_REGISTERS_END => match address {
                 DMA_ADDRESS => self.dma.start(value),

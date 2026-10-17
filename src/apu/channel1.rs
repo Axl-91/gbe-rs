@@ -48,6 +48,8 @@ pub(super) struct Channel1 {
 
     length_counter: LengthCounter,
     length_enabled: bool,
+
+    sweep_negate_calculated: bool,
 }
 
 impl Channel1 {
@@ -74,6 +76,8 @@ impl Channel1 {
 
             length_counter: LengthCounter::default(),
             length_enabled: false,
+
+            sweep_negate_calculated: false,
         }
     }
 
@@ -113,7 +117,16 @@ impl Channel1 {
         extra_length_clock: bool,
     ) {
         match address {
-            NR10_ADDRESS => self.nr10 = value,
+            NR10_ADDRESS => {
+                let was_negate = self.get_sweep_direction_decrease();
+                let is_negate = value & NR10_SWEEP_DIRECTION_MASK != 0;
+
+                if was_negate && !is_negate && self.sweep_negate_calculated {
+                    self.active = false;
+                }
+
+                self.nr10 = value;
+            }
             NR11_ADDRESS => {
                 self.nr11 = value;
                 self.length_counter
@@ -195,17 +208,14 @@ impl Channel1 {
     ///
     /// Returns `None` when the shift is zero or the result exceeds the
     /// maximum frequency.
-    fn calculate_sweep_frequency(&self) -> Option<u16> {
+    fn calculate_sweep_frequency(&mut self) -> Option<u16> {
         let shift = self.get_sweep_shift();
-
-        if shift == 0 {
-            return None;
-        }
 
         let frequency = self.sweep_shadow_frequency;
         let delta = frequency >> shift;
 
         let new_frequency = if self.get_sweep_direction_decrease() {
+            self.sweep_negate_calculated = true;
             frequency - delta
         } else {
             frequency + delta
@@ -220,11 +230,7 @@ impl Channel1 {
 
     /// Advances the sweep and applies a new frequency when its timer expires.
     pub(super) fn clock_sweep(&mut self) {
-        if !self.tick_sweep_timer() {
-            return;
-        }
-
-        if self.get_sweep_shift() == 0 {
+        if !self.tick_sweep_timer() || self.get_sweep_period() == 0 {
             return;
         }
 
@@ -232,6 +238,10 @@ impl Channel1 {
             self.active = false;
             return;
         };
+
+        if self.get_sweep_shift() == 0 {
+            return;
+        }
 
         self.sweep_shadow_frequency = frequency;
         self.set_frequency(frequency);
@@ -255,6 +265,7 @@ impl Channel1 {
     ///
     /// The channel becomes active only if its DAC is enabled.
     fn trigger(&mut self, extra_length_clock: bool) {
+        self.sweep_negate_calculated = false;
         self.active = self.is_dac_enabled();
 
         if self.length_counter.is_zero() {
@@ -669,15 +680,6 @@ mod tests {
     }
 
     #[test]
-    fn sweep_returns_none_when_shift_is_zero() {
-        let mut channel = Channel1::new();
-
-        channel.write(NR10_ADDRESS, 0b0001_0000);
-
-        assert_eq!(channel.calculate_sweep_frequency(), None);
-    }
-
-    #[test]
     fn trigger_initializes_sweep_shadow_frequency() {
         let mut channel = Channel1::new();
         let frequency = 1024_u16;
@@ -818,28 +820,6 @@ mod tests {
         channel.clock_sweep();
 
         assert!(!channel.is_active());
-    }
-
-    #[test]
-    fn sweep_does_not_update_frequency_when_shift_is_zero() {
-        let mut channel = Channel1::new();
-        let frequency = 1024_u16;
-
-        let nr10_value = 0b0001_0000;
-        let nr12_value = NR12_DAC_MASK;
-        let nr13_value = frequency as u8;
-        let nr14_value = ((frequency >> u8::BITS) as u8) | NR14_TRIGGER_MASK;
-
-        channel.write(NR10_ADDRESS, nr10_value);
-        channel.write(NR12_ADDRESS, nr12_value);
-        channel.write(NR13_ADDRESS, nr13_value);
-        channel.write(NR14_ADDRESS, nr14_value);
-
-        channel.clock_sweep();
-
-        assert_eq!(channel.get_frequency(), frequency);
-        assert_eq!(channel.sweep_shadow_frequency, frequency);
-        assert!(channel.is_active());
     }
 
     #[test]
