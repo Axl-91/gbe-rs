@@ -26,6 +26,7 @@ const RAM_SIZE: usize = 0x0200;
 
 /// Represents an MBC2 memory bank controller.
 pub struct Mbc2 {
+    has_battery: bool,
     rom_bank: u8,
     ram_enabled: bool,
     ram: [u8; RAM_SIZE],
@@ -33,8 +34,9 @@ pub struct Mbc2 {
 
 impl Mbc2 {
     /// Creates a new MBC2 with RAM disabled and ROM bank 1 selected.
-    pub fn new() -> Self {
+    pub fn new(has_battery: bool) -> Self {
         Self {
+            has_battery,
             rom_bank: DEFAULT_ROM_BANK,
             ram_enabled: false,
             ram: [0; RAM_SIZE],
@@ -95,12 +97,33 @@ impl Mbc for Mbc2 {
         self.ram[index] = value & RAM_VALUE_MASK;
     }
 
+    fn has_battery(&self) -> bool {
+        self.has_battery
+    }
+
     fn is_ram_enabled(&self) -> bool {
         self.ram_enabled
     }
 
     fn get_ram_bank(&self) -> u8 {
         0
+    }
+
+    fn get_save_data(&self) -> Option<Vec<u8>> {
+        if !self.has_battery || self.ram.is_empty() {
+            return None;
+        }
+
+        Some(self.ram.to_vec().clone())
+    }
+
+    fn load_save_data(&mut self, data: &[u8]) -> bool {
+        if !self.has_battery || data.len() != self.ram.len() {
+            return false;
+        }
+
+        self.ram.copy_from_slice(data);
+        true
     }
 }
 
@@ -114,7 +137,7 @@ impl Mbc2 {
 
 impl Default for Mbc2 {
     fn default() -> Self {
-        Self::new()
+        Self::new(false)
     }
 }
 
@@ -142,7 +165,7 @@ mod tests {
 
     #[test]
     fn fixed_rom_bank_maps_addresses_directly() {
-        let mbc = Mbc2::new();
+        let mbc = Mbc2::default();
 
         assert_eq!(mbc.read(FIXED_BANK_FIRST_ADDRESS), 0);
         assert_eq!(
@@ -153,7 +176,7 @@ mod tests {
 
     #[test]
     fn switchable_rom_bank_defaults_to_bank_one() {
-        let mbc = Mbc2::new();
+        let mbc = Mbc2::default();
 
         assert_eq!(
             mbc.read(SWITCHABLE_BANK_FIRST_ADDRESS),
@@ -163,7 +186,7 @@ mod tests {
 
     #[test]
     fn writing_rom_bank_selects_the_requested_bank() {
-        let mut mbc = Mbc2::new();
+        let mut mbc = Mbc2::default();
 
         mbc.write(ROM_BANK_SELECT_ADDRESS, THIRD_SWITCHABLE_BANK);
 
@@ -175,7 +198,7 @@ mod tests {
 
     #[test]
     fn selecting_rom_bank_zero_selects_bank_one() {
-        let mut mbc = Mbc2::new();
+        let mut mbc = Mbc2::default();
 
         mbc.write(ROM_BANK_SELECT_ADDRESS, 0);
 
@@ -187,7 +210,7 @@ mod tests {
 
     #[test]
     fn rom_bank_selection_uses_only_the_lower_four_bits() {
-        let mut mbc = Mbc2::new();
+        let mut mbc = Mbc2::default();
         let value_with_upper_bits = 0xF0 | SECOND_SWITCHABLE_BANK;
 
         mbc.write(ROM_BANK_SELECT_ADDRESS, value_with_upper_bits);
@@ -200,7 +223,7 @@ mod tests {
 
     #[test]
     fn ram_is_disabled_by_default() {
-        let mbc = Mbc2::new();
+        let mbc = Mbc2::default();
 
         assert!(!mbc.is_ram_enabled());
         assert_eq!(mbc.read_ram(RAM_FIRST_ADDRESS), 0xFF);
@@ -208,7 +231,7 @@ mod tests {
 
     #[test]
     fn writing_ram_enable_value_enables_ram() {
-        let mut mbc = Mbc2::new();
+        let mut mbc = Mbc2::default();
 
         mbc.write(RAM_ENABLE_ADDRESS, RAM_ENABLE_VALUE);
 
@@ -217,7 +240,7 @@ mod tests {
 
     #[test]
     fn writing_ram_disable_value_disables_ram() {
-        let mut mbc = Mbc2::new();
+        let mut mbc = Mbc2::default();
 
         mbc.write(RAM_ENABLE_ADDRESS, RAM_ENABLE_VALUE);
         mbc.write(RAM_ENABLE_ADDRESS, RAM_DISABLE_VALUE);
@@ -228,7 +251,7 @@ mod tests {
 
     #[test]
     fn ram_writes_are_ignored_when_ram_is_disabled() {
-        let mut mbc = Mbc2::new();
+        let mut mbc = Mbc2::default();
 
         mbc.write_ram(RAM_FIRST_ADDRESS, 0x05);
 
@@ -239,7 +262,7 @@ mod tests {
 
     #[test]
     fn ram_stores_only_the_lower_four_bits() {
-        let mut mbc = Mbc2::new();
+        let mut mbc = Mbc2::default();
 
         mbc.write(RAM_ENABLE_ADDRESS, RAM_ENABLE_VALUE);
         mbc.write_ram(RAM_FIRST_ADDRESS, 0xAB);
@@ -249,7 +272,7 @@ mod tests {
 
     #[test]
     fn ram_reads_set_the_upper_four_bits() {
-        let mut mbc = Mbc2::new();
+        let mut mbc = Mbc2::default();
 
         mbc.write(RAM_ENABLE_ADDRESS, RAM_ENABLE_VALUE);
         mbc.write_ram(RAM_FIRST_ADDRESS, 0x05);
@@ -259,7 +282,7 @@ mod tests {
 
     #[test]
     fn ram_addresses_mirror_every_512_bytes() {
-        let mut mbc = Mbc2::new();
+        let mut mbc = Mbc2::default();
 
         mbc.write(RAM_ENABLE_ADDRESS, RAM_ENABLE_VALUE);
         mbc.write_ram(RAM_FIRST_ADDRESS, 0x07);
@@ -269,7 +292,7 @@ mod tests {
 
     #[test]
     fn ram_enable_and_rom_bank_selection_use_address_bit_eight() {
-        let mut mbc = Mbc2::new();
+        let mut mbc = Mbc2::default();
 
         // A8 = 0: enables RAM.
         mbc.write(RAM_ENABLE_ADDRESS, RAM_ENABLE_VALUE);
@@ -287,7 +310,7 @@ mod tests {
 
     #[test]
     fn addresses_with_a8_clear_enable_ram() {
-        let mut mbc = Mbc2::new();
+        let mut mbc = Mbc2::default();
         let ram_control_address: u16 = 0x0200;
 
         mbc.write(ram_control_address, RAM_ENABLE_VALUE);
@@ -297,7 +320,7 @@ mod tests {
 
     #[test]
     fn ram_banks_are_not_switchable() {
-        let mbc = Mbc2::new();
+        let mbc = Mbc2::default();
 
         assert_eq!(mbc.get_ram_bank(), 0);
     }

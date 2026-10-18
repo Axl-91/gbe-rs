@@ -11,14 +11,20 @@ pub mod mbc5;
 use std::fs;
 use std::io;
 use std::path::Path;
+use std::path::PathBuf;
 
 use crate::cartridge::mbc::{CartridgeMbc, Mbc};
+use crate::cartridge::mbc2::Mbc2;
 use crate::cartridge::mbc3::Mbc3;
 use crate::cartridge::mbc5::Mbc5;
+use crate::memory::map::MBC1_BATTERY;
+use crate::memory::map::MBC2_BATTERY;
 use crate::memory::map::MBC2_END;
 use crate::memory::map::MBC2_START;
+use crate::memory::map::MBC3_BATTERY;
 use crate::memory::map::MBC3_END;
 use crate::memory::map::MBC3_START;
+use crate::memory::map::MBC5_BATTERY;
 use crate::memory::map::MBC5_END;
 use crate::memory::map::MBC5_START;
 use crate::memory::map::{
@@ -34,20 +40,30 @@ const CARTRIDGE_TYPE_ADDRESS: usize = 0x0147;
 pub struct Cartridge {
     rom: Vec<u8>,
     mbc: CartridgeMbc,
+    path: Option<PathBuf>,
 }
 
 impl Cartridge {
     /// Creates a new cartridge with the given ROM and RAM size.
     pub fn new(rom: Vec<u8>, mbc: CartridgeMbc) -> Self {
-        Self { rom, mbc }
+        Self {
+            rom,
+            mbc,
+            path: None,
+        }
     }
 
     fn select_mbc(mbc_type: u8, ram_size: usize) -> io::Result<CartridgeMbc> {
         let mbc = match mbc_type {
-            ROM_ONLY | MBC1_START..=MBC1_END => CartridgeMbc::Mbc1(Mbc1::new(ram_size)),
-            MBC2_START..=MBC2_END => CartridgeMbc::Mbc2(Box::default()),
-            MBC3_START..=MBC3_END => CartridgeMbc::Mbc3(Box::new(Mbc3::new(ram_size))),
-            MBC5_START..=MBC5_END => CartridgeMbc::Mbc5(Box::new(Mbc5::new(ram_size))),
+            ROM_ONLY => CartridgeMbc::Mbc1(Mbc1::new(false, ram_size)),
+            MBC1_BATTERY => CartridgeMbc::Mbc1(Mbc1::new(true, ram_size)),
+            MBC1_START..MBC1_END => CartridgeMbc::Mbc1(Mbc1::new(false, ram_size)),
+            MBC2_BATTERY => CartridgeMbc::Mbc2(Box::new(Mbc2::new(true))),
+            MBC2_START..MBC2_END => CartridgeMbc::Mbc2(Box::new(Mbc2::new(false))),
+            MBC3_BATTERY => CartridgeMbc::Mbc3(Box::new(Mbc3::new(true, ram_size))),
+            MBC3_START..MBC3_END => CartridgeMbc::Mbc3(Box::new(Mbc3::new(false, ram_size))),
+            MBC5_BATTERY => CartridgeMbc::Mbc5(Box::new(Mbc5::new(true, ram_size))),
+            MBC5_START..MBC5_END => CartridgeMbc::Mbc5(Box::new(Mbc5::new(false, ram_size))),
             _ => {
                 return Err(io::Error::new(
                     io::ErrorKind::InvalidData,
@@ -74,6 +90,7 @@ impl Cartridge {
     /// Loads a cartridge ROM from the given file path
     /// and initializes its RAM from the cartridge header.
     pub fn from_file<P: AsRef<Path>>(path: P) -> io::Result<Self> {
+        let path = path.as_ref();
         let rom = fs::read(path)?;
 
         if rom.len() <= RAM_SIZE_CODE_ADDRESS {
@@ -86,7 +103,15 @@ impl Cartridge {
         let ram_size = Self::select_ram_size(rom[RAM_SIZE_CODE_ADDRESS]);
         let mbc = Self::select_mbc(rom[CARTRIDGE_TYPE_ADDRESS], ram_size)?;
 
-        Ok(Self::new(rom, mbc))
+        let mut cartridge = Self {
+            rom,
+            mbc,
+            path: Some(path.to_path_buf()),
+        };
+
+        cartridge.load_save()?;
+
+        Ok(cartridge)
     }
 
     /// Reads a byte from the cartridge ROM or RAM address space.
@@ -113,6 +138,45 @@ impl Cartridge {
             _ => unreachable!("Invalid cartridge address: {address:#06X}"),
         }
     }
+
+    fn save_path(&self) -> Option<PathBuf> {
+        self.path.as_ref().map(|path| path.with_extension("sav"))
+    }
+
+    fn load_save(&mut self) -> io::Result<()> {
+        let Some(save_path) = self.save_path() else {
+            return Ok(());
+        };
+
+        if !save_path.exists() {
+            return Ok(());
+        }
+
+        let data = fs::read(&save_path)?;
+
+        if !self.mbc.load_save_data(&data) {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "Save file has an invalid size",
+            ));
+        }
+
+        Ok(())
+    }
+
+    pub fn save(&self) -> io::Result<()> {
+        let Some(save_path) = self.save_path() else {
+            return Ok(());
+        };
+
+        let Some(data) = self.mbc.get_save_data() else {
+            return Ok(());
+        };
+
+        fs::write(save_path, data)?;
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -127,7 +191,7 @@ mod tests {
     use rand::RngExt;
 
     fn create_test_cartridge(rom: Option<Vec<u8>>, ram_size: usize) -> Cartridge {
-        let mbc = CartridgeMbc::Mbc1(Mbc1::new(ram_size));
+        let mbc = CartridgeMbc::Mbc1(Mbc1::new(false, ram_size));
         match rom {
             Some(rom) => Cartridge::new(rom, mbc),
             None => Cartridge::new(vec![0; ROM_BANK_SIZE * 4], mbc),

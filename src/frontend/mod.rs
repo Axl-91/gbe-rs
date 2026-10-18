@@ -282,6 +282,12 @@ impl ApplicationHandler for Frontend {
             _ => {}
         }
     }
+
+    fn exiting(&mut self, _event_loop: &ActiveEventLoop) {
+        if let Err(error) = self.emulator.save() {
+            log::error!("Failed to save cartridge RAM: {error}");
+        }
+    }
 }
 
 pub fn run(emulator: Emulator) {

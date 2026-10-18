@@ -13,6 +13,7 @@ use crate::{
     serial::Serial,
     timer::Timer,
 };
+use std::io;
 
 /// Value returned when reading from an address that isn't backed by any
 /// implemented memory or I/O register.
@@ -65,6 +66,10 @@ impl MemoryBus {
 
     pub fn take_audio_samples(&mut self) -> Vec<(f32, f32)> {
         self.apu.take_samples()
+    }
+
+    pub fn save(&self) -> io::Result<()> {
+        self.cartridge.save()
     }
 
     pub fn is_joypad_active(&self) -> bool {

@@ -11,11 +11,16 @@ pub trait Mbc {
     fn read_ram(&self, address: u16) -> u8;
     fn write_ram(&mut self, address: u16, value: u8);
 
+    fn has_battery(&self) -> bool;
+
     fn is_ram_enabled(&self) -> bool;
 
     fn get_ram_bank(&self) -> u8 {
         0
     }
+
+    fn get_save_data(&self) -> Option<Vec<u8>>;
+    fn load_save_data(&mut self, data: &[u8]) -> bool;
 }
 
 /// Wraps a cartridge's concrete MBC. Each variant carries the actual
@@ -65,6 +70,15 @@ impl Mbc for CartridgeMbc {
         }
     }
 
+    fn has_battery(&self) -> bool {
+        match self {
+            CartridgeMbc::Mbc1(m) => m.has_battery(),
+            CartridgeMbc::Mbc2(m) => m.has_battery(),
+            CartridgeMbc::Mbc3(m) => m.has_battery(),
+            CartridgeMbc::Mbc5(m) => m.has_battery(),
+        }
+    }
+
     fn is_ram_enabled(&self) -> bool {
         match self {
             CartridgeMbc::Mbc1(m) => m.is_ram_enabled(),
@@ -80,6 +94,24 @@ impl Mbc for CartridgeMbc {
             CartridgeMbc::Mbc2(m) => m.get_ram_bank(),
             CartridgeMbc::Mbc3(m) => m.get_ram_bank(),
             CartridgeMbc::Mbc5(m) => m.get_ram_bank(),
+        }
+    }
+
+    fn get_save_data(&self) -> Option<Vec<u8>> {
+        match self {
+            Self::Mbc1(mbc) => mbc.get_save_data(),
+            Self::Mbc2(mbc) => mbc.get_save_data(),
+            Self::Mbc3(mbc) => mbc.get_save_data(),
+            Self::Mbc5(mbc) => mbc.get_save_data(),
+        }
+    }
+
+    fn load_save_data(&mut self, data: &[u8]) -> bool {
+        match self {
+            Self::Mbc1(mbc) => mbc.load_save_data(data),
+            Self::Mbc2(mbc) => mbc.load_save_data(data),
+            Self::Mbc3(mbc) => mbc.load_save_data(data),
+            Self::Mbc5(mbc) => mbc.load_save_data(data),
         }
     }
 }

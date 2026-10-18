@@ -38,6 +38,7 @@ const DISABLED_RAM_VALUE: u8 = 0xFF;
 
 /// Represents an MBC5 memory bank controller.
 pub struct Mbc5 {
+    has_battery: bool,
     rom_bank: u16,
     ram_bank: u8,
     ram_enabled: bool,
@@ -46,8 +47,9 @@ pub struct Mbc5 {
 
 impl Mbc5 {
     /// Creates a new MBC5 with ROM bank 1 selected and RAM disabled.
-    pub fn new(ram_size: usize) -> Self {
+    pub fn new(has_battery: bool, ram_size: usize) -> Self {
         Self {
+            has_battery,
             rom_bank: DEFAULT_ROM_BANK,
             ram_bank: DEFAULT_RAM_BANK,
             ram_enabled: false,
@@ -124,6 +126,10 @@ impl Mbc for Mbc5 {
         }
     }
 
+    fn has_battery(&self) -> bool {
+        self.has_battery
+    }
+
     fn is_ram_enabled(&self) -> bool {
         self.ram_enabled
     }
@@ -131,11 +137,28 @@ impl Mbc for Mbc5 {
     fn get_ram_bank(&self) -> u8 {
         self.ram_bank
     }
+
+    fn get_save_data(&self) -> Option<Vec<u8>> {
+        if !self.has_battery || self.ram.is_empty() {
+            return None;
+        }
+
+        Some(self.ram.clone())
+    }
+
+    fn load_save_data(&mut self, data: &[u8]) -> bool {
+        if !self.has_battery || data.len() != self.ram.len() {
+            return false;
+        }
+
+        self.ram.copy_from_slice(data);
+        true
+    }
 }
 
 impl Default for Mbc5 {
     fn default() -> Self {
-        Self::new(RAM_BANK_SIZE)
+        Self::new(false, RAM_BANK_SIZE)
     }
 }
 
@@ -164,7 +187,7 @@ mod tests {
     const SECOND_TEST_VALUE: u8 = 0x34;
 
     fn create_mbc5_with_four_ram_banks() -> Mbc5 {
-        Mbc5::new(RAM_BANK_SIZE * 4)
+        Mbc5::new(false, RAM_BANK_SIZE * 4)
     }
 
     fn enable_ram(mbc: &mut Mbc5) {
@@ -173,7 +196,7 @@ mod tests {
 
     #[test]
     fn fixed_rom_window_maps_bank_zero() {
-        let mbc = Mbc5::new(0);
+        let mbc = Mbc5::new(false, 0);
 
         assert_eq!(mbc.read(FIXED_ROM_BANK_START), 0);
         assert_eq!(mbc.read(FIXED_ROM_BANK_END), ROM_BANK_SIZE - 1);
@@ -181,7 +204,7 @@ mod tests {
 
     #[test]
     fn switchable_rom_window_defaults_to_bank_one() {
-        let mbc = Mbc5::new(0);
+        let mbc = Mbc5::new(false, 0);
 
         assert_eq!(
             mbc.read(SWITCHABLE_ROM_BANK_START),
@@ -191,7 +214,7 @@ mod tests {
 
     #[test]
     fn selecting_low_rom_bank_changes_switchable_window() {
-        let mut mbc = Mbc5::new(0);
+        let mut mbc = Mbc5::new(false, 0);
 
         mbc.write(ROM_BANK_LOW_START, SECOND_ROM_BANK as u8);
 
@@ -203,7 +226,7 @@ mod tests {
 
     #[test]
     fn rom_bank_zero_is_selectable() {
-        let mut mbc = Mbc5::new(0);
+        let mut mbc = Mbc5::new(false, 0);
 
         mbc.write(ROM_BANK_LOW_START, ROM_BANK_ZERO as u8);
         mbc.write(ROM_BANK_HIGH_START, 0);
@@ -213,7 +236,7 @@ mod tests {
 
     #[test]
     fn high_rom_bank_bit_selects_bank_256() {
-        let mut mbc = Mbc5::new(0);
+        let mut mbc = Mbc5::new(false, 0);
 
         mbc.write(ROM_BANK_LOW_START, ROM_BANK_ZERO as u8);
         mbc.write(ROM_BANK_HIGH_START, ROM_BANK_HIGH_BIT);
@@ -223,7 +246,7 @@ mod tests {
 
     #[test]
     fn changing_low_rom_bank_preserves_high_bit() {
-        let mut mbc = Mbc5::new(0);
+        let mut mbc = Mbc5::new(false, 0);
 
         mbc.write(ROM_BANK_HIGH_START, ROM_BANK_HIGH_BIT);
         mbc.write(ROM_BANK_LOW_START, SECOND_ROM_BANK as u8);
@@ -238,7 +261,7 @@ mod tests {
 
     #[test]
     fn changing_high_rom_bank_preserves_low_bits() {
-        let mut mbc = Mbc5::new(0);
+        let mut mbc = Mbc5::new(false, 0);
 
         mbc.write(ROM_BANK_LOW_START, ROM_BANK_LOW_MAX);
         mbc.write(ROM_BANK_HIGH_START, ROM_BANK_HIGH_BIT);
@@ -253,7 +276,7 @@ mod tests {
 
     #[test]
     fn rom_bank_high_register_uses_only_one_bit() {
-        let mut mbc = Mbc5::new(0);
+        let mut mbc = Mbc5::new(false, 0);
 
         mbc.write(ROM_BANK_LOW_START, ROM_BANK_ZERO as u8);
         mbc.write(ROM_BANK_HIGH_START, ROM_BANK_HIGH_BITS_MASK);

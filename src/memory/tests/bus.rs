@@ -1,7 +1,7 @@
 use super::*;
 
 fn test_cartridge() -> Cartridge {
-    let mbc = CartridgeMbc::Mbc1(Mbc1::new(RAM_BANK_SIZE));
+    let mbc = CartridgeMbc::Mbc1(Mbc1::new(false, RAM_BANK_SIZE));
     Cartridge::new(vec![0; ROM_BANK_SIZE * 4], mbc)
 }
 
@@ -35,7 +35,7 @@ mod cartridge {
         rom[addresses[3] as usize] = values[3];
         rom[addresses[4] as usize] = values[4];
 
-        let mbc = CartridgeMbc::Mbc1(Mbc1::new(RAM_BANK_SIZE));
+        let mbc = CartridgeMbc::Mbc1(Mbc1::new(false, RAM_BANK_SIZE));
         let cartridge = Cartridge::new(rom, mbc);
         let bus = MemoryBus::new(cartridge);
 

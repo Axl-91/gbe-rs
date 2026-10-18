@@ -36,6 +36,7 @@ const DISABLED_RAM_VALUE: u8 = 0xFF;
 
 /// Represents an MBC3 memory bank controller.
 pub struct Mbc3 {
+    has_battery: bool,
     rom_bank: u8,
     ram_bank: u8,
     ram_enabled: bool,
@@ -44,8 +45,9 @@ pub struct Mbc3 {
 
 impl Mbc3 {
     /// Creates an MBC3 with the RAM size specified by the cartridge header.
-    pub fn new(ram_size: usize) -> Self {
+    pub fn new(has_battery: bool, ram_size: usize) -> Self {
         Self {
+            has_battery,
             rom_bank: DEFAULT_ROM_BANK,
             ram_bank: DEFAULT_RAM_BANK,
             ram_enabled: false,
@@ -131,6 +133,10 @@ impl Mbc for Mbc3 {
         }
     }
 
+    fn has_battery(&self) -> bool {
+        self.has_battery
+    }
+
     fn is_ram_enabled(&self) -> bool {
         self.ram_enabled
     }
@@ -138,11 +144,28 @@ impl Mbc for Mbc3 {
     fn get_ram_bank(&self) -> u8 {
         self.ram_bank
     }
+
+    fn get_save_data(&self) -> Option<Vec<u8>> {
+        if !self.has_battery || self.ram.is_empty() {
+            return None;
+        }
+
+        Some(self.ram.clone())
+    }
+
+    fn load_save_data(&mut self, data: &[u8]) -> bool {
+        if !self.has_battery || data.len() != self.ram.len() {
+            return false;
+        }
+
+        self.ram.copy_from_slice(data);
+        true
+    }
 }
 
 impl Default for Mbc3 {
     fn default() -> Self {
-        Self::new(RAM_BANK_SIZE)
+        Self::new(false, RAM_BANK_SIZE)
     }
 }
 
@@ -172,7 +195,7 @@ mod tests {
     const RAM_ENABLE_ADDRESS: u16 = 0x0000;
 
     fn create_mbc3_with_four_ram_banks() -> Mbc3 {
-        Mbc3::new(RAM_BANK_SIZE * 4)
+        Mbc3::new(false, RAM_BANK_SIZE * 4)
     }
 
     fn enable_ram(mbc: &mut Mbc3) {
@@ -181,7 +204,7 @@ mod tests {
 
     #[test]
     fn fixed_rom_bank_always_maps_bank_zero() {
-        let mbc = Mbc3::new(0);
+        let mbc = Mbc3::new(false, 0);
 
         assert_eq!(mbc.read(0x0000), 0);
         assert_eq!(mbc.read(0x3FFF), ROM_BANK_SIZE - 1);
@@ -189,7 +212,7 @@ mod tests {
 
     #[test]
     fn switchable_rom_bank_defaults_to_bank_one() {
-        let mbc = Mbc3::new(0);
+        let mbc = Mbc3::new(false, 0);
 
         assert_eq!(
             mbc.read(0x4000),
@@ -199,7 +222,7 @@ mod tests {
 
     #[test]
     fn selecting_rom_bank_changes_switchable_rom_window() {
-        let mut mbc = Mbc3::new(0);
+        let mut mbc = Mbc3::new(false, 0);
 
         mbc.write(ROM_BANK_SELECT_ADDRESS, SECOND_SWITCHABLE_ROM_BANK);
 
@@ -211,7 +234,7 @@ mod tests {
 
     #[test]
     fn selecting_rom_bank_zero_maps_bank_one() {
-        let mut mbc = Mbc3::new(0);
+        let mut mbc = Mbc3::new(false, 0);
 
         mbc.write(ROM_BANK_SELECT_ADDRESS, ROM_BANK_ZERO);
 
@@ -223,7 +246,7 @@ mod tests {
 
     #[test]
     fn rom_bank_selection_uses_seven_bits() {
-        let mut mbc = Mbc3::new(0);
+        let mut mbc = Mbc3::new(false, 0);
         let selected_value = LAST_ROM_BANK | INVALID_ROM_BANK_BITS;
 
         mbc.write(ROM_BANK_SELECT_ADDRESS, selected_value);
