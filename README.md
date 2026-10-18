@@ -40,6 +40,7 @@ The goal of this project is to build a simple and accurate emulator for the orig
   - [ ] MBC3+RTC
   - [x] MBC5
 - [x] Cartridge RAM
+- [x] Battery-backed save persistence
 
 ### Hardware
 - [x] Timer
@@ -70,7 +71,6 @@ The goal of this project is to build a simple and accurate emulator for the orig
   - [x] Input
   - [x] Audio
   - [ ] Debugging / Tools
-
 
 ## Emulator architecture
 
