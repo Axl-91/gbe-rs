@@ -5,14 +5,18 @@
 pub mod mbc;
 pub mod mbc1;
 pub mod mbc2;
+pub mod mbc3;
 
 use std::fs;
 use std::io;
 use std::path::Path;
 
 use crate::cartridge::mbc::{CartridgeMbc, Mbc};
+use crate::cartridge::mbc3::Mbc3;
 use crate::memory::map::MBC2_END;
 use crate::memory::map::MBC2_START;
+use crate::memory::map::MBC3_END;
+use crate::memory::map::MBC3_START;
 use crate::memory::map::{
     CARTRIDGE_RAM_END, CARTRIDGE_RAM_START, CARTRIDGE_ROM_END, CARTRIDGE_ROM_START, MBC1_END,
     MBC1_START, RAM_BANK_SIZE, ROM_ONLY,
@@ -38,6 +42,7 @@ impl Cartridge {
         let mbc = match mbc_type {
             ROM_ONLY | MBC1_START..=MBC1_END => CartridgeMbc::Mbc1(Mbc1::new(ram_size)),
             MBC2_START..=MBC2_END => CartridgeMbc::Mbc2(Box::default()),
+            MBC3_START..=MBC3_END => CartridgeMbc::Mbc3(Box::new(Mbc3::new(ram_size))),
             _ => {
                 return Err(io::Error::new(
                     io::ErrorKind::InvalidData,

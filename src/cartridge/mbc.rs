@@ -1,7 +1,7 @@
 //! Common interface for the different memory bank controllers, and the enum
 //! that wraps the concrete implementation used by each cartridge.
 
-use crate::cartridge::{mbc1::Mbc1, mbc2::Mbc2};
+use crate::cartridge::{mbc1::Mbc1, mbc2::Mbc2, mbc3::Mbc3};
 
 /// Behavior shared by any memory bank controller.
 pub trait Mbc {
@@ -24,7 +24,7 @@ pub trait Mbc {
 pub enum CartridgeMbc {
     Mbc1(Mbc1),
     Mbc2(Box<Mbc2>),
-    // Mbc3(Mbc3),
+    Mbc3(Box<Mbc3>),
 }
 
 impl Mbc for CartridgeMbc {
@@ -32,6 +32,7 @@ impl Mbc for CartridgeMbc {
         match self {
             CartridgeMbc::Mbc1(m) => m.read(address),
             CartridgeMbc::Mbc2(m) => m.read(address),
+            CartridgeMbc::Mbc3(m) => m.read(address),
         }
     }
 
@@ -39,6 +40,7 @@ impl Mbc for CartridgeMbc {
         match self {
             CartridgeMbc::Mbc1(m) => m.write(address, value),
             CartridgeMbc::Mbc2(m) => m.write(address, value),
+            CartridgeMbc::Mbc3(m) => m.write(address, value),
         }
     }
 
@@ -46,6 +48,7 @@ impl Mbc for CartridgeMbc {
         match self {
             CartridgeMbc::Mbc1(m) => m.read_ram(address),
             CartridgeMbc::Mbc2(m) => m.read_ram(address),
+            CartridgeMbc::Mbc3(m) => m.read_ram(address),
         }
     }
 
@@ -53,6 +56,7 @@ impl Mbc for CartridgeMbc {
         match self {
             CartridgeMbc::Mbc1(m) => m.write_ram(address, value),
             CartridgeMbc::Mbc2(m) => m.write_ram(address, value),
+            CartridgeMbc::Mbc3(m) => m.write_ram(address, value),
         }
     }
 
@@ -60,6 +64,7 @@ impl Mbc for CartridgeMbc {
         match self {
             CartridgeMbc::Mbc1(m) => m.is_ram_enabled(),
             CartridgeMbc::Mbc2(m) => m.is_ram_enabled(),
+            CartridgeMbc::Mbc3(m) => m.is_ram_enabled(),
         }
     }
 
@@ -67,6 +72,7 @@ impl Mbc for CartridgeMbc {
         match self {
             CartridgeMbc::Mbc1(m) => m.get_ram_bank(),
             CartridgeMbc::Mbc2(m) => m.get_ram_bank(),
+            CartridgeMbc::Mbc3(m) => m.get_ram_bank(),
         }
     }
 }

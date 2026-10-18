@@ -16,7 +16,10 @@ pub const MBC1_END: u8 = 0x03;
 pub const MBC2_START: u8 = 0x05;
 pub const MBC2_END: u8 = 0x06;
 
-pub const MBC3_START: u8 = 0x0F;
+pub const MBC3_RTC_START: u8 = 0x0F;
+pub const MBC3_RTC_END: u8 = 0x10;
+
+pub const MBC3_START: u8 = 0x11;
 pub const MBC3_END: u8 = 0x13;
 
 pub const MBC5_START: u8 = 0x19;
