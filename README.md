@@ -36,7 +36,9 @@ The goal of this project is to build a simple and accurate emulator for the orig
 - [ ] MBC
   - [x] MBC1
   - [x] MBC2
-  - [ ] MBC3
+  - [x] MBC3
+  - [ ] MBC3+RTC
+  - [x] MBC5
 - [x] Cartridge RAM
 
 ### Hardware
