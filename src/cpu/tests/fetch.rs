@@ -1,4 +1,4 @@
-use crate::cartridge::{mbc::CartridgeMbc, mbc1::Mbc1};
+use crate::cartridge::mbc::create_mbc1;
 
 use super::*;
 
@@ -11,7 +11,7 @@ fn fetch_reads_opcode_and_advances_pc() {
     let opcode: u8 = rng.random();
     rom[GAME_ENTRY_POINT as usize] = opcode;
 
-    let mbc = CartridgeMbc::Mbc1(Mbc1::default());
+    let mbc = create_mbc1(false, 0);
     let cartridge = Cartridge::new(rom, mbc);
     let bus = MemoryBus::new(cartridge);
     let mut cpu = Cpu::new(bus);

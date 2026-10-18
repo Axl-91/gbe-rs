@@ -13,25 +13,24 @@ use std::io;
 use std::path::Path;
 use std::path::PathBuf;
 
+use crate::cartridge::mbc::create_mbc1;
+use crate::cartridge::mbc::create_mbc2;
+use crate::cartridge::mbc::create_mbc3;
+use crate::cartridge::mbc::create_mbc5;
 use crate::cartridge::mbc::{CartridgeMbc, Mbc};
-use crate::cartridge::mbc2::Mbc2;
-use crate::cartridge::mbc3::Mbc3;
-use crate::cartridge::mbc5::Mbc5;
 use crate::memory::map::MBC1_BATTERY;
 use crate::memory::map::MBC2_BATTERY;
-use crate::memory::map::MBC2_END;
-use crate::memory::map::MBC2_START;
+use crate::memory::map::MBC2_SIMPLE;
 use crate::memory::map::MBC3_BATTERY;
-use crate::memory::map::MBC3_END;
-use crate::memory::map::MBC3_START;
+use crate::memory::map::MBC3_SIMPLE_END;
+use crate::memory::map::MBC3_SIMPLE_START;
 use crate::memory::map::MBC5_BATTERY;
 use crate::memory::map::MBC5_END;
 use crate::memory::map::MBC5_START;
 use crate::memory::map::{
-    CARTRIDGE_RAM_END, CARTRIDGE_RAM_START, CARTRIDGE_ROM_END, CARTRIDGE_ROM_START, MBC1_END,
-    MBC1_START, RAM_BANK_SIZE, ROM_ONLY,
+    CARTRIDGE_RAM_END, CARTRIDGE_RAM_START, CARTRIDGE_ROM_END, CARTRIDGE_ROM_START,
+    MBC1_SIMPLE_END, MBC1_SIMPLE_START, RAM_BANK_SIZE, ROM_ONLY,
 };
-use mbc1::Mbc1;
 
 const RAM_SIZE_CODE_ADDRESS: usize = 0x0149;
 const CARTRIDGE_TYPE_ADDRESS: usize = 0x0147;
@@ -41,6 +40,13 @@ pub struct Cartridge {
     rom: Vec<u8>,
     mbc: CartridgeMbc,
     path: Option<PathBuf>,
+}
+
+fn unsupported_type(mbc_type: u8) -> io::Error {
+    io::Error::new(
+        io::ErrorKind::InvalidData,
+        format!("Unsupported cartridge type: {mbc_type:#04X}"),
+    )
 }
 
 impl Cartridge {
@@ -54,25 +60,25 @@ impl Cartridge {
     }
 
     fn select_mbc(mbc_type: u8, ram_size: usize) -> io::Result<CartridgeMbc> {
-        let mbc = match mbc_type {
-            ROM_ONLY => CartridgeMbc::Mbc1(Mbc1::new(false, ram_size)),
-            MBC1_BATTERY => CartridgeMbc::Mbc1(Mbc1::new(true, ram_size)),
-            MBC1_START..MBC1_END => CartridgeMbc::Mbc1(Mbc1::new(false, ram_size)),
-            MBC2_BATTERY => CartridgeMbc::Mbc2(Box::new(Mbc2::new(true))),
-            MBC2_START..MBC2_END => CartridgeMbc::Mbc2(Box::new(Mbc2::new(false))),
-            MBC3_BATTERY => CartridgeMbc::Mbc3(Box::new(Mbc3::new(true, ram_size))),
-            MBC3_START..MBC3_END => CartridgeMbc::Mbc3(Box::new(Mbc3::new(false, ram_size))),
-            MBC5_BATTERY => CartridgeMbc::Mbc5(Box::new(Mbc5::new(true, ram_size))),
-            MBC5_START..MBC5_END => CartridgeMbc::Mbc5(Box::new(Mbc5::new(false, ram_size))),
-            _ => {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    format!("Unsupported cartridge type: {mbc_type:#04X}"),
-                ));
-            }
-        };
+        match mbc_type {
+            // ROM-only cartridges don't have an MBC, but we can reuse the MBC1
+            // implementation because no banking writes are performed.
+            ROM_ONLY => Ok(create_mbc1(false, ram_size)),
 
-        Ok(mbc)
+            MBC1_BATTERY => Ok(create_mbc1(true, ram_size)),
+            MBC1_SIMPLE_START..=MBC1_SIMPLE_END => Ok(create_mbc1(false, ram_size)),
+
+            MBC2_BATTERY => Ok(create_mbc2(true)),
+            MBC2_SIMPLE => Ok(create_mbc2(false)),
+
+            MBC3_BATTERY => Ok(create_mbc3(true, ram_size)),
+            MBC3_SIMPLE_START..=MBC3_SIMPLE_END => Ok(create_mbc3(false, ram_size)),
+
+            MBC5_BATTERY => Ok(create_mbc5(true, ram_size)),
+            MBC5_START..=MBC5_END => Ok(create_mbc5(false, ram_size)),
+
+            _ => Err(unsupported_type(mbc_type)),
+        }
     }
 
     fn select_ram_size(ram_type: u8) -> usize {
@@ -191,7 +197,7 @@ mod tests {
     use rand::RngExt;
 
     fn create_test_cartridge(rom: Option<Vec<u8>>, ram_size: usize) -> Cartridge {
-        let mbc = CartridgeMbc::Mbc1(Mbc1::new(false, ram_size));
+        let mbc = create_mbc1(false, ram_size);
         match rom {
             Some(rom) => Cartridge::new(rom, mbc),
             None => Cartridge::new(vec![0; ROM_BANK_SIZE * 4], mbc),

@@ -27,10 +27,26 @@ pub trait Mbc {
 /// struct; `Cartridge` only ever knows this type, never `Mbc1` or `Mbc2`
 /// directly.
 pub enum CartridgeMbc {
-    Mbc1(Mbc1),
+    Mbc1(Box<Mbc1>),
     Mbc2(Box<Mbc2>),
     Mbc3(Box<Mbc3>),
     Mbc5(Box<Mbc5>),
+}
+
+pub fn create_mbc1(has_battery: bool, ram_size: usize) -> CartridgeMbc {
+    CartridgeMbc::Mbc1(Box::new(Mbc1::new(has_battery, ram_size)))
+}
+
+pub fn create_mbc2(has_battery: bool) -> CartridgeMbc {
+    CartridgeMbc::Mbc2(Box::new(Mbc2::new(has_battery)))
+}
+
+pub fn create_mbc3(has_battery: bool, ram_size: usize) -> CartridgeMbc {
+    CartridgeMbc::Mbc3(Box::new(Mbc3::new(has_battery, ram_size)))
+}
+
+pub fn create_mbc5(has_battery: bool, ram_size: usize) -> CartridgeMbc {
+    CartridgeMbc::Mbc5(Box::new(Mbc5::new(has_battery, ram_size)))
 }
 
 impl Mbc for CartridgeMbc {
