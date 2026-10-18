@@ -24,8 +24,8 @@ fn create_cpu(opcode: u8, low_value: Option<u8>, high_value: Option<u8>) -> Cpu 
         rom[GAME_ENTRY_POINT as usize + 2] = value;
     }
 
-    let mbc = CartridgeMbc::Mbc1(Mbc1::new());
-    let cartridge = Cartridge::new(rom, 0, mbc);
+    let mbc = CartridgeMbc::Mbc1(Mbc1::default());
+    let cartridge = Cartridge::new(rom, mbc);
     let bus = MemoryBus::new(cartridge);
 
     Cpu::new(bus)

@@ -11,8 +11,8 @@ fn fetch_reads_opcode_and_advances_pc() {
     let opcode: u8 = rng.random();
     rom[GAME_ENTRY_POINT as usize] = opcode;
 
-    let mbc = CartridgeMbc::Mbc1(Mbc1::new());
-    let cartridge = Cartridge::new(rom, 0, mbc);
+    let mbc = CartridgeMbc::Mbc1(Mbc1::default());
+    let cartridge = Cartridge::new(rom, mbc);
     let bus = MemoryBus::new(cartridge);
     let mut cpu = Cpu::new(bus);
 

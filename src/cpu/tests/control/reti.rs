@@ -42,8 +42,8 @@ fn interruption_followed_by_reti_restores_cpu_state() {
 
     rom[0x0040] = 0xD9;
 
-    let mbc = CartridgeMbc::Mbc1(Mbc1::new());
-    let cartridge = Cartridge::new(rom, 0, mbc);
+    let mbc = CartridgeMbc::Mbc1(Mbc1::default());
+    let cartridge = Cartridge::new(rom, mbc);
     let bus = MemoryBus::new(cartridge);
     let mut cpu = Cpu::new(bus);
 
