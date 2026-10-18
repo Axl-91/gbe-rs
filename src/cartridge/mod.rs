@@ -6,6 +6,7 @@ pub mod mbc;
 pub mod mbc1;
 pub mod mbc2;
 pub mod mbc3;
+pub mod mbc5;
 
 use std::fs;
 use std::io;
@@ -13,10 +14,13 @@ use std::path::Path;
 
 use crate::cartridge::mbc::{CartridgeMbc, Mbc};
 use crate::cartridge::mbc3::Mbc3;
+use crate::cartridge::mbc5::Mbc5;
 use crate::memory::map::MBC2_END;
 use crate::memory::map::MBC2_START;
 use crate::memory::map::MBC3_END;
 use crate::memory::map::MBC3_START;
+use crate::memory::map::MBC5_END;
+use crate::memory::map::MBC5_START;
 use crate::memory::map::{
     CARTRIDGE_RAM_END, CARTRIDGE_RAM_START, CARTRIDGE_ROM_END, CARTRIDGE_ROM_START, MBC1_END,
     MBC1_START, RAM_BANK_SIZE, ROM_ONLY,
@@ -43,6 +47,7 @@ impl Cartridge {
             ROM_ONLY | MBC1_START..=MBC1_END => CartridgeMbc::Mbc1(Mbc1::new(ram_size)),
             MBC2_START..=MBC2_END => CartridgeMbc::Mbc2(Box::default()),
             MBC3_START..=MBC3_END => CartridgeMbc::Mbc3(Box::new(Mbc3::new(ram_size))),
+            MBC5_START..=MBC5_END => CartridgeMbc::Mbc5(Box::new(Mbc5::new(ram_size))),
             _ => {
                 return Err(io::Error::new(
                     io::ErrorKind::InvalidData,
