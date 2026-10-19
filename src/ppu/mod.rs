@@ -368,7 +368,16 @@ impl Ppu {
 
     fn tick_drawing(&mut self) {
         if self.sprite_fetcher.is_active() {
-            self.tick_sprite_fetcher();
+            if self.bg_fetcher.is_ready() {
+                self.tick_sprite_fetcher();
+                if !self.sprite_fetcher.is_active() {
+                    self.update_sprite_fetcher_context(); // chain next sprite (Bug 1)
+                }
+            } else {
+                // Sprite pending: the BG fetch keeps running until its data is
+                // ready, but no pixel is shifted out.
+                self.tick_bg_fetcher();
+            }
             return;
         }
 

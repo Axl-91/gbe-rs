@@ -119,10 +119,11 @@ impl SpriteFetcher {
     }
 
     fn get_step_cycles(&self) -> u8 {
-        if let SpriteFetcherStep::Push = self.step {
-            return NONE_CYCLES;
+        match self.step {
+            SpriteFetcherStep::Push => NONE_CYCLES,
+            SpriteFetcherStep::TileDataHigh => 1,
+            _ => DEFAULT_CYCLES,
         }
-        DEFAULT_CYCLES
     }
 
     fn execute_step(&mut self) -> Option<SpriteFetcherRequest> {
@@ -208,7 +209,6 @@ impl Ppu {
             };
 
             self.sprite_fetch_index += 1;
-            self.bg_fetcher.pause();
 
             self.sprite_fetcher
                 .add_context(sprite, self.ly, sprite_height);

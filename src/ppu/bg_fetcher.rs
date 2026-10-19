@@ -86,9 +86,8 @@ impl BgFetcher {
         self.context = FetcherContext::default();
     }
 
-    pub(super) fn pause(&mut self) {
-        self.step = FetcherStep::TileNumber;
-        self.cycles = 0
+    pub(super) fn is_ready(&self) -> bool {
+        matches!(self.step, FetcherStep::Push)
     }
 
     /// Updates the context used to fetch the current background tile.
