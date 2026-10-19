@@ -86,10 +86,6 @@ impl BgFetcher {
         self.context = FetcherContext::default();
     }
 
-    pub(super) fn is_ready(&self) -> bool {
-        matches!(self.step, FetcherStep::Push)
-    }
-
     /// Updates the context used to fetch the current background tile.
     ///
     /// The PPU provides this information because it depends on PPU state

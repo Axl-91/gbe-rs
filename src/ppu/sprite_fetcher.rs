@@ -121,6 +121,7 @@ impl SpriteFetcher {
     fn get_step_cycles(&self) -> u8 {
         match self.step {
             SpriteFetcherStep::Push => NONE_CYCLES,
+            SpriteFetcherStep::TileDataHigh => 1,
             _ => DEFAULT_CYCLES,
         }
     }
@@ -208,6 +209,27 @@ impl Ppu {
             };
 
             self.sprite_fetch_index += 1;
+
+            let x = sprite.x as u16 + self.scx as u16;
+            let tile = x / 8;
+            let first_on_tile = self.last_sprite_tile != Some(tile);
+            let first_in_line = self.last_sprite_tile.is_none();
+
+            self.sprite_wait = if first_on_tile {
+                // Wait for the BG fetch to catch up (Pan Docs: 5 - min(5, x % 8)).
+                let wait = 5 - (x % 8).min(5) as u8;
+
+                // NOTE: 1-dot compensation (once per line), needed to pass
+                // intr_2_mode0_timing_sprites. Likely a PPU/CPU timing offset elsewhere.
+                if first_in_line {
+                    wait.saturating_sub(1)
+                } else {
+                    wait
+                }
+            } else {
+                0
+            };
+            self.last_sprite_tile = Some(tile);
 
             self.sprite_fetcher
                 .add_context(sprite, self.ly, sprite_height);

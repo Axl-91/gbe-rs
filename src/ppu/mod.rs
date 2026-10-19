@@ -111,6 +111,8 @@ pub struct Ppu {
     // Sprites state
     sprites: Vec<Sprite>,
     sprite_fetch_index: usize,
+    sprite_wait: u8,
+    last_sprite_tile: Option<u16>,
 
     front_buffer: Vec<u8>,
     back_buffer: Vec<u8>,
@@ -166,6 +168,8 @@ impl Ppu {
             // Sprites state
             sprites: Vec::new(),
             sprite_fetch_index: 0,
+            sprite_wait: 0,
+            last_sprite_tile: None,
 
             front_buffer: vec![0; SCREEN_WIDTH as usize * VISIBLE_LINES as usize],
             back_buffer: vec![0; SCREEN_WIDTH as usize * VISIBLE_LINES as usize],
@@ -191,6 +195,8 @@ impl Ppu {
         self.bg_fifo.clear();
         self.sprite_fifo.reset();
         self.sprites.clear();
+        self.sprite_wait = 0;
+        self.last_sprite_tile = None;
     }
 
     pub(super) fn turn_on(&mut self) {
@@ -319,24 +325,29 @@ impl Ppu {
     }
 
     fn tick_drawing(&mut self) {
-        if self.sprite_fetcher.is_active() {
-            if self.bg_fetcher.is_ready() {
-                self.tick_sprite_fetcher();
-                if !self.sprite_fetcher.is_active() {
-                    self.update_sprite_fetcher_context();
-                }
-            } else {
-                // Sprite pending: the BG fetch keeps running until its data is
-                // ready, but no pixel is shifted out.
-                self.tick_bg_fetcher();
+        if !self.sprite_fetcher.is_active() {
+            self.tick_bg_fetcher();
+
+            // A sprite can only start once the BG FIFO has pixels to shift out.
+            if !self.bg_fifo.is_empty() {
+                self.update_sprite_fetcher_context();
             }
+
+            if !self.sprite_fetcher.is_active() {
+                self.consume_pixel();
+                return;
+            }
+            // A sprite was just triggered: this dot already counts toward its cost.
+        }
+
+        if self.sprite_wait > 0 {
+            self.sprite_wait -= 1;
             return;
         }
 
-        self.tick_bg_fetcher();
-        let consumed_pixel = self.consume_pixel();
-
-        if consumed_pixel.is_some() {
+        self.tick_sprite_fetcher();
+        if !self.sprite_fetcher.is_active() {
+            // Chain the next sprite at the same position.
             self.update_sprite_fetcher_context();
         }
     }
@@ -425,7 +436,8 @@ impl Ppu {
                 self.oam_searcher.reset();
                 self.sprite_fifo.reset();
 
-                self.update_sprite_fetcher_context();
+                self.sprite_wait = 0;
+                self.last_sprite_tile = None;
             }
 
             PpuMode::Drawing => {
