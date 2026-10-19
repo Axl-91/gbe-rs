@@ -112,7 +112,8 @@ pub struct Ppu {
     sprites: Vec<Sprite>,
     sprite_fetch_index: usize,
 
-    framebuffer: Vec<u8>,
+    front_buffer: Vec<u8>,
+    back_buffer: Vec<u8>,
 }
 
 impl Ppu {
@@ -166,7 +167,8 @@ impl Ppu {
             sprites: Vec::new(),
             sprite_fetch_index: 0,
 
-            framebuffer: vec![0; SCREEN_WIDTH as usize * VISIBLE_LINES as usize],
+            front_buffer: vec![0; SCREEN_WIDTH as usize * VISIBLE_LINES as usize],
+            back_buffer: vec![0; SCREEN_WIDTH as usize * VISIBLE_LINES as usize],
         }
     }
 
@@ -193,7 +195,7 @@ impl Ppu {
 
     pub(super) fn turn_on(&mut self) {
         self.mode = PpuMode::OamSearch;
-        self.framebuffer.fill(0);
+        self.back_buffer.fill(0);
         self.mode_cycles = 2;
         self.ly_eq_lyc = self.ly == self.lyc;
         self.lcd_switched_on = true;
@@ -277,7 +279,7 @@ impl Ppu {
                 pixel = self.pixel_mixer(pixel, sprite_pixel)
             }
 
-            self.framebuffer[index] = pixel;
+            self.back_buffer[index] = pixel;
 
             self.drawing_x += 1;
         }
@@ -379,7 +381,8 @@ impl Ppu {
                 }
 
                 if self.ly == VISIBLE_LINES {
-                    self.mode = PpuMode::VBlank
+                    self.mode = PpuMode::VBlank;
+                    self.set_front_buffer();
                 } else {
                     self.mode = PpuMode::OamSearch
                 }
@@ -474,8 +477,12 @@ impl Ppu {
         ppu_interruptions
     }
 
+    fn set_front_buffer(&mut self) {
+        std::mem::swap(&mut self.front_buffer, &mut self.back_buffer);
+    }
+
     pub fn get_framebuffer(&self) -> &[u8] {
-        &self.framebuffer
+        &self.front_buffer
     }
 }
 
