@@ -219,8 +219,9 @@ impl Ppu {
                 // Wait for the BG fetch to catch up (Pan Docs: 5 - min(5, x % 8)).
                 let wait = 5 - (x % 8).min(5) as u8;
 
-                // NOTE: 1-dot compensation (once per line), needed to pass
-                // intr_2_mode0_timing_sprites. Likely a PPU/CPU timing offset elsewhere.
+                // NOTE: 1-dot compensation (once per line), it was needed
+                // to pass the intr_2_mode0_timing_sprites test.
+                // Likely a PPU/CPU timing offset elsewhere.
                 if first_in_line {
                     wait.saturating_sub(1)
                 } else {
