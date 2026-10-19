@@ -323,7 +323,7 @@ impl Ppu {
             if self.bg_fetcher.is_ready() {
                 self.tick_sprite_fetcher();
                 if !self.sprite_fetcher.is_active() {
-                    self.update_sprite_fetcher_context(); // chain next sprite (Bug 1)
+                    self.update_sprite_fetcher_context();
                 }
             } else {
                 // Sprite pending: the BG fetch keeps running until its data is

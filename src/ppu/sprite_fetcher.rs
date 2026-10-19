@@ -121,7 +121,6 @@ impl SpriteFetcher {
     fn get_step_cycles(&self) -> u8 {
         match self.step {
             SpriteFetcherStep::Push => NONE_CYCLES,
-            SpriteFetcherStep::TileDataHigh => 1,
             _ => DEFAULT_CYCLES,
         }
     }
