@@ -16,6 +16,11 @@ impl FrameSequencer {
         self.step
     }
 
+    pub(super) fn next_step_skips_length_clock(&self) -> bool {
+        let next_step = (self.step + 1) % FRAME_SEQUENCER_STEPS;
+        !next_step.is_multiple_of(2)
+    }
+
     /// Advances the sequencer by one T-cycle.
     ///
     /// Returns `true` when a frame-sequencer step has elapsed.

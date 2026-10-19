@@ -1,8 +1,7 @@
 use rand::RngExt;
 
 use crate::cartridge::Cartridge;
-use crate::cartridge::mbc::CartridgeMbc;
-use crate::cartridge::mbc1::Mbc1;
+use crate::cartridge::mbc::create_mbc1;
 use crate::cpu::interrupt::Interruption;
 use crate::memory::MemoryBus;
 use crate::memory::map::{INTERRUPT_ENABLE_ADDRESS, INTERRUPT_FLAG_ADDRESS, ROM_BANK_SIZE};
@@ -42,8 +41,8 @@ fn interruption_followed_by_reti_restores_cpu_state() {
 
     rom[0x0040] = 0xD9;
 
-    let mbc = CartridgeMbc::Mbc1(Mbc1::new());
-    let cartridge = Cartridge::new(rom, 0, mbc);
+    let mbc = create_mbc1(false, 0);
+    let cartridge = Cartridge::new(rom, mbc);
     let bus = MemoryBus::new(cartridge);
     let mut cpu = Cpu::new(bus);
 

@@ -1,4 +1,5 @@
 use crate::{cartridge::Cartridge, cpu::Cpu, joypad::Button, memory::MemoryBus};
+use std::io;
 
 pub struct Emulator {
     cpu: Cpu,
@@ -34,5 +35,13 @@ impl Emulator {
 
     pub fn get_framebuffer(&self) -> &[u8] {
         self.cpu.get_framebuffer()
+    }
+
+    pub fn take_audio_samples(&mut self) -> Vec<(f32, f32)> {
+        self.cpu.take_audio_samples()
+    }
+
+    pub fn save(&self) -> io::Result<()> {
+        self.cpu.save()
     }
 }

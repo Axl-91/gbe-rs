@@ -4,19 +4,33 @@
 
 pub mod mbc;
 pub mod mbc1;
+pub mod mbc2;
+pub mod mbc3;
+pub mod mbc5;
 
 use std::fs;
 use std::io;
 use std::path::Path;
+use std::path::PathBuf;
 
+use crate::cartridge::mbc::create_mbc1;
+use crate::cartridge::mbc::create_mbc2;
+use crate::cartridge::mbc::create_mbc3;
+use crate::cartridge::mbc::create_mbc5;
 use crate::cartridge::mbc::{CartridgeMbc, Mbc};
+use crate::memory::map::MBC1_BATTERY;
+use crate::memory::map::MBC2_BATTERY;
+use crate::memory::map::MBC2_SIMPLE;
+use crate::memory::map::MBC3_BATTERY;
+use crate::memory::map::MBC3_SIMPLE_END;
+use crate::memory::map::MBC3_SIMPLE_START;
+use crate::memory::map::MBC5_BATTERY;
+use crate::memory::map::MBC5_END;
+use crate::memory::map::MBC5_START;
 use crate::memory::map::{
-    CARTRIDGE_RAM_END, CARTRIDGE_RAM_START, CARTRIDGE_ROM_END, CARTRIDGE_ROM_START, MBC1_END,
-    MBC1_START, RAM_BANK_SIZE, ROM_ONLY,
+    CARTRIDGE_RAM_END, CARTRIDGE_RAM_START, CARTRIDGE_ROM_END, CARTRIDGE_ROM_START,
+    MBC1_SIMPLE_END, MBC1_SIMPLE_START, RAM_BANK_SIZE, ROM_ONLY,
 };
-use mbc1::Mbc1;
-
-const DISABLED_RAM_VALUE: u8 = 0xFF;
 
 const RAM_SIZE_CODE_ADDRESS: usize = 0x0149;
 const CARTRIDGE_TYPE_ADDRESS: usize = 0x0147;
@@ -24,32 +38,47 @@ const CARTRIDGE_TYPE_ADDRESS: usize = 0x0147;
 /// Represents a Game Boy cartridge with ROM, RAM, and a memory bank controller.
 pub struct Cartridge {
     rom: Vec<u8>,
-    ram: Vec<u8>,
     mbc: CartridgeMbc,
+    path: Option<PathBuf>,
+}
+
+fn unsupported_type(mbc_type: u8) -> io::Error {
+    io::Error::new(
+        io::ErrorKind::InvalidData,
+        format!("Unsupported cartridge type: {mbc_type:#04X}"),
+    )
 }
 
 impl Cartridge {
     /// Creates a new cartridge with the given ROM and RAM size.
-    pub fn new(rom: Vec<u8>, ram_size: usize, mbc: CartridgeMbc) -> Self {
+    pub fn new(rom: Vec<u8>, mbc: CartridgeMbc) -> Self {
         Self {
             rom,
-            ram: vec![0; ram_size],
             mbc,
+            path: None,
         }
     }
 
-    fn select_mbc(mbc_type: u8) -> io::Result<CartridgeMbc> {
-        let mbc = match mbc_type {
-            ROM_ONLY | MBC1_START..=MBC1_END => CartridgeMbc::Mbc1(Mbc1::new()),
-            _ => {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    format!("Unsupported cartridge type: {mbc_type:#04X}"),
-                ));
-            }
-        };
+    fn select_mbc(mbc_type: u8, ram_size: usize) -> io::Result<CartridgeMbc> {
+        match mbc_type {
+            // ROM-only cartridges don't have an MBC, but we can reuse the MBC1
+            // implementation because no banking writes are performed.
+            ROM_ONLY => Ok(create_mbc1(false, ram_size)),
 
-        Ok(mbc)
+            MBC1_BATTERY => Ok(create_mbc1(true, ram_size)),
+            MBC1_SIMPLE_START..=MBC1_SIMPLE_END => Ok(create_mbc1(false, ram_size)),
+
+            MBC2_BATTERY => Ok(create_mbc2(true)),
+            MBC2_SIMPLE => Ok(create_mbc2(false)),
+
+            MBC3_BATTERY => Ok(create_mbc3(true, ram_size)),
+            MBC3_SIMPLE_START..=MBC3_SIMPLE_END => Ok(create_mbc3(false, ram_size)),
+
+            MBC5_BATTERY => Ok(create_mbc5(true, ram_size)),
+            MBC5_START..=MBC5_END => Ok(create_mbc5(false, ram_size)),
+
+            _ => Err(unsupported_type(mbc_type)),
+        }
     }
 
     fn select_ram_size(ram_type: u8) -> usize {
@@ -67,6 +96,7 @@ impl Cartridge {
     /// Loads a cartridge ROM from the given file path
     /// and initializes its RAM from the cartridge header.
     pub fn from_file<P: AsRef<Path>>(path: P) -> io::Result<Self> {
+        let path = path.as_ref();
         let rom = fs::read(path)?;
 
         if rom.len() <= RAM_SIZE_CODE_ADDRESS {
@@ -76,11 +106,18 @@ impl Cartridge {
             ));
         }
 
-        // Header parsing
-        let mbc = Self::select_mbc(rom[CARTRIDGE_TYPE_ADDRESS])?;
         let ram_size = Self::select_ram_size(rom[RAM_SIZE_CODE_ADDRESS]);
+        let mbc = Self::select_mbc(rom[CARTRIDGE_TYPE_ADDRESS], ram_size)?;
 
-        Ok(Self::new(rom, ram_size, mbc))
+        let mut cartridge = Self {
+            rom,
+            mbc,
+            path: Some(path.to_path_buf()),
+        };
+
+        cartridge.load_save()?;
+
+        Ok(cartridge)
     }
 
     /// Reads a byte from the cartridge ROM or RAM address space.
@@ -90,17 +127,7 @@ impl Cartridge {
                 let real_address = self.mbc.read(address) % self.rom.len();
                 self.rom[real_address]
             }
-            CARTRIDGE_RAM_START..=CARTRIDGE_RAM_END => {
-                if self.mbc.is_ram_enabled() && !self.ram.is_empty() {
-                    let bank_selected = self.mbc.get_ram_bank() as usize;
-                    let offset = (address - CARTRIDGE_RAM_START) as usize;
-                    let ram_address = ((bank_selected * RAM_BANK_SIZE) + offset) % self.ram.len();
-
-                    self.ram[ram_address]
-                } else {
-                    DISABLED_RAM_VALUE
-                }
-            }
+            CARTRIDGE_RAM_START..=CARTRIDGE_RAM_END => self.mbc.read_ram(address),
             _ => unreachable!("Invalid cartridge address: {address:#06X}"),
         }
     }
@@ -112,16 +139,49 @@ impl Cartridge {
                 self.mbc.write(address, value);
             }
             CARTRIDGE_RAM_START..=CARTRIDGE_RAM_END => {
-                if self.mbc.is_ram_enabled() && !self.ram.is_empty() {
-                    let bank_selected = self.mbc.get_ram_bank() as usize;
-                    let offset = (address - CARTRIDGE_RAM_START) as usize;
-                    let ram_address = ((bank_selected * RAM_BANK_SIZE) + offset) % self.ram.len();
-
-                    self.ram[ram_address] = value;
-                }
+                self.mbc.write_ram(address, value);
             }
             _ => unreachable!("Invalid cartridge address: {address:#06X}"),
         }
+    }
+
+    fn save_path(&self) -> Option<PathBuf> {
+        self.path.as_ref().map(|path| path.with_extension("sav"))
+    }
+
+    fn load_save(&mut self) -> io::Result<()> {
+        let Some(save_path) = self.save_path() else {
+            return Ok(());
+        };
+
+        if !save_path.exists() {
+            return Ok(());
+        }
+
+        let data = fs::read(&save_path)?;
+
+        if !self.mbc.load_save_data(&data) {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "Save file has an invalid size",
+            ));
+        }
+
+        Ok(())
+    }
+
+    pub fn save(&self) -> io::Result<()> {
+        let Some(save_path) = self.save_path() else {
+            return Ok(());
+        };
+
+        let Some(data) = self.mbc.get_save_data() else {
+            return Ok(());
+        };
+
+        fs::write(save_path, data)?;
+
+        Ok(())
     }
 }
 
@@ -136,13 +196,11 @@ mod tests {
     use super::*;
     use rand::RngExt;
 
-    const RAM_DISABLE_VALUE: u8 = 0x00;
-
     fn create_test_cartridge(rom: Option<Vec<u8>>, ram_size: usize) -> Cartridge {
-        let mbc = CartridgeMbc::Mbc1(Mbc1::new());
+        let mbc = create_mbc1(false, ram_size);
         match rom {
-            Some(rom) => Cartridge::new(rom, ram_size, mbc),
-            None => Cartridge::new(vec![0; ROM_BANK_SIZE * 4], ram_size, mbc),
+            Some(rom) => Cartridge::new(rom, mbc),
+            None => Cartridge::new(vec![0; ROM_BANK_SIZE * 4], mbc),
         }
     }
 
@@ -206,12 +264,7 @@ mod tests {
 
             cartridge.write(address, value);
 
-            // Nothing was written on RAM
-            let offset = address - CARTRIDGE_RAM_START;
-            assert_eq!(cartridge.ram[offset as usize], 0x00);
-
-            // Can't access that address on read
-            assert_eq!(cartridge.read(address), DISABLED_RAM_VALUE);
+            assert_eq!(cartridge.read(address), 0xFF);
         }
 
         #[test]
@@ -222,7 +275,7 @@ mod tests {
 
             let cartridge = create_test_cartridge(None, RAM_BANK_SIZE);
 
-            assert_eq!(cartridge.read(address), DISABLED_RAM_VALUE);
+            assert_eq!(cartridge.read(address), 0xFF);
         }
 
         #[test]
@@ -241,9 +294,9 @@ mod tests {
 
             assert_eq!(cartridge.read(address), value);
 
-            cartridge.write(enable_ram_address, RAM_DISABLE_VALUE);
+            cartridge.write(enable_ram_address, 0x00);
 
-            assert_eq!(cartridge.read(address), DISABLED_RAM_VALUE);
+            assert_eq!(cartridge.read(address), 0xFF);
 
             cartridge.write(enable_ram_address, RAM_ENABLE_VALUE);
 
@@ -337,7 +390,7 @@ mod tests {
         }
 
         #[test]
-        fn creates_ram_with_size_from_header() {
+        fn selects_ram_size_from_header() {
             let ram_size_codes = [
                 (0x00, 0),
                 (0x01, RAM_BANK_SIZE / 4),
@@ -348,16 +401,11 @@ mod tests {
             ];
 
             for (code, expected_size) in ram_size_codes {
-                let mut rom = vec![0; ROM_BANK_SIZE * 2];
-                rom[RAM_SIZE_CODE_ADDRESS] = code;
-
-                let path = create_temp_rom(&rom);
-
-                let cartridge = Cartridge::from_file(&path).unwrap();
-
-                assert_eq!(cartridge.ram.len(), expected_size);
-
-                fs::remove_file(path).unwrap();
+                assert_eq!(
+                    Cartridge::select_ram_size(code),
+                    expected_size,
+                    "Unexpected RAM size for header code {code:#04X}"
+                );
             }
         }
     }

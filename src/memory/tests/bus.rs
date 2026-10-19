@@ -1,8 +1,10 @@
+use crate::cartridge::mbc::create_mbc1;
+
 use super::*;
 
 fn test_cartridge() -> Cartridge {
-    let mbc = CartridgeMbc::Mbc1(Mbc1::new());
-    Cartridge::new(vec![0; ROM_BANK_SIZE * 4], RAM_BANK_SIZE, mbc)
+    let mbc = create_mbc1(false, RAM_BANK_SIZE);
+    Cartridge::new(vec![0; ROM_BANK_SIZE * 4], mbc)
 }
 
 mod cartridge {
@@ -35,8 +37,8 @@ mod cartridge {
         rom[addresses[3] as usize] = values[3];
         rom[addresses[4] as usize] = values[4];
 
-        let mbc = CartridgeMbc::Mbc1(Mbc1::new());
-        let cartridge = Cartridge::new(rom, RAM_BANK_SIZE, mbc);
+        let mbc = create_mbc1(false, RAM_BANK_SIZE);
+        let cartridge = Cartridge::new(rom, mbc);
         let bus = MemoryBus::new(cartridge);
 
         assert_eq!(bus.read(addresses[0]), values[0]);
@@ -122,8 +124,8 @@ mod dma {
 
     fn create_bus() -> MemoryBus {
         let rom = vec![0; ROM_BANK_SIZE * 2];
-        let mbc = CartridgeMbc::Mbc1(Mbc1::new());
-        let cartridge = Cartridge::new(rom, 0, mbc);
+        let mbc = create_mbc1(false, 0);
+        let cartridge = Cartridge::new(rom, mbc);
 
         MemoryBus::new(cartridge)
     }

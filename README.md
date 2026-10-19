@@ -35,9 +35,12 @@ The goal of this project is to build a simple and accurate emulator for the orig
 - [x] Cartridge ROM
 - [ ] MBC
   - [x] MBC1
-  - [ ] MBC2
-  - [ ] MBC3
+  - [x] MBC2
+  - [x] MBC3
+  - [ ] MBC3+RTC
+  - [x] MBC5
 - [x] Cartridge RAM
+- [x] Battery-backed save persistence
 
 ### Hardware
 - [x] Timer
@@ -52,6 +55,13 @@ The goal of this project is to build a simple and accurate emulator for the orig
     - [x] Window
     - [x] Sprites
     - [x] Pixel Mixing
+- [x] APU
+  - [x] Channel 1 (Pulse + Sweep)
+  - [x] Channel 2 (Pulse)
+  - [x] Channel 3 (Wave)
+  - [x] Channel 4 (Noise)
+  - [x] Audio Mixing
+  - [x] Audio Output
 - [x] Input
 
 ### Frontend
@@ -59,7 +69,7 @@ The goal of this project is to build a simple and accurate emulator for the orig
   - [x] Framebuffer Rendering
   - [x] DMG Colors
   - [x] Input
-  - [ ] Audio
+  - [x] Audio
   - [ ] Debugging / Tools
 
 ## Emulator architecture
@@ -81,13 +91,13 @@ Hardware components are responsible for their own internal state and timing, whi
 To run the emulator with a Game Boy ROM:
 
 ```bash
-just run <PATH_TO_ROM>
+just run-release <PATH_TO_ROM>
 ```
 
 For example:
 
 ```bash
-just run ./roms/tetris.gb
+just run-release ./roms/tetris.gb
 ```
 
 ### Run the tests
@@ -129,8 +139,8 @@ For example:
 
 I use several test suites to verify the emulator’s functionality. The passing tests from each suite are included in the repository and run in CI:
 
-- [Blargg’s tests](https://github.com/Axl-91/gbe-rs/tree/main/test_suites/blargg) (14 tests)
-- [Mooneye tests](https://github.com/Axl-91/gbe-rs/tree/main/test_suites/mooneye) (~70 tests)
+- [Blargg’s tests](https://github.com/Axl-91/gbe-rs/tree/main/test_suites/blargg) (15 tests)
+- [Mooneye tests](https://github.com/Axl-91/gbe-rs/tree/main/test_suites/mooneye) (~77 tests)
 - [GBMicrotests](https://github.com/Axl-91/gbe-rs/tree/main/test_suites/microtests) (~90 tests)
 
 ---------------------------------------

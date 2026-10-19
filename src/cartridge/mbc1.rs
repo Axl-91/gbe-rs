@@ -2,7 +2,10 @@
 //!
 //! Handles ROM and RAM bank selection for Game Boy cartridges.
 
-use crate::{cartridge::mbc::Mbc, memory::map::ROM_BANK_SIZE};
+use crate::{
+    cartridge::mbc::Mbc,
+    memory::map::{CARTRIDGE_RAM_START, RAM_BANK_SIZE, ROM_BANK_SIZE},
+};
 
 // Addresses ranges for read
 const FIXED_ROM_BANK_START: u16 = 0x0000;
@@ -34,20 +37,24 @@ enum BankingMode {
 
 /// Represents an MBC1 memory bank controller.
 pub struct Mbc1 {
+    has_battery: bool,
     rom_bank_low: u8,
     bank_high: u8,
     ram_enabled: bool,
     banking_mode: BankingMode,
+    ram: Vec<u8>,
 }
 
 impl Mbc1 {
     /// Creates a new MBC1 with ROM banking mode and the default ROM bank selected.
-    pub fn new() -> Self {
+    pub fn new(has_battery: bool, ram_size: usize) -> Self {
         Self {
+            has_battery,
             rom_bank_low: 1,
             bank_high: 0,
             ram_enabled: false,
             banking_mode: BankingMode::Rom,
+            ram: vec![0; ram_size],
         }
     }
 
@@ -115,6 +122,34 @@ impl Mbc for Mbc1 {
         }
     }
 
+    fn read_ram(&self, address: u16) -> u8 {
+        if !self.ram_enabled || self.ram.is_empty() {
+            return 0xFF;
+        }
+
+        let bank_selected = self.get_ram_bank() as usize;
+        let offset = (address - CARTRIDGE_RAM_START) as usize;
+        let ram_address = (bank_selected * RAM_BANK_SIZE + offset) % self.ram.len();
+
+        self.ram[ram_address]
+    }
+
+    fn write_ram(&mut self, address: u16, value: u8) {
+        if !self.ram_enabled || self.ram.is_empty() {
+            return;
+        }
+
+        let bank_selected = self.get_ram_bank() as usize;
+        let offset = (address - CARTRIDGE_RAM_START) as usize;
+        let ram_address = (bank_selected * RAM_BANK_SIZE + offset) % self.ram.len();
+
+        self.ram[ram_address] = value;
+    }
+
+    fn has_battery(&self) -> bool {
+        self.has_battery
+    }
+
     fn is_ram_enabled(&self) -> bool {
         self.ram_enabled
     }
@@ -125,11 +160,28 @@ impl Mbc for Mbc1 {
             BankingMode::Ram => self.bank_high,
         }
     }
+
+    fn get_save_data(&self) -> Option<Vec<u8>> {
+        if !self.has_battery || self.ram.is_empty() {
+            return None;
+        }
+
+        Some(self.ram.clone())
+    }
+
+    fn load_save_data(&mut self, data: &[u8]) -> bool {
+        if !self.has_battery || data.len() != self.ram.len() {
+            return false;
+        }
+
+        self.ram.copy_from_slice(data);
+        true
+    }
 }
 
 impl Default for Mbc1 {
     fn default() -> Self {
-        Self::new()
+        Self::new(false, 0)
     }
 }
 
@@ -149,7 +201,7 @@ mod tests {
 
             let address: u16 = rng.random_range(FIXED_ROM_BANK_START..=FIXED_ROM_BANK_END);
 
-            let mbc = Mbc1::new();
+            let mbc = Mbc1::default();
 
             assert_eq!(mbc.read(address), address as usize);
         }
@@ -160,7 +212,7 @@ mod tests {
             let mut rng = rand::rng();
             let invalid_address = rng.random_range(CARTRIDGE_RAM_END + 1..=0xFFFF);
 
-            let mbc = Mbc1::new();
+            let mbc = Mbc1::default();
             mbc.read(invalid_address);
         }
 
@@ -171,7 +223,7 @@ mod tests {
             let address: u16 =
                 rng.random_range(SWITCHABLE_ROM_BANK_START..=SWITCHABLE_ROM_BANK_END);
 
-            let mut mbc = Mbc1::new();
+            let mut mbc = Mbc1::default();
             mbc.write(ROM_BANK_LOW_START, 0);
 
             let offset = address - SWITCHABLE_ROM_BANK_START;
@@ -187,7 +239,7 @@ mod tests {
             let address: u16 =
                 rng.random_range(SWITCHABLE_ROM_BANK_START..=SWITCHABLE_ROM_BANK_END);
 
-            let mbc = Mbc1::new();
+            let mbc = Mbc1::default();
 
             let offset = address - SWITCHABLE_ROM_BANK_START;
             let expected = ROM_BANK_SIZE + offset as usize;
@@ -203,7 +255,7 @@ mod tests {
                 rng.random_range(SWITCHABLE_ROM_BANK_START..=SWITCHABLE_ROM_BANK_END);
             let bank: u8 = rng.random_range(1..=0x1F);
 
-            let mut mbc = Mbc1::new();
+            let mut mbc = Mbc1::default();
             mbc.write(ROM_BANK_LOW_START, bank);
 
             let offset = address - SWITCHABLE_ROM_BANK_START;
@@ -221,7 +273,7 @@ mod tests {
             let bank_high: u8 = rng.random_range(0..=0x03);
             let bank_low: u8 = rng.random_range(1..=0x1F);
 
-            let mut mbc = Mbc1::new();
+            let mut mbc = Mbc1::default();
 
             mbc.write(ROM_BANK_LOW_START, bank_low);
             mbc.write(BANK_HIGH_START, bank_high);
@@ -241,7 +293,7 @@ mod tests {
             let address: u16 =
                 rng.random_range(SWITCHABLE_ROM_BANK_START..=SWITCHABLE_ROM_BANK_END);
 
-            let mut mbc = Mbc1::new();
+            let mut mbc = Mbc1::default();
 
             mbc.write(BANK_HIGH_START, high);
             mbc.write(ROM_BANK_LOW_START, 0);
@@ -268,7 +320,7 @@ mod tests {
 
         #[test]
         fn ram_is_disabled_initially() {
-            let mbc = Mbc1::new();
+            let mbc = Mbc1::default();
 
             assert!(!mbc.ram_enabled);
         }
@@ -280,7 +332,7 @@ mod tests {
             let upper: u8 = rng.random_range(0..=0x0F);
             let value = (upper << 4) | 0x0A;
 
-            let mut mbc = Mbc1::new();
+            let mut mbc = Mbc1::default();
 
             mbc.write(RAM_ENABLE_START, value);
 
@@ -297,7 +349,7 @@ mod tests {
                 value = rng.random();
             }
 
-            let mut mbc = Mbc1::new();
+            let mut mbc = Mbc1::default();
 
             mbc.write(RAM_ENABLE_START, value);
 
@@ -317,7 +369,7 @@ mod tests {
                 disable_value = rng.random();
             }
 
-            let mut mbc = Mbc1::new();
+            let mut mbc = Mbc1::default();
 
             mbc.write(RAM_ENABLE_START, enable_value);
             assert!(mbc.ram_enabled);
@@ -328,7 +380,7 @@ mod tests {
 
         #[test]
         fn write_ram_enable_with_all_valid_lower_nibble_values() {
-            let mut mbc = Mbc1::new();
+            let mut mbc = Mbc1::default();
 
             for upper in 0..=0x0F {
                 let value = (upper << 4) | 0x0A;
@@ -344,7 +396,7 @@ mod tests {
 
         #[test]
         fn write_ram_disable_with_all_invalid_lower_nibble_values() {
-            let mut mbc = Mbc1::new();
+            let mut mbc = Mbc1::default();
 
             for upper in 0..=0x0F {
                 for lower in 0..=0x0F {
@@ -376,7 +428,7 @@ mod tests {
 
                 let value: u8 = rng.random_range(1..=0x1F);
 
-                let mut mbc = Mbc1::new();
+                let mut mbc = Mbc1::default();
 
                 mbc.write(ROM_BANK_LOW_START, value);
 
@@ -389,7 +441,7 @@ mod tests {
 
                 let value: u8 = rng.random();
 
-                let mut mbc = Mbc1::new();
+                let mut mbc = Mbc1::default();
 
                 mbc.write(ROM_BANK_LOW_START, value);
 
@@ -412,7 +464,7 @@ mod tests {
 
                 let value: u8 = rng.random_range(0..=0x03);
 
-                let mut mbc = Mbc1::new();
+                let mut mbc = Mbc1::default();
 
                 mbc.write(BANK_HIGH_START, value);
 
@@ -425,7 +477,7 @@ mod tests {
 
                 let value: u8 = rng.random();
 
-                let mut mbc = Mbc1::new();
+                let mut mbc = Mbc1::default();
 
                 mbc.write(BANK_HIGH_START, value);
 
@@ -441,7 +493,7 @@ mod tests {
 
         #[test]
         fn banking_mode_is_rom_initially() {
-            let mbc = Mbc1::new();
+            let mbc = Mbc1::default();
 
             assert!(matches!(mbc.banking_mode, BankingMode::Rom));
         }
@@ -455,7 +507,7 @@ mod tests {
             // Force the lower bit to 0.
             let value = value & !0x01;
 
-            let mut mbc = Mbc1::new();
+            let mut mbc = Mbc1::default();
 
             mbc.write(BANKING_MODE_START, value);
 
@@ -471,7 +523,7 @@ mod tests {
             // Force the lower bit to 1.
             let value = value | 0x01;
 
-            let mut mbc = Mbc1::new();
+            let mut mbc = Mbc1::default();
 
             mbc.write(BANKING_MODE_START, value);
 
@@ -487,7 +539,7 @@ mod tests {
             let rom_value = upper_bits << 1;
             let ram_value = rom_value | 0x01;
 
-            let mut mbc = Mbc1::new();
+            let mut mbc = Mbc1::default();
 
             mbc.write(BANKING_MODE_START, rom_value);
 
@@ -504,7 +556,7 @@ mod tests {
 
         #[test]
         fn ram_bank_is_zero_initially() {
-            let mbc = Mbc1::new();
+            let mbc = Mbc1::default();
 
             assert_eq!(mbc.get_ram_bank(), 0);
         }
@@ -515,7 +567,7 @@ mod tests {
 
             let bank: u8 = rng.random_range(1..=0x03);
 
-            let mut mbc = Mbc1::new();
+            let mut mbc = Mbc1::default();
 
             mbc.write(BANK_HIGH_START, bank);
 
@@ -529,7 +581,7 @@ mod tests {
 
             let bank: u8 = rng.random_range(0..=0x03);
 
-            let mut mbc = Mbc1::new();
+            let mut mbc = Mbc1::default();
 
             mbc.write(BANK_HIGH_START, bank);
             mbc.write(BANKING_MODE_START, 1);
@@ -547,7 +599,7 @@ mod tests {
 
             let value = (upper_bits << 2) | bank;
 
-            let mut mbc = Mbc1::new();
+            let mut mbc = Mbc1::default();
 
             mbc.write(BANK_HIGH_START, value);
             mbc.write(BANKING_MODE_START, 1);

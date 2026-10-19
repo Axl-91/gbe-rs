@@ -10,17 +10,23 @@ pub const ROM_BANK_SIZE: usize = 0x4000;
 // See https://gbdev.io/pandocs/The_Cartridge_Header.html#0147--cartridge-type
 pub const ROM_ONLY: u8 = 0x00;
 
-pub const MBC1_START: u8 = 0x01;
-pub const MBC1_END: u8 = 0x03;
+pub const MBC1_SIMPLE_START: u8 = 0x01;
+pub const MBC1_SIMPLE_END: u8 = 0x02;
+pub const MBC1_BATTERY: u8 = 0x03;
 
-pub const MBC2_START: u8 = 0x05;
-pub const MBC2_END: u8 = 0x06;
+pub const MBC2_SIMPLE: u8 = 0x05;
+pub const MBC2_BATTERY: u8 = 0x06;
 
-pub const MBC3_START: u8 = 0x0F;
-pub const MBC3_END: u8 = 0x13;
+pub const MBC3_RTC_START: u8 = 0x0F;
+pub const MBC3_RTC_END: u8 = 0x10;
+
+pub const MBC3_SIMPLE_START: u8 = 0x11;
+pub const MBC3_SIMPLE_END: u8 = 0x12;
+pub const MBC3_BATTERY: u8 = 0x13;
 
 pub const MBC5_START: u8 = 0x19;
-pub const MBC5_END: u8 = 0x1E;
+pub const MBC5_END: u8 = 0x1D;
+pub const MBC5_BATTERY: u8 = 0x1B | 0x1E;
 
 // ADDRESSES
 pub const CARTRIDGE_ROM_START: u16 = 0x0000;
@@ -58,6 +64,9 @@ pub const INTERRUPT_FLAG_ADDRESS: u16 = 0xFF0F;
 
 pub const APU_REGISTERS_START: u16 = 0xFF10;
 pub const APU_REGISTERS_END: u16 = 0xFF26;
+
+pub const WAVE_RAM_START: u16 = 0xFF30;
+pub const WAVE_RAM_END: u16 = 0xFF3F;
 
 pub const DMA_ADDRESS: u16 = 0xFF46;
 

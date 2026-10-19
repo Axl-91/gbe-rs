@@ -12,6 +12,7 @@ mod tests;
 use crate::{cpu::instructions::*, joypad::Button, memory::MemoryBus};
 use log::debug;
 use registers::Registers;
+use std::io;
 
 const NON_CYCLES: u8 = 0x00;
 const HALT_CYCLES: u8 = 0x04;
@@ -49,6 +50,14 @@ impl Cpu {
 
     pub fn get_framebuffer(&self) -> &[u8] {
         self.bus.get_framebuffer()
+    }
+
+    pub fn take_audio_samples(&mut self) -> Vec<(f32, f32)> {
+        self.bus.take_audio_samples()
+    }
+
+    pub fn save(&self) -> io::Result<()> {
+        self.bus.save()
     }
 
     pub fn peek(&self, address: u16) -> u8 {

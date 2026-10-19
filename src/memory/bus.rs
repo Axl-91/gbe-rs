@@ -13,6 +13,7 @@ use crate::{
     serial::Serial,
     timer::Timer,
 };
+use std::io;
 
 /// Value returned when reading from an address that isn't backed by any
 /// implemented memory or I/O register.
@@ -61,6 +62,14 @@ impl MemoryBus {
 
     pub fn get_framebuffer(&self) -> &[u8] {
         self.ppu.get_framebuffer()
+    }
+
+    pub fn take_audio_samples(&mut self) -> Vec<(f32, f32)> {
+        self.apu.take_samples()
+    }
+
+    pub fn save(&self) -> io::Result<()> {
+        self.cartridge.save()
     }
 
     pub fn is_joypad_active(&self) -> bool {
@@ -160,6 +169,8 @@ impl MemoryBus {
 
             APU_REGISTERS_START..=APU_REGISTERS_END => self.apu.read(address),
 
+            WAVE_RAM_START..=WAVE_RAM_END => self.apu.read(address),
+
             PPU_REGISTERS_START..=PPU_REGISTERS_END => self.ppu.read(address),
 
             HRAM_START..=HRAM_END => {
@@ -216,6 +227,8 @@ impl MemoryBus {
             INTERRUPT_FLAG_ADDRESS => self.interrupt_flags = value,
 
             APU_REGISTERS_START..=APU_REGISTERS_END => self.apu.write(address, value),
+
+            WAVE_RAM_START..=WAVE_RAM_END => self.apu.write(address, value),
 
             PPU_REGISTERS_START..=PPU_REGISTERS_END => match address {
                 DMA_ADDRESS => self.dma.start(value),
