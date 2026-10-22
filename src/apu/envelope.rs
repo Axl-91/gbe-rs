@@ -5,6 +5,11 @@ const INITIAL_VOLUME_SHIFT: u32 = 4;
 const MAX_VOLUME: u8 = 0x0F;
 const ZERO_PERIOD: u8 = 8;
 
+const ENVELOPE_PERIOD_MASK: u8 = 0b0000_0111;
+const ENVELOPE_DIRECTION_MASK: u8 = 0b0000_1000;
+const ENVELOPE_MAX_VOLUME: u8 = 0x0F;
+const ENVELOPE_VOLUME_MASK: u8 = 0x0F;
+
 pub(super) fn is_dac_enabled(register: u8) -> bool {
     register & DAC_MASK != 0
 }
@@ -18,6 +23,34 @@ pub(super) fn get_period(register: u8) -> u8 {
 pub(super) fn trigger(register: u8, volume: &mut u8, timer: &mut u8) {
     *volume = register >> INITIAL_VOLUME_SHIFT;
     *timer = get_period(register);
+}
+
+/// Applies the volume changes caused by writing to an envelope register
+/// while the channel is active.
+pub(super) fn apply_zombie_mode(
+    old_register: u8,
+    new_register: u8,
+    active: bool,
+    envelope_timer: u8,
+    volume: &mut u8,
+) {
+    if !active {
+        return;
+    }
+
+    if old_register & ENVELOPE_PERIOD_MASK == 0 && envelope_timer != 0 {
+        *volume += 1;
+    } else if old_register & ENVELOPE_DIRECTION_MASK == 0 {
+        *volume += 2;
+    }
+
+    let direction_changed = (old_register ^ new_register) & ENVELOPE_DIRECTION_MASK != 0;
+
+    if direction_changed {
+        *volume = ENVELOPE_MAX_VOLUME + 1 - *volume;
+    }
+
+    *volume &= ENVELOPE_VOLUME_MASK;
 }
 
 pub(super) fn clock(register: u8, active: bool, volume: &mut u8, timer: &mut u8) {

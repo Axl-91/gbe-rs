@@ -133,6 +133,14 @@ impl Channel1 {
                     .load(u16::from(value & NR11_LENGTH_MASK));
             }
             NR12_ADDRESS => {
+                super::envelope::apply_zombie_mode(
+                    self.nr12,
+                    value,
+                    self.active,
+                    self.envelope_timer,
+                    &mut self.envelope_volume,
+                );
+
                 self.nr12 = value;
 
                 if !self.is_dac_enabled() {
@@ -871,5 +879,23 @@ mod tests {
         channel.reset();
 
         assert_eq!(channel.get_length_counter_for_test(), EXPECTED_LENGTH);
+    }
+
+    #[test]
+    fn writing_envelope_register_applies_zombie_mode() {
+        let mut channel = Channel1::new();
+
+        const INITIAL_ENVELOPE: u8 = 0xF0;
+        const UPDATED_ENVELOPE: u8 = 0x18;
+        const EXPECTED_VOLUME: u8 = 0;
+
+        channel.write(NR12_ADDRESS, INITIAL_ENVELOPE);
+        channel.write(NR14_ADDRESS, NR14_TRIGGER_MASK);
+
+        assert!(channel.is_active());
+
+        channel.write(NR12_ADDRESS, UPDATED_ENVELOPE);
+
+        assert_eq!(channel.envelope_volume, EXPECTED_VOLUME);
     }
 }
