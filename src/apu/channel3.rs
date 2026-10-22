@@ -237,7 +237,10 @@ impl Channel3 {
     }
 
     fn corrupt_wave_ram_on_retrigger(&mut self) {
-        let current_byte = usize::from(self.wave_position / 2);
+        // The retrigger lands right before the next read, so the byte being
+        // fetched belongs to the next sample (wave_position has not advanced yet).
+        let next_position = (self.wave_position + 1) % WAVE_SAMPLE_COUNT;
+        let current_byte = usize::from(next_position / 2);
 
         if current_byte < 4 {
             self.wave_ram[0] = self.wave_ram[current_byte];
