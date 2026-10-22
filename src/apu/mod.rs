@@ -177,7 +177,7 @@ impl Apu {
                 }
 
                 if !self.enabled && should_enable {
-                    self.frame_sequencer = FrameSequencer::new();
+                    self.frame_sequencer.power_on();
                 }
 
                 self.enabled = should_enable;
@@ -195,13 +195,16 @@ impl Apu {
 
     /// Advances the APU by one T-cycle.
     pub fn tick(&mut self) {
+        // Always runs: its phase follows the system divider, not the APU power.
+        let frame_step_elapsed = self.frame_sequencer.tick();
+
         if self.enabled {
             self.channel1.tick();
             self.channel2.tick();
             self.channel3.tick();
             self.channel4.tick();
 
-            if self.frame_sequencer.tick() {
+            if frame_step_elapsed {
                 let step = self.frame_sequencer.get_step();
 
                 if step.is_multiple_of(2) {
