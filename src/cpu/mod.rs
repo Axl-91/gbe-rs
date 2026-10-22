@@ -9,7 +9,9 @@ mod registers;
 #[cfg(test)]
 mod tests;
 
-use crate::{cpu::instructions::*, joypad::Button, memory::MemoryBus};
+use crate::{
+    cpu::instructions::*, joypad::Button, memory::MemoryBus, ppu::oam_corrupt::OamCorruption,
+};
 use log::debug;
 use registers::Registers;
 use std::io;
@@ -17,6 +19,9 @@ use std::io;
 const NON_CYCLES: u8 = 0x00;
 const HALT_CYCLES: u8 = 0x04;
 const TICK_CYCLES: u8 = 0x04;
+
+const OAM_START_ADDRESS: u16 = 0xFE00;
+const OAM_END_ADDRESS: u16 = 0xFEFF;
 
 /// Represents the Game Boy CPU and its connection to the memory bus.
 pub struct Cpu {
@@ -70,6 +75,22 @@ impl Cpu {
 
     pub fn joypad_release(&mut self, button: Button) {
         self.bus.joypad_release(button)
+    }
+
+    fn handle_oam_read_write_corruption(&mut self, value: u16) {
+        let is_oam_address = (OAM_START_ADDRESS..=OAM_END_ADDRESS).contains(&value);
+
+        if is_oam_address && self.bus.is_oam_search() {
+            self.bus.oam_corrupt(OamCorruption::ReadWrite);
+        }
+    }
+
+    fn handle_oam_write_corruption(&mut self, value: u16) {
+        let is_oam_address = (OAM_START_ADDRESS..=OAM_END_ADDRESS).contains(&value);
+
+        if is_oam_address && self.bus.is_oam_search() {
+            self.bus.oam_corrupt(OamCorruption::Write);
+        }
     }
 
     fn tick_read(&mut self, address: u16) -> u8 {

@@ -9,7 +9,7 @@ use crate::{
     cartridge::Cartridge,
     dma::Dma,
     joypad::{Button, Joypad},
-    ppu::Ppu,
+    ppu::{Ppu, oam_corrupt::OamCorruption},
     serial::Serial,
     timer::Timer,
 };
@@ -86,6 +86,14 @@ impl MemoryBus {
 
     pub fn joypad_release(&mut self, button: Button) {
         self.joypad.release(button);
+    }
+
+    pub fn is_oam_search(&self) -> bool {
+        self.ppu.is_oam_search()
+    }
+
+    pub(crate) fn oam_corrupt(&mut self, corruption: OamCorruption) {
+        self.ppu.oam_corrupt(corruption);
     }
 
     pub fn take_serial_output(&mut self) -> Option<u8> {

@@ -35,6 +35,7 @@ pub(super) const SPRITE_SIZE: i16 = 8;
 mod bg_fetcher;
 mod bg_fifo;
 mod memory;
+pub(crate) mod oam_corrupt;
 mod registers;
 mod sprite_fetcher;
 mod sprite_fifo;

@@ -157,6 +157,7 @@ impl Cpu {
                 self.tick_write(hl, a);
 
                 self.registers.set_hl(hl.wrapping_add(1));
+                self.handle_oam_read_write_corruption(hl);
             }
             LoadInstruction::Load8ToAddressHlDecrement => {
                 let a = self.registers.get_a();
@@ -165,6 +166,7 @@ impl Cpu {
                 self.tick_write(hl, a);
 
                 self.registers.set_hl(hl.wrapping_sub(1));
+                self.handle_oam_read_write_corruption(hl);
             }
             LoadInstruction::Load8FromAddressHlIncrement => {
                 let hl = self.registers.get_hl();
@@ -173,6 +175,7 @@ impl Cpu {
 
                 self.registers.set_a(value);
                 self.registers.set_hl(hl.wrapping_add(1));
+                self.handle_oam_read_write_corruption(hl);
             }
             LoadInstruction::Load8FromAddressHlDecrement => {
                 let hl = self.registers.get_hl();
@@ -181,6 +184,7 @@ impl Cpu {
 
                 self.registers.set_a(value);
                 self.registers.set_hl(hl.wrapping_sub(1));
+                self.handle_oam_read_write_corruption(hl);
             }
         }
         t_cycles

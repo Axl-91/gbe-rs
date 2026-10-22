@@ -31,8 +31,12 @@ impl Cpu {
         let lower_value = value as u8;
         let higher_value = (value >> 8) as u8;
 
-        self.tick_write(sp.wrapping_sub(1), higher_value);
+        let high_address = sp.wrapping_sub(1);
+        self.tick_write(high_address, higher_value);
+        self.handle_oam_write_corruption(high_address);
+
         self.tick_write(new_sp, lower_value);
+        self.handle_oam_write_corruption(new_sp);
 
         self.registers.set_sp(new_sp);
     }
@@ -42,9 +46,14 @@ impl Cpu {
         let new_sp = sp.wrapping_add(2);
 
         let lower_value = self.tick_read(sp);
-        let higher_value = self.tick_read(sp.wrapping_add(1));
+        self.handle_oam_read_write_corruption(sp);
+
+        let high_address = sp.wrapping_add(1);
+        let higher_value = self.tick_read(high_address);
+        self.handle_oam_read_write_corruption(high_address);
 
         self.registers.set_sp(new_sp);
+
         u16::from_le_bytes([lower_value, higher_value])
     }
 
@@ -54,8 +63,10 @@ impl Cpu {
         match instruction {
             StackInstruction::Push(register) => {
                 let value = self.get_stack_register(&register);
+                let sp = self.registers.get_sp();
 
                 self.tick_internal(1);
+                self.handle_oam_write_corruption(sp);
 
                 self.push_into_sp(value);
             }

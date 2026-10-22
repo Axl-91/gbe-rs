@@ -116,13 +116,19 @@ impl Cpu {
             }
             ArithmeticInstruction::Inc16(register) => {
                 let value = self.get_register16(&register);
+
                 self.set_register16(&register, value.wrapping_add(1));
                 self.tick_internal(1);
+
+                self.handle_oam_write_corruption(value);
             }
             ArithmeticInstruction::Dec16(register) => {
                 let value = self.get_register16(&register);
+
                 self.set_register16(&register, value.wrapping_sub(1));
                 self.tick_internal(1);
+
+                self.handle_oam_write_corruption(value);
             }
             ArithmeticInstruction::AddHl(register) => {
                 let hl = self.registers.get_hl();
