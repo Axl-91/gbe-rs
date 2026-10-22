@@ -37,6 +37,23 @@ The emulator advances the hardware over time using the CPU's clock cycles. Each 
 
 Hardware components are responsible for their own internal state and timing, while the emulator coordinates their execution and the communication between them. This approach keeps the different parts of the emulator modular while allowing them to behave as a single system.
 
+## Requirements (Linux)
+
+- glibc 2.35 or newer (depends on the build machine)
+- ALSA (`libasound2`) for audio
+- A Wayland or X11 session with Vulkan or OpenGL drivers
+
+## Controls
+
+| Key | Game Boy button |
+|---|---|
+| `W` `A` `S` `D` | D-pad (up, left, down, right) |
+| `J` | A |
+| `K` | B |
+| `Enter` | Start |
+| `Left Shift` | Select |
+| `Esc` | Quit |
+
 ## Running
 
 ### Run the emulator
