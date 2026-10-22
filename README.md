@@ -8,69 +8,22 @@ A Game Boy DMG emulator written in Rust.
 
 The goal of this project is to build a simple and accurate emulator for the original Game Boy (DMG), starting from the core hardware and gradually adding the components required to run real games.
 
-## Current progress
+## Status
 
-### CPU
-- [x] CPU registers and flags
-- [x] Fetch / decode / execute cycle
-- [x] Instruction set
-  - [x] Arithmetic
-  - [x] Load / Store
-  - [x] Control flow
-  - [x] Stack operations
-  - [x] Rotations / shifts
-  - [x] Bit operations
-  - [x] CPU control instructions
-- [x] Instruction timing
+gbe-rs is an active Game Boy emulator project focused on accurate DMG hardware emulation.
 
-### Memory
-- [x] Memory bus
-- [x] VRAM
-- [x] WRAM
-- [x] HRAM
-- [ ] I/O registers
-- [x] Interrupt registers
+The core DMG hardware is implemented, including:
 
-### Cartridge
-- [x] Cartridge ROM
-- [ ] MBC
-  - [x] MBC1
-  - [x] MBC2
-  - [x] MBC3
-  - [ ] MBC3+RTC
-  - [x] MBC5
-- [x] Cartridge RAM
-- [x] Battery-backed save persistence
+- CPU and instruction timing
+- Memory and interrupts
+- Cartridge ROM, MBCs, RAM, and battery-backed saves
+- PPU and rendering
+- APU and audio output
+- Timer
+- Joypad input
+- Frontend rendering and input
 
-### Hardware
-- [x] Timer
-- [x] Interrupts
-- [ ] PPU
-  - [x] Memory
-  - [x] Registers
-  - [x] Basic Timing
-  - [ ] LCD Timing & Quirks
-  - [x] Rendering
-    - [x] Background
-    - [x] Window
-    - [x] Sprites
-    - [x] Pixel Mixing
-- [x] APU
-  - [x] Channel 1 (Pulse + Sweep)
-  - [x] Channel 2 (Pulse)
-  - [x] Channel 3 (Wave)
-  - [x] Channel 4 (Noise)
-  - [x] Audio Mixing
-  - [x] Audio Output
-- [x] Input
-
-### Frontend
-- [ ] Frontend
-  - [x] Framebuffer Rendering
-  - [x] DMG Colors
-  - [x] Input
-  - [x] Audio
-  - [ ] Debugging / Tools
+The project is still under active development, with ongoing work focused on improving hardware accuracy, game compatibility, and the overall emulator experience.
 
 ## Emulator architecture
 
