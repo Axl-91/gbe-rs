@@ -1,5 +1,5 @@
 <div align="center">
-  <img align="center" width="704" alt="gbe" src="https://github.com/Axl-91/gbe-rs/blob/main/assets/gbe.png" />
+  <img align="center" width="704" alt="kaniboy" src="https://github.com/Axl-91/kaniboy/blob/main/assets/kaniboy.png" />
 </div>
 
 #
@@ -10,7 +10,7 @@ The goal of this project is to build a simple and accurate emulator for the orig
 
 ## Status
 
-gbe-rs is an active Game Boy emulator project focused on accurate DMG hardware emulation.
+KaniBoy is an active Game Boy emulator project focused on accurate DMG hardware emulation.
 
 The core DMG hardware is implemented, including:
 
@@ -31,7 +31,7 @@ The emulator reproduces the main hardware components of the Game Boy and allows 
 
 At the center is the CPU, which fetches instructions from memory, decodes them, and executes them. Memory access is handled through the memory bus, which routes reads and writes to the appropriate hardware component, such as the cartridge, RAM, PPU, timer, serial interface, or joypad.
 
-<img width="1408" alt="gbe_logic" src="https://github.com/Axl-91/gbe-rs/blob/main/assets/diagram.jpg" />
+<img width="1408" alt="gbe_logic" src="https://github.com/Axl-91/kaniboy/blob/main/assets/diagram.jpg" />
 
 The emulator advances the hardware over time using the CPU's clock cycles. Each executed instruction consumes a specific number of cycles, and the corresponding hardware components are advanced accordingly. This keeps components such as the PPU, timer, DMA controller, and serial interface synchronized with the CPU.
 
@@ -109,12 +109,12 @@ For example:
 
 I use several test suites to verify the emulator’s functionality. The passing tests from each suite are included in the repository and run in CI:
 
-- [Blargg’s tests](https://github.com/Axl-91/gbe-rs/tree/main/test_suites/blargg) (15 tests)
-- [Mooneye tests](https://github.com/Axl-91/gbe-rs/tree/main/test_suites/mooneye) (~77 tests)
-- [GBMicrotests](https://github.com/Axl-91/gbe-rs/tree/main/test_suites/microtests) (~90 tests)
+- [Blargg’s tests](https://github.com/Axl-91/kaniboy/tree/main/test_suites/blargg) (15 tests)
+- [Mooneye tests](https://github.com/Axl-91/kaniboy/tree/main/test_suites/mooneye) (~77 tests)
+- [GBMicrotests](https://github.com/Axl-91/kaniboy/tree/main/test_suites/microtests) (~90 tests)
 
 ---------------------------------------
 <div align="center">
-  <img align="center" width="352" alt="gbe" src="https://github.com/Axl-91/gbe-rs/blob/main/assets/Blargg.jpg" />
+  <img align="center" width="352" alt="gbe" src="https://github.com/Axl-91/kaniboy/blob/main/assets/Blargg.jpg" />
 </div>
 
