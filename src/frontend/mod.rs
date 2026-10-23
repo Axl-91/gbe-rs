@@ -164,8 +164,8 @@ impl ApplicationHandler for Frontend {
             event_loop
                 .create_window(
                     Window::default_attributes()
-                        .with_title("GBE-RS")
-                        .with_name("gbe-rs", "gbe-rs")
+                        .with_title("KaniBoy")
+                        .with_name("kaniboy", "kaniboy")
                         .with_inner_size(winit::dpi::LogicalSize::new(WINDOW_WIDTH, WINDOW_HEIGHT)),
                 )
                 .unwrap(),

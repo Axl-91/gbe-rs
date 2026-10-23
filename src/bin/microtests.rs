@@ -10,8 +10,8 @@
 //! - `1`: the test failed (or the ROM could not be loaded)
 //! - `2`: the test timed out (or the arguments were invalid)
 
-use gbe_rs::Emulator;
-use gbe_rs::cartridge::Cartridge;
+use kaniboy::Emulator;
+use kaniboy::cartridge::Cartridge;
 use std::process::ExitCode;
 
 /// Maximum number of emulator steps before the test is considered stuck.
@@ -163,7 +163,7 @@ fn main() -> ExitCode {
     };
 
     println!("{SEPARATOR}");
-    println!(" gbe-rs gbmicrotest runner");
+    println!(" KaniBoy gbmicrotest runner");
     println!("{SEPARATOR}");
     println!("ROM: {path}");
     println!();

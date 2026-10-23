@@ -1,8 +1,8 @@
 [package]
-name = "gbe-rs"
+name = "kaniboy"
 version = "0.3.0"
 edition = "2024"
-default-run = "gbe-rs"
+default-run = "kaniboy"
 
 [dependencies]
 env_logger = "0.11.11"

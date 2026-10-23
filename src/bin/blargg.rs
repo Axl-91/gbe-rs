@@ -9,8 +9,8 @@
 //! - `1`: the test failed (or the ROM could not be loaded)
 //! - `2`: the test timed out (or the arguments were invalid)
 
-use gbe_rs::Emulator;
-use gbe_rs::cartridge::Cartridge;
+use kaniboy::Emulator;
+use kaniboy::cartridge::Cartridge;
 use std::io::{self, Write};
 use std::process::ExitCode;
 
@@ -164,7 +164,7 @@ fn main() -> io::Result<ExitCode> {
     };
 
     println!("{SEPARATOR}");
-    println!(" gbe-rs Blargg test runner");
+    println!(" KaniBoy Blargg test runner");
     println!("{SEPARATOR}");
     println!("ROM: {path}");
     println!();
