@@ -2,6 +2,7 @@
 //!
 //! Handles cartridge ROM and RAM access through the memory bank controller (MBC).
 
+mod cartridge_info;
 pub mod mbc;
 pub mod mbc1;
 pub mod mbc2;
@@ -13,6 +14,7 @@ use std::io;
 use std::path::Path;
 use std::path::PathBuf;
 
+use crate::cartridge::cartridge_info::CartridgeInfo;
 use crate::cartridge::mbc::create_mbc1;
 use crate::cartridge::mbc::create_mbc2;
 use crate::cartridge::mbc::create_mbc3;
@@ -104,6 +106,10 @@ impl Cartridge {
                 io::ErrorKind::InvalidData,
                 "ROM is too small to contain the cartridge header",
             ));
+        }
+
+        if let Some(info) = CartridgeInfo::parse(&rom) {
+            println!("{info}")
         }
 
         let ram_size = Self::select_ram_size(rom[RAM_SIZE_CODE_ADDRESS]);
