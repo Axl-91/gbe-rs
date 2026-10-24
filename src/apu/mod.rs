@@ -76,12 +76,14 @@ pub struct Apu {
 }
 
 impl Apu {
-    pub fn new() -> Self {
+    /// State at power-on: the APU is off with every register cleared.
+    /// Bootix (or any boot ROM) switches it on through NR52.
+    pub fn power_on() -> Self {
         Self {
-            enabled: true,
+            enabled: false,
 
-            nr50: 0x77,
-            nr51: 0xF3,
+            nr50: 0x00,
+            nr51: 0x00,
 
             frame_sequencer: FrameSequencer::new(),
             channel1: Channel1::new(),
@@ -92,6 +94,23 @@ impl Apu {
             sample_cycles: 0,
             sample_buffer: Vec::new(),
         }
+    }
+
+    /// State after the DMG boot ROM hands control to the cartridge.
+    /// Used when the boot ROM is skipped.
+    pub fn post_boot() -> Self {
+        Self {
+            enabled: true,
+
+            nr50: 0x77,
+            nr51: 0xF3,
+
+            ..Self::power_on()
+        }
+    }
+
+    pub fn new() -> Self {
+        Self::post_boot()
     }
 
     pub fn read(&self, address: u16) -> u8 {

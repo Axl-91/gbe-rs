@@ -4,7 +4,7 @@ use std::{
     path::Path,
 };
 
-const BOOT_ROM_SIZE: usize = 0x100;
+pub const BOOT_ROM_SIZE: usize = 0x100;
 
 pub struct BootRom {
     data: [u8; BOOT_ROM_SIZE],

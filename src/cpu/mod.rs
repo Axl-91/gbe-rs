@@ -39,7 +39,11 @@ impl Cpu {
     /// Creates a new CPU with initialized registers and the program counter
     /// set to the game's entry point.
     pub fn new(bus: MemoryBus) -> Self {
-        let registers = Registers::new();
+        let registers = if bus.is_boot_rom_enabled() {
+            Registers::power_on()
+        } else {
+            Registers::post_boot()
+        };
 
         Self {
             registers,

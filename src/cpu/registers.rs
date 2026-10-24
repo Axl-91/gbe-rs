@@ -21,8 +21,26 @@ const SHIFT_HCARRY: u8 = 5;
 const SHIFT_CARRY: u8 = 4;
 
 impl Registers {
-    pub fn new() -> Self {
-        //Default values as seen in PanDocs
+    /// State at power-on: everything zeroed, execution starts at $0000
+    /// (the boot ROM sets up the rest).
+    pub fn power_on() -> Self {
+        Self {
+            a: 0x00,
+            f: 0x00,
+            b: 0x00,
+            c: 0x00,
+            d: 0x00,
+            e: 0x00,
+            h: 0x00,
+            l: 0x00,
+            sp: 0x0000,
+            pc: 0x0000,
+        }
+    }
+
+    /// State after the DMG boot ROM hands control to the cartridge
+    /// (default values as seen in Pan Docs).
+    pub fn post_boot() -> Self {
         Self {
             a: 0x01,
             f: 0xB0,
@@ -35,6 +53,11 @@ impl Registers {
             sp: 0xFFFE,
             pc: 0x0100,
         }
+    }
+
+    /// Default state used when the boot ROM is skipped.
+    pub fn new() -> Self {
+        Self::post_boot()
     }
 
     pub fn get_a(&self) -> u8 {

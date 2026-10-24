@@ -33,15 +33,30 @@ pub struct Timer {
 }
 
 impl Timer {
-    pub fn new() -> Self {
+    /// State at power-on: the internal counter (whose upper byte is DIV)
+    /// starts at zero.
+    pub fn power_on() -> Self {
         Self {
-            sys_counter: 0xABCC,
+            sys_counter: 0x0008,
             tima: 0,
             tma: 0,
             tac: 0xF8,
             reload_delay: 0,
             reload_window: 0,
         }
+    }
+
+    /// State after the DMG boot ROM hands control to the cartridge
+    /// (DIV reads 0xAB). Used when the boot ROM is skipped.
+    pub fn post_boot() -> Self {
+        Self {
+            sys_counter: 0xABCC,
+            ..Self::power_on()
+        }
+    }
+
+    pub fn new() -> Self {
+        Self::post_boot()
     }
 
     /// Bit of the internal counter selected by TAC bits 0-1.
