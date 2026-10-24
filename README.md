@@ -58,7 +58,7 @@ Hardware components are responsible for their own internal state and timing, whi
 
 ### Run the emulator
 
-To run the emulator with a Game Boy ROM:
+To run the emulator with a Game Boy ROM, without a boot ROM:
 
 ```bash
 just run-release <PATH_TO_ROM>
@@ -69,6 +69,20 @@ For example:
 ```bash
 just run-release ./roms/tetris.gb
 ```
+
+To run the emulator with a boot ROM, use the `run-boot` recipe, providing the boot ROM path first and the game ROM path second:
+
+```bash
+just run-boot <PATH_TO_BOOT_ROM> <PATH_TO_ROM>
+```
+
+For example, using the Bootix DMG boot ROM included in the repository:
+
+```bash
+just run-boot ./bootrom/bootix_dmg.bin ./roms/tetris.gb
+```
+
+The boot ROM is optional. When running without one, the emulator starts directly from the post-boot state.
 
 ### Run the tests
 
@@ -98,12 +112,16 @@ For example:
 ./test_suites/run.sh --suite blargg
 ```
 
-
 ## References
 
 - [Pan Docs](https://gbdev.io/pandocs/) — The single most comprehensive technical reference for Game Boy hardware behavior, covering the CPU, memory map, PPU, timers, interrupts, and more.
 - [Game Boy: Complete Technical Reference](https://gekkio.fi/files/gb-docs/gbctr.pdf) — Gekkio's in-depth reference (PDF), the primary source for hardware quirks and cycle-accurate behavior.
 - [Game Boy Opcode Table](https://gbdev.io/gb-opcodes/optables/) — Instruction reference with opcodes, cycle counts, and flag effects.
+
+### Acknowledgements
+
+- [Bootix](https://github.com/Ashiepaws/Bootix) by Ashiepaws — Custom DMG/MGB boot ROM used for testing. Licensed under CC0-1.0.
+- [Is That a Demo in Your Pocket?](https://demozoo.org/productions/142074/) — Game Boy demo by Snorpung, featuring music by Nordloef.
 
 ## Test Suites
 
