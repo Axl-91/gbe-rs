@@ -1,4 +1,5 @@
 pub mod apu;
+pub mod bootrom;
 pub mod cartridge;
 pub mod cpu;
 pub mod dma;
