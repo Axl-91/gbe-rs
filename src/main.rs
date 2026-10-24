@@ -2,11 +2,19 @@ use kaniboy::{Emulator, bootrom::BootRom, cartridge::Cartridge, frontend};
 use log::info;
 use std::{io, path::PathBuf, process};
 
-const USAGE: &str = "usage: kaniboy [--boot <boot_rom>] <rom>";
+const USAGE: &str = "usage: kaniboy [--boot <boot_rom>] [rom]";
 
 struct Args {
     boot_rom: Option<PathBuf>,
-    rom: PathBuf,
+    rom: Option<PathBuf>,
+}
+
+/// Opens the native file dialog. Returns `None` if the user cancels it.
+fn pick_rom() -> Option<PathBuf> {
+    rfd::FileDialog::new()
+        .set_title("Select a Game Boy ROM")
+        .add_filter("Game Boy ROM", &["gb", "gbc"])
+        .pick_file()
 }
 
 fn parse_args() -> Result<Args, String> {
@@ -27,8 +35,6 @@ fn parse_args() -> Result<Args, String> {
         }
     }
 
-    let rom = rom.ok_or("missing ROM path")?;
-
     Ok(Args { boot_rom, rom })
 }
 
@@ -40,7 +46,15 @@ fn main() -> io::Result<()> {
         process::exit(2);
     });
 
-    let cartridge = Cartridge::from_file(&args.rom)?;
+    let rom = match args.rom.or_else(pick_rom) {
+        Some(rom) => rom,
+        None => {
+            eprintln!("No ROM selected.\n{USAGE}");
+            return Ok(());
+        }
+    };
+
+    let cartridge = Cartridge::from_file(&rom)?;
 
     let emulator = match args.boot_rom {
         Some(path) => {

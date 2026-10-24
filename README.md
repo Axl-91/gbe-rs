@@ -52,6 +52,7 @@ Hardware components are responsible for their own internal state and timing, whi
 | `K` | B |
 | `Enter` | Start |
 | `Left Shift` | Select |
+| `F11` | Fullscreen Mode |
 | `Esc` | Quit |
 
 ## Running

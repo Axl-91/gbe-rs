@@ -12,6 +12,7 @@ winit = "0.30.13"
 image = { version = "0.25", default-features = false, features = ["png"] }
 cpal = "0.18.2"
 rtrb = "0.4.0"
+rfd = "0.17.2"
 
 [dev-dependencies]
 rand = "0.10.2"
