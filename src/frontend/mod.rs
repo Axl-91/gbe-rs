@@ -1,10 +1,11 @@
-use pixels::{Pixels, SurfaceTexture};
+use pixels::{Pixels, ScalingMode, SurfaceTexture};
 use std::time::Instant;
 use std::{sync::Arc, time::Duration};
 use winit::event::{ElementState, KeyEvent};
 use winit::event_loop::ControlFlow;
 use winit::keyboard::{KeyCode, PhysicalKey};
 use winit::platform::wayland::WindowAttributesExtWayland;
+use winit::window::Fullscreen;
 use winit::{
     application::ApplicationHandler,
     event::WindowEvent,
@@ -156,6 +157,21 @@ impl Frontend {
             next_frame: Instant::now(),
         }
     }
+
+    /// Switches between windowed and borderless fullscreen.
+    fn toggle_fullscreen(&self) {
+        let Some(window) = &self.window else {
+            return;
+        };
+
+        if window.fullscreen().is_some() {
+            window.set_fullscreen(None);
+            window.set_cursor_visible(true);
+        } else {
+            window.set_fullscreen(Some(Fullscreen::Borderless(None)));
+            window.set_cursor_visible(false);
+        }
+    }
 }
 
 impl ApplicationHandler for Frontend {
@@ -173,7 +189,10 @@ impl ApplicationHandler for Frontend {
 
         let size = window.inner_size();
         let surface_texture = SurfaceTexture::new(size.width, size.height, window.clone());
+
         let mut pixels = Pixels::new(WINDOW_WIDTH, WINDOW_HEIGHT, surface_texture).unwrap();
+        pixels.set_scaling_mode(ScalingMode::Fill);
+        pixels.clear_color(pixels::wgpu::Color::BLACK); // letterbox color, explicit
 
         draw_skin(&mut pixels);
 
@@ -235,6 +254,17 @@ impl ApplicationHandler for Frontend {
                     pixels.render().unwrap();
                 }
             }
+            WindowEvent::Resized(size) => {
+                // A minimized window reports 0x0 on some platforms; ignore it.
+                if size.width > 0
+                    && size.height > 0
+                    && let Some(pixels) = &mut self.pixels
+                    && let Err(err) = pixels.resize_surface(size.width, size.height)
+                {
+                    eprintln!("resize failed: {err}");
+                    event_loop.exit();
+                }
+            }
             WindowEvent::KeyboardInput {
                 event:
                     KeyEvent {
@@ -245,8 +275,16 @@ impl ApplicationHandler for Frontend {
                     },
                 ..
             } => {
+                if key == KeyCode::F11 && state == ElementState::Pressed && !repeat {
+                    self.toggle_fullscreen();
+                    return;
+                }
+
                 if key == KeyCode::Escape && state == ElementState::Pressed {
-                    event_loop.exit();
+                    match &self.window {
+                        Some(window) if window.fullscreen().is_some() => self.toggle_fullscreen(),
+                        _ => event_loop.exit(),
+                    }
                     return;
                 };
 
