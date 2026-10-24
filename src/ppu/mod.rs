@@ -123,16 +123,19 @@ pub struct Ppu {
 }
 
 impl Ppu {
-    pub fn new() -> Self {
+    /// State at power-on: LCD off and every register cleared. This mirrors
+    /// what `turn_off()` leaves behind, so turning the LCD on from here
+    /// goes through `turn_on()` like it does for a game.
+    pub fn power_on() -> Self {
         Self {
             // PPU registers
-            lcdc: 0x91,
-            stat: 0x85,
+            lcdc: 0x00,
+            stat: 0x00,
             scy: 0,
             scx: 0,
             ly: 0,
             lyc: 0,
-            bgp: 0xFC,
+            bgp: 0x00,
             obp0: 0,
             obp1: 0,
             wy: 0,
@@ -142,8 +145,8 @@ impl Ppu {
             vram: [0; VRAM_SIZE],
             oam: [0; OAM_SIZE],
 
-            // PPU mode state
-            mode: PpuMode::OamSearch,
+            // PPU mode state (STAT reports mode 0 while the LCD is off)
+            mode: PpuMode::HBlank,
             mode_cycles: 0,
             // LCD state
             lcd_switched_on: false,
@@ -178,6 +181,22 @@ impl Ppu {
             front_buffer: vec![0; SCREEN_WIDTH as usize * VISIBLE_LINES as usize],
             back_buffer: vec![0; SCREEN_WIDTH as usize * VISIBLE_LINES as usize],
         }
+    }
+
+    /// State after the DMG boot ROM hands control to the cartridge: LCD on,
+    /// BG enabled, default palette. Used when the boot ROM is skipped.
+    pub fn post_boot() -> Self {
+        Self {
+            lcdc: 0x91,
+            stat: 0x85,
+            bgp: 0xFC,
+            mode: PpuMode::OamSearch,
+            ..Self::power_on()
+        }
+    }
+
+    pub fn new() -> Self {
+        Self::post_boot()
     }
 
     pub(super) fn turn_off(&mut self) {

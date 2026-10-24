@@ -50,6 +50,9 @@ pub const OAM_END: u16 = 0xFE9F;
 pub const UNUSABLE_MEMORY_START: u16 = 0xFEA0;
 pub const UNUSABLE_MEMORY_END: u16 = 0xFEFF;
 
+pub const BOOT_ROM_END: u16 = 0x00FF;
+pub const BOOT_ROM_DISABLE_ADDRESS: u16 = 0xFF50;
+
 // I/O Ranges START ->
 
 pub const JOYPAD_ADDRESS: u16 = 0xFF00;

@@ -3,9 +3,12 @@
 //! Routes CPU read and write operations to the appropriate memory component,
 //! such as the cartridge, VRAM, and WRAM.
 
+use log::info;
+
 use super::map::*;
 use crate::{
     apu::Apu,
+    bootrom::BootRom,
     cartridge::Cartridge,
     dma::Dma,
     joypad::{Button, Joypad},
@@ -29,6 +32,7 @@ const JOYPAD_INTERRUPT: u8 = 0b0001_0000;
 
 /// Provides access to the Game Boy memory address space.
 pub struct MemoryBus {
+    boot_rom: Option<BootRom>,
     cartridge: Cartridge,
     ppu: Ppu,
     wram: [u8; WRAM_SIZE],
@@ -43,21 +47,49 @@ pub struct MemoryBus {
 }
 
 impl MemoryBus {
-    /// Creates a new memory bus with the given cartridge and initialized memory.
+    /// Boot ROM skipped: components start in their post-boot state.
     pub fn new(cartridge: Cartridge) -> Self {
+        Self::build(cartridge, None)
+    }
+
+    /// Boot ROM mapped at $0000: components start in their power-on state.
+    pub fn with_boot_rom(cartridge: Cartridge, boot_rom: BootRom) -> Self {
+        Self::build(cartridge, Some(boot_rom))
+    }
+
+    fn build(cartridge: Cartridge, boot_rom: Option<BootRom>) -> Self {
+        let booting = boot_rom.is_some();
+
         Self {
             cartridge,
-            ppu: Ppu::new(),
+            boot_rom,
+            ppu: if booting {
+                Ppu::power_on()
+            } else {
+                Ppu::post_boot()
+            },
             wram: [0; WRAM_SIZE],
             hram: [0; HRAM_SIZE],
-            interrupt_flags: 0xE1,
+            interrupt_flags: if booting { 0x00 } else { 0xE1 },
             interrupt_enable: 0x00,
-            timer: Timer::new(),
+            timer: if booting {
+                Timer::power_on()
+            } else {
+                Timer::post_boot()
+            },
             serial: Serial::new(),
             joypad: Joypad::new(),
             dma: Dma::new(),
-            apu: Apu::new(),
+            apu: if booting {
+                Apu::power_on()
+            } else {
+                Apu::post_boot()
+            },
         }
+    }
+
+    pub fn is_boot_rom_enabled(&self) -> bool {
+        self.boot_rom.as_ref().is_some_and(BootRom::is_enabled)
     }
 
     pub fn get_framebuffer(&self) -> &[u8] {
@@ -137,6 +169,13 @@ impl MemoryBus {
 
     /// Reads a byte from the given address in the Game Boy memory space.
     pub fn read(&self, address: u16) -> u8 {
+        if address <= BOOT_ROM_END
+            && let Some(boot_rom) = &self.boot_rom
+            && boot_rom.is_enabled()
+        {
+            return boot_rom.read(address);
+        }
+
         match address {
             CARTRIDGE_ROM_START..=CARTRIDGE_ROM_END => self.cartridge.read(address),
 
@@ -249,6 +288,15 @@ impl MemoryBus {
                     }
                 }
             },
+
+            BOOT_ROM_DISABLE_ADDRESS => {
+                if value != 0 && self.is_boot_rom_enabled() {
+                    if let Some(boot_rom) = &mut self.boot_rom {
+                        boot_rom.disable();
+                    }
+                    info!("Boot ROM disabled, cartridge mapped at $0000");
+                }
+            }
 
             HRAM_START..=HRAM_END => {
                 self.hram[(address - HRAM_START) as usize] = value;

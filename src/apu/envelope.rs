@@ -47,7 +47,7 @@ pub(super) fn apply_zombie_mode(
     let direction_changed = (old_register ^ new_register) & ENVELOPE_DIRECTION_MASK != 0;
 
     if direction_changed {
-        *volume = ENVELOPE_MAX_VOLUME + 1 - *volume;
+        *volume = (ENVELOPE_MAX_VOLUME + 1).wrapping_sub(*volume);
     }
 
     *volume &= ENVELOPE_VOLUME_MASK;

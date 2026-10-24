@@ -1,4 +1,4 @@
-use crate::{cartridge::Cartridge, cpu::Cpu, joypad::Button, memory::MemoryBus};
+use crate::{bootrom::BootRom, cartridge::Cartridge, cpu::Cpu, joypad::Button, memory::MemoryBus};
 use std::io;
 
 pub struct Emulator {
@@ -6,11 +6,18 @@ pub struct Emulator {
 }
 
 impl Emulator {
+    /// Starts at the cartridge entry point ($0100), skipping the boot ROM.
     pub fn new(cartridge: Cartridge) -> Self {
-        let bus = MemoryBus::new(cartridge);
-        let cpu = Cpu::new(bus);
+        Self::from_bus(MemoryBus::new(cartridge))
+    }
 
-        Self { cpu }
+    /// Runs `boot_rom` first, as on real hardware.
+    pub fn with_boot_rom(cartridge: Cartridge, boot_rom: BootRom) -> Self {
+        Self::from_bus(MemoryBus::with_boot_rom(cartridge, boot_rom))
+    }
+
+    fn from_bus(bus: MemoryBus) -> Self {
+        Self { cpu: Cpu::new(bus) }
     }
 
     pub fn step(&mut self) -> u8 {
