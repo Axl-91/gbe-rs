@@ -30,6 +30,9 @@ const SCREEN_WIDTH: u8 = 160;
 const SCANLINE_CYCLES: u16 = 456;
 const OAM_SEARCH_CYCLES: u16 = 80;
 
+/// LY resets to 0 four dots into scanline 153.
+const LY_RESET_CYCLE: u16 = 4;
+
 pub(super) const SPRITE_SIZE: i16 = 8;
 
 mod bg_fetcher;
@@ -413,9 +416,7 @@ impl Ppu {
             }
 
             PpuMode::VBlank => {
-                self.ly += 1;
-
-                if self.ly == TOTAL_LINES {
+                if self.ly == 0 || self.ly + 1 == TOTAL_LINES {
                     self.ly = 0;
                     self.mode = PpuMode::OamSearch;
 
@@ -424,6 +425,8 @@ impl Ppu {
 
                     self.sprite_fetch_index = 0;
                     self.sprite_fetcher.reset();
+                } else {
+                    self.ly += 1;
                 }
             }
 
@@ -474,6 +477,19 @@ impl Ppu {
             return ppu_interruptions;
         }
         self.mode_cycles += 1;
+
+        let ly_reset = matches!(self.mode, PpuMode::VBlank)
+            && self.ly == TOTAL_LINES - 1
+            && self.mode_cycles == LY_RESET_CYCLE;
+
+        if ly_reset {
+            self.ly = 0;
+            self.ly_eq_lyc = self.ly == self.lyc;
+
+            if self.update_stat_line() {
+                ppu_interruptions.stat = true;
+            }
+        }
 
         // The visible LY changes in the last M-cycle of HBlank, 4 dots before the
         // internal line boundary. The LY==LYC flag is cleared at that point and
