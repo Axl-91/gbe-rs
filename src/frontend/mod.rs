@@ -57,7 +57,7 @@ fn draw_skin(pixels: &mut Pixels<'static>) {
 /// Stored as RGBA so a whole pixel can be written with a single copy.
 const PALETTE: [[u8; 4]; 4] = [
     [155, 188, 15, 255], // 0: lightest
-    [139, 172, 15, 255], // 1: light
+    [102, 143, 31, 255], // 1: light
     [48, 98, 48, 255],   // 2: dark
     [15, 56, 15, 255],   // 3: darkest
 ];
@@ -65,7 +65,7 @@ const PALETTE: [[u8; 4]; 4] = [
 /// Darkened version of `PALETTE`, used for the gaps between LCD pixels.
 const GRID_PALETTE: [[u8; 4]; 4] = [
     [124, 150, 12, 255], // 0: lightest
-    [111, 138, 12, 255], // 1
+    [82, 114, 25, 255],  // 1
     [38, 78, 38, 255],   // 2
     [12, 45, 12, 255],   // 3: darkest
 ];
