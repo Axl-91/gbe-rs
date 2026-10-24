@@ -77,7 +77,6 @@ impl MemoryBus {
             } else {
                 Timer::post_boot()
             },
-            // serial, joypad, dma: sin cambios por ahora
             serial: Serial::new(),
             joypad: Joypad::new(),
             dma: Dma::new(),
